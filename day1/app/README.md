@@ -60,6 +60,20 @@ app/
 To customize the content, edit the `profile` dictionary in `app.py`.
 
 
+# Deployment on ece
+
+- install git
+- install nginx
+
+```bash
+
+sudo yum install git
+
+git clone <your app repo>
+
+sudo apt install nginx -y
+```
+
 
 ## Running the app
 
