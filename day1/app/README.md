@@ -58,3 +58,26 @@ app/
 ## Customization
 
 To customize the content, edit the `profile` dictionary in `app.py`.
+
+
+
+## Running the app
+
+```bash
+# cretae a virtual env
+python3 -m venv .venv
+
+# activate the virtual env
+
+source .venv/bin/activate
+
+# in app folder
+
+
+python3 app.py
+
+
+# when using gunicor, comment the above command and use this
+
+gunicorn app:app &
+```
