@@ -67,11 +67,11 @@ To customize the content, edit the `profile` dictionary in `app.py`.
 
 ```bash
 
-sudo yum install git
+sudo yum install git -y
 
 git clone <your app repo>
 
-sudo apt install nginx -y
+sudo yum install nginx -y
 ```
 
 
@@ -92,6 +92,52 @@ python3 app.py
 
 
 # when using gunicor, comment the above command and use this
-
 gunicorn app:app &
+
+# or use run.sh
+chmod u+x run.sh
+
+./run.sh
+
+
 ```
+
+# running with nginx
+
+```bash
+
+sudo su -
+systemctl status nginx
+
+systemctl enable nginx
+
+systemctl start nginx
+
+
+# validate the nginx instance 
+curl localhost:80
+```
+
+## Now point the nginx config to flask app
+```bash
+# edit the nginx.conf which is on /etc/nginx/nginx.conf path and add the below config under the server
+location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+```
+
+# restart the nginx
+```bash
+systemctl restart nginx
+
+curl localhost
+```
+
+# route53 A type record Elastic ip -> domain/subdomain in 
+
+- Create public hosted zone with the domain.
+- point ns server for public hosted zone to your domain dns server
+- create A type record with static ip pointing to a subdomain
