@@ -141,3 +141,66 @@ curl localhost
 - Create public hosted zone with the domain.
 - point ns server for public hosted zone to your domain dns server
 - create A type record with static ip pointing to a subdomain
+
+
+# implementing ssl cert 
+
+# use cert bot to get he ssl certs
+
+```bash
+# install certbot
+sudo apt install certbot python3-certbot-nginx -y
+
+# request certifictate
+sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+# Certbot auto-modifies your nginx.conf to add SSL config.
+
+# you can autorenew them
+# test auto renevew
+sudo certbot renew --dry-run
+
+# certs are saved at location
+# /etc/letsencrypt/live/yourdomain.com/fullchain.pem   # certificate
+# /etc/letsencrypt/live/yourdomain.com/privkey.pem      # private key
+
+
+```
+
+# Update the nginx.conf
+# normally cert bot automatically update the nginx.conf 
+
+```bash
+
+server {
+    listen 80;
+    server_name yourdomain.com;
+    return 301 https://$host$request_uri;  # redirect http to https
+}
+
+server {
+    listen 443 ssl;
+    server_name yourdomain.com;
+
+    ssl_certificate     /etc/letsencrypt/live/yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+# how cert bot works
+
+Certbot running on your EC2
+    ↓
+Creates a temp file with a unique token at:
+/.well-known/acme-challenge/random-token
+    ↓
+Tells Let's Encrypt: "hit this URL to verify"
+    ↓
+Let's Encrypt hits:
+http://yourdomain.com/.well-known/acme-challenge/random-token
+    ↓
+If reachable → domain verified → cert issued
