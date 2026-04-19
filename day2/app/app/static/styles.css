@@ -1,0 +1,195 @@
+/* Google Fonts - LivingDevOps Brand */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+/* Custom Properties - LivingDevOps Theme */
+:root {
+  /* Brand Colors */
+  --primary: #0a0f1e;          /* Deep navy - main background */
+  --primary-dark: #060b14;     /* Darker navy - nav/footer */
+  --primary-light: #111827;    /* Slightly lighter navy - card backgrounds */
+  --secondary: #00d4ff;        /* Cyan - brand accent */
+  --secondary-dark: #00aacf;   /* Cyan hover state */
+  --secondary-glow: rgba(0, 212, 255, 0.15); /* Cyan glow for borders/shadows */
+
+  /* Semantic Colors */
+  --danger: #ef4444;
+  --success: #10b981;
+  --warning: #f59e0b;
+
+  /* Text */
+  --text-primary: #f0f6ff;     /* Near-white for headings */
+  --text-secondary: #94a3b8;   /* Muted slate for body text */
+  --text-muted: #4b5563;
+
+  /* Borders */
+  --border-color: rgba(0, 212, 255, 0.15);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+
+  /* Typography */
+  --font-heading: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+
+  /* Effects */
+  --transition: all 0.3s ease;
+  --shadow-cyan: 0 0 20px rgba(0, 212, 255, 0.2);
+  --radius: 8px;
+}
+
+/* Custom Animations */
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cyanPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.3); }
+  50%       { box-shadow: 0 0 0 6px rgba(0, 212, 255, 0); }
+}
+
+/* Mobile Menu Styles */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  z-index: 50;
+}
+
+.hamburger span {
+  display: block;
+  width: 24px;
+  height: 2px;
+  background-color: var(--secondary);  /* Cyan bars, not plain white */
+  transition: var(--transition);
+}
+
+/* Mobile Menu Animation */
+.hamburger.active span:first-child {
+  transform: translateY(8px) rotate(45deg);
+}
+
+.hamburger.active span:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburger.active span:last-child {
+  transform: translateY(-8px) rotate(-45deg);
+}
+
+/* Mobile Navigation */
+@media (max-width: 768px) {
+  .hamburger {
+    display: flex;
+  }
+
+  .mobile-menu {
+    position: fixed;
+    top: 0;
+    right: -100%;
+    width: 260px;
+    height: 100vh;
+    background-color: var(--primary-dark);
+    border-left: 1px solid var(--border-color);
+    padding: 1.5rem;
+    transition: var(--transition);
+    z-index: 40;
+    font-family: var(--font-body);
+  }
+
+  .mobile-menu.active {
+    right: 0;
+    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.6);
+  }
+
+  .mobile-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(2px);
+    z-index: 30;
+  }
+
+  .mobile-overlay.active {
+    display: block;
+  }
+}
+
+/* Custom Modal Animation */
+.modal {
+  animation: fadeIn 0.3s ease;
+  background-color: var(--primary-light);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--secondary) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--secondary);
+  border-radius: 3px;
+}
+
+/* Utility animation classes */
+.fade-in {
+  animation: fadeIn 0.3s ease;
+}
+
+.slide-in {
+  animation: slideIn 0.3s ease;
+}
+
+/* Bonus: LivingDevOps-style CTA button */
+.btn-primary {
+  background: var(--secondary);
+  color: var(--primary);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.625rem 1.5rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-primary:hover {
+  background: var(--secondary-dark);
+  box-shadow: var(--shadow-cyan);
+}
+
+/* Bonus: Cyan-bordered card (matches site card style) */
+.card {
+  background: var(--primary-light);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  transition: var(--transition);
+}
+
+.card:hover {
+  border-color: var(--secondary);
+  box-shadow: var(--shadow-cyan);
+}

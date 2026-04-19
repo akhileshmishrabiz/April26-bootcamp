@@ -205,3 +205,8 @@ Let's Encrypt hits:
 http://yourdomain.com/.well-known/acme-challenge/random-token
     ↓
 If reachable → domain verified → cert issued
+
+
+
+
+
