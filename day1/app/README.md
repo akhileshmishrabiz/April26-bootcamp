@@ -149,12 +149,13 @@ curl localhost
 
 ```bash
 # install certbot
-sudo apt install certbot python3-certbot-nginx -y
+sudo yum install certbot python3-certbot-nginx -y
 
 # request certifictate
-sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+sudo certbot --nginx -d static.demo.livingdevops.org -d www.static.demo.livingdevops.org
 # Certbot auto-modifies your nginx.conf to add SSL config.
 
+certbot install --cert-name static.demo.livingdevops.org
 # you can autorenew them
 # test auto renevew
 sudo certbot renew --dry-run
