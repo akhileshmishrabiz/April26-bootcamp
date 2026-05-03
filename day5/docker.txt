@@ -1,0 +1,176 @@
+
+ 9929  mkdir docker-class
+ 9930  cd docker
+ 9931  cd docker-class
+ 9932  mkdir data-points 
+ 9933  ls
+ 9934  echo "some file data points on a file " > data-points/log1.txt
+ 9935  ls
+~/docker-class                                                    
+
+# ============================================================
+# 1. HOSTPATH (BIND MOUNTS) - Mount host directory into container
+# ============================================================
+
+# --- Using -v flag with busybox ---
+# this usecase containers can not read the origional host data
+# Syntax: -v <host-path>:<container-path>[:options]
+docker run -dt  \
+  -v data-points:/data \
+  busybox 
+
+  docker run -dt  \
+  -v data-points:/data \
+  alpine 
+
+####################################
+
+# Read-only bind mount with busybox
+docker run -it --rm \
+  -v data-points:/data:ro \
+  busybox sh
+
+# --- Using -v flag with alpine ---
+docker run -it --rm \
+  -v $(pwd):/workspace \
+  alpine sh
+
+# Alpine with read-only host mount
+docker run -it --rm \
+  -v ./data-points:/data:ro \
+  busybox sh
+
+# --- Using --mount flag with busybox (bind mount) ---
+# Syntax: --mount type=bind,source=<host-path>,target=<container-path>
+docker run -it --rm \
+  --mount type=bind,source=/tmp/hostdata,target=/data \
+  busybox sh
+
+# Read-only bind mount using --mount
+docker run -it --rm \
+  --mount type=bind,source=/tmp/hostdata,target=/data,readonly \
+  busybox sh
+
+# --- Using --mount flag with alpine (bind mount) ---
+docker run -it --rm \
+  --mount type=bind,source="$(pwd)",target=/workspace \
+  alpine sh
+
+# Alpine bind mount with explicit bind-propagation
+docker run -it --rm \
+  --mount type=bind,source=/tmp/hostdata,target=/data,bind-propagation=rprivate \
+  alpine sh
+
+
+# ============================================================
+# 2. DOCKER NAMED VOLUMES - Managed by Docker
+# ============================================================
+
+# --- Create a named volume first ---
+docker volume create myvolume
+docker volume create alpine-data
+docker volume create busybox-data
+
+# List volumes
+docker volume ls
+
+# Inspect a volume
+docker volume inspect myvolume
+
+
+
+docker run -td -v april-batch:/my-data-point busybox 
+
+
+docker run -td -v april-batch:/my-data-point busybox 
+
+docker run -td  --mount type=volume,source=april-batch,target=/my-data-point alpine
+
+
+# --- Using -v flag with busybox (named volume) ---
+# Syntax: -v <volume-name>:<container-path>
+docker run -it --rm \
+  -v busybox-data:/data \
+  busybox sh -c "echo 'hello from busybox' > /data/file.txt && cat /data/file.txt"
+
+# Verify data persists - run again
+docker run -it --rm \
+  -v busybox-data:/data \
+  busybox cat /data/file.txt
+
+# --- Using -v flag with alpine (named volume) ---
+docker run -it --rm \
+  -v alpine-data:/app/data \
+  alpine sh -c "echo 'persistent data' > /app/data/info.txt"
+
+# Read-only named volume
+docker run -it --rm \
+  -v alpine-data:/app/data:ro \
+  alpine cat /app/data/info.txt
+
+# --- Using --mount flag with busybox (named volume) ---
+# Syntax: --mount type=volume,source=<volume-name>,target=<container-path>
+docker run -it --rm \
+  --mount type=volume,source=busybox-data,target=/data \
+  busybox sh
+
+# --- Using --mount flag with alpine (named volume) ---
+docker run -it --rm \
+  --mount type=volume,source=alpine-data,target=/app/data \
+  alpine sh
+
+# Read-only named volume with --mount
+docker run -it --rm \
+  --mount type=volume,source=alpine-data,target=/app/data,readonly \
+  alpine ls -la /app/data
+
+
+# ============================================================
+# 3. PRACTICAL EXAMPLES - Producer/Consumer pattern
+# ============================================================
+
+# Producer: write data using busybox with -v (named volume)
+docker run --rm \
+  -v shared-vol:/shared \
+  busybox sh -c "echo 'data from busybox' > /shared/message.txt"
+
+# Consumer: read data using alpine with --mount
+docker run --rm \
+  --mount type=volume,source=shared-vol,target=/shared \
+  alpine cat /shared/message.txt
+
+# Producer: write to host using bind mount with --mount
+docker run --rm \
+  --mount type=bind,source=/tmp,target=/host-tmp \
+  busybox sh -c "echo 'written from container' > /host-tmp/container-output.txt"
+
+# Verify on host
+cat /tmp/container-output.txt
+
+
+# ============================================================
+# 4. MIXED MOUNTS - Multiple volumes in one container
+# ============================================================
+
+# Alpine with both bind mount and named volume using -v
+docker run -it --rm \
+  -v /tmp/hostdata:/host-data \
+  -v alpine-data:/app/data \
+  alpine sh
+
+# Same setup using --mount syntax
+docker run -it --rm \
+  --mount type=bind,source=/tmp/hostdata,target=/host-data \
+  --mount type=volume,source=alpine-data,target=/app/data \
+  alpine sh
+
+
+# ============================================================
+# 5. CLEANUP COMMANDS
+# ============================================================
+
+# Remove a specific volume
+docker volume rm myvolume alpine-data busybox-data shared-vol
+
+# Remove all unused volumes
+docker volume prune -f

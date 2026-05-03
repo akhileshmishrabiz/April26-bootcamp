@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ profile.name }} - DevOps Engineer & Educator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1 class="hero-title">{{ profile.name }}</h1>
+                <h2 class="hero-subtitle">{{ profile.title }}</h2>
+                <p class="hero-tagline">{{ profile.tagline }}</p>
+                <div class="hero-badge">{{ profile.experience }}</div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="highlights-section">
+            <div class="container">
+                <h2 class="section-title">Impact & Achievements</h2>
+                <div class="highlights-grid">
+                    {% for highlight in profile.highlights %}
+                    <div class="highlight-card">
+                        <div class="highlight-icon">✓</div>
+                        <p>{{ highlight }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="offerings-section">
+            <div class="container">
+                <h2 class="section-title">Programs & Services</h2>
+                <div class="offerings-grid">
+                    {% for offering in profile.offerings %}
+                    <div class="offering-card">
+                        <h3 class="offering-title">{{ offering.title }}</h3>
+                        <p class="offering-description">{{ offering.description }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="links-section">
+            <div class="container">
+                <h2 class="section-title">Connect With Me</h2>
+                <div class="links-grid">
+                    <a href="{{ profile.links.website }}" target="_blank" class="link-card">
+                        <div class="link-icon">🌐</div>
+                        <span>Living Devops</span>
+                    </a>
+                    <a href="{{ profile.links.substack }}" target="_blank" class="link-card">
+                        <div class="link-icon">📰</div>
+                        <span>Substack</span>
+                    </a>
+                    <a href="{{ profile.links.github }}" target="_blank" class="link-card">
+                        <div class="link-icon">💻</div>
+                        <span>GitHub</span>
+                    </a>
+                    <a href="{{ profile.links.linkedin }}" target="_blank" class="link-card">
+                        <div class="link-icon">💼</div>
+                        <span>LinkedIn</span>
+                    </a>
+                    <a href="{{ profile.links.medium }}" target="_blank" class="link-card">
+                        <div class="link-icon">✍️</div>
+                        <span>Medium</span>
+                    </a>
+                    <a href="{{ profile.links.twitter }}" target="_blank" class="link-card">
+                        <div class="link-icon">🐦</div>
+                        <span>X/Twitter</span>
+                    </a>
+                    <a href="{{ profile.links.topmate }}" target="_blank" class="link-card">
+                        <div class="link-icon">🎯</div>
+                        <span>Topmate</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <section class="cta-section">
+            <div class="container">
+                <div class="cta-content">
+                    <h2>Ready to Level Up Your DevOps Career?</h2>
+                    <p>Join hundreds of professionals who have transformed their careers with real-world DevOps training</p>
+                    <a href="{{ profile.links.website }}" target="_blank" class="cta-button">Explore Bootcamps</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 {{ profile.name }}. Building the future of DevOps education.</p>
+        </div>
+    </footer>
+</body>
+</html>

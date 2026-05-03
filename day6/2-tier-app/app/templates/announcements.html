@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Announcements{% endblock %}
+
+{% block content %}
+<div class="p-8 space-y-8">
+
+    <!-- Post Announcement Form -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Post Announcement</h2>
+        <form method="POST" action="{{ url_for('main.add_announcement') }}" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+                <input type="text" name="title" required
+                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    placeholder="e.g. Week 6 Lab Instructions">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Content *</label>
+                <textarea name="content" rows="4" required
+                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    placeholder="Write your announcement here..."></textarea>
+            </div>
+            <div class="flex items-center justify-between">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" name="is_pinned" class="w-4 h-4 accent-yellow-500">
+                    <span class="text-sm text-gray-700">Pin this announcement</span>
+                </label>
+                <button type="submit"
+                    class="bg-navy text-white px-6 py-2 rounded-md hover:bg-navy-light transition-colors">
+                    Post
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Pinned Announcements -->
+    {% if pinned %}
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <span class="text-yellow-500">📌</span> Pinned
+        </h2>
+        <div class="space-y-4">
+            {% for a in pinned %}
+            <div class="border-l-4 border-yellow-400 pl-4 py-2">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="font-semibold text-gray-800">{{ a.title }}</p>
+                        <p class="text-gray-600 mt-1 whitespace-pre-line">{{ a.content }}</p>
+                        <p class="text-xs text-gray-400 mt-2">Posted {{ a.created_at.strftime('%b %d, %Y at %H:%M') }}</p>
+                    </div>
+                    <form method="POST" action="{{ url_for('main.delete_announcement', id=a.id) }}" class="shrink-0">
+                        <button type="submit" onclick="return confirm('Delete this announcement?')"
+                            class="text-xs text-red-500 hover:text-red-700">Delete</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Other Announcements -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">All Announcements</h2>
+        {% if others %}
+        <div class="space-y-4">
+            {% for a in others %}
+            <div class="border-l-4 border-blue-400 pl-4 py-2 border-b last:border-b-0">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="font-semibold text-gray-800">{{ a.title }}</p>
+                        <p class="text-gray-600 mt-1 whitespace-pre-line">{{ a.content }}</p>
+                        <p class="text-xs text-gray-400 mt-2">Posted {{ a.created_at.strftime('%b %d, %Y at %H:%M') }}</p>
+                    </div>
+                    <form method="POST" action="{{ url_for('main.delete_announcement', id=a.id) }}" class="shrink-0">
+                        <button type="submit" onclick="return confirm('Delete this announcement?')"
+                            class="text-xs text-red-500 hover:text-red-700">Delete</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-gray-400">No announcements yet. Post one above.</p>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
