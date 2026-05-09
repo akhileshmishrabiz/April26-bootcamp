@@ -1,0 +1,11 @@
+- project to simulate real apps in docker compose
+
+- main app _ db
+
+- monitor app 
+
+- load app
+
+- aletring sevices
+
+They all are in compose only 
