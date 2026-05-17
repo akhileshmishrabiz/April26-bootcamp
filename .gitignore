@@ -209,3 +209,11 @@ __marimo__/
 
 
 .env
+
+.terraform/*
+.terraform.lock.hcl
+.terraform
+*.tfstate
+*.tfstate.backup
+*.tfstate.backup.lock.info
+*.tfstate.backup.lock.info.backup
