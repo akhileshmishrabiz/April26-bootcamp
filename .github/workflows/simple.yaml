@@ -1,7 +1,8 @@
 name: Simple Workflow
 
 on:
-  push:
+  # push:
+  workflow_dispatch:
 
 
 jobs:
@@ -25,6 +26,7 @@ jobs:
         run: echo "Hello, world! from windows"
 
   run-macos-command:
+    needs: run-windows-command
     runs-on: macos-latest
     steps:
       - name: Run a command
