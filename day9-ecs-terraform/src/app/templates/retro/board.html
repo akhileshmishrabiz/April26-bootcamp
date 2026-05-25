@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}{{ retro.title }}{% endblock %}
+
+{% block content %}
+<div class="section-header retro-board-header">
+    <div>
+        <h1 class="page-title" style="margin:0;">{{ retro.title }}</h1>
+        {% if retro.description %}
+        <p class="page-subtitle" style="margin:0;">{{ retro.description }}</p>
+        {% endif %}
+    </div>
+    <div class="board-actions">
+        {% if current_user.is_admin and retro.status == 'open' %}
+        <form method="POST" action="{{ url_for('retro.close_retro', retro_id=retro.id) }}"
+              onsubmit="return confirm('Close this retro?');">
+            <button type="submit" class="btn btn-danger btn-sm">Close Retro</button>
+        </form>
+        {% endif %}
+        <a href="{{ url_for('retro.list_retros') }}" class="btn btn-secondary btn-sm">All Retros</a>
+    </div>
+</div>
+
+<div class="card share-box">
+    <label class="form-label">Invite link — share with your team</label>
+    <div class="share-row">
+        <input type="text" id="board-share-link" class="form-input" value="{{ share_url }}" readonly>
+        <button type="button" class="btn btn-primary btn-sm" data-copy-target="#board-share-link">Copy Link</button>
+    </div>
+    <p class="share-hint">Anyone with this link can join as a guest or log in.</p>
+</div>
+
+<div class="card retro-meta">
+    <span class="badge {% if retro.status == 'open' %}badge-success{% else %}badge-muted{% endif %}">
+        {{ retro.status|upper }}
+    </span>
+    <span>👥 {{ participants|length }} joined:
+        {% for p in participants %}{{ p.user.label }}{% if not loop.last %}, {% endif %}{% endfor %}
+    </span>
+</div>
+
+{% if retro.status == 'closed' %}
+<div class="alert alert-error">This retro is closed — read-only mode.</div>
+{% endif %}
+
+<div class="retro-board">
+    {% for key, meta in categories.items() %}
+    <section class="retro-column">
+        <header class="retro-column-header" style="background: {{ meta.color }};">
+            <h2>{{ meta.emoji }} {{ meta.label }}</h2>
+        </header>
+
+        {% if retro.status == 'open' and is_participant %}
+        <form method="POST" action="{{ url_for('retro.add_card', retro_id=retro.id) }}" class="retro-add-form">
+            <input type="hidden" name="category" value="{{ key }}">
+            <textarea name="content" class="form-textarea retro-sticky-input" rows="3"
+                      placeholder="Add a sticky note..." required></textarea>
+            <button type="submit" class="btn btn-primary btn-sm">Add Note</button>
+        </form>
+        {% endif %}
+
+        <div class="retro-cards">
+            {% for item in cards_by_category[key] %}
+            {% set card = item.card %}
+            <article class="retro-sticky" style="background: {{ meta.color }};">
+                <p class="retro-sticky-text">{{ card.content }}</p>
+                <div class="retro-sticky-meta">
+                    <span>— {{ card.author.label }}</span>
+                    <span>{{ card.created_at.strftime('%b %d %H:%M') }}</span>
+                </div>
+
+                <div class="retro-sticky-actions">
+                    {% if retro.status == 'open' and is_participant %}
+                    <form method="POST" action="{{ url_for('retro.toggle_like', card_id=card.id) }}">
+                        <button type="submit" class="btn-like {% if item.liked_by_me %}liked{% endif %}">
+                            {% if item.liked_by_me %}❤️{% else %}🤍{% endif %} {{ item.like_count }}
+                        </button>
+                    </form>
+                    {% else %}
+                    <span class="btn-like">❤️ {{ item.like_count }}</span>
+                    {% endif %}
+                </div>
+
+                {% if card.comments %}
+                <div class="retro-comments">
+                    {% for comment in card.comments %}
+                    <div class="retro-comment">
+                        <strong>{{ comment.author.label }}</strong>
+                        <span>{{ comment.content }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {% if retro.status == 'open' and is_participant %}
+                <form method="POST" action="{{ url_for('retro.add_comment', card_id=card.id) }}" class="retro-comment-form">
+                    <input type="text" name="content" class="form-input" placeholder="Discuss..." required>
+                    <button type="submit" class="btn btn-secondary btn-sm">Reply</button>
+                </form>
+                {% endif %}
+            </article>
+            {% else %}
+            <p class="empty-state retro-empty">No notes yet — go first!</p>
+            {% endfor %}
+        </div>
+    </section>
+    {% endfor %}
+</div>
+{% endblock %}

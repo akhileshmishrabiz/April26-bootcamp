@@ -1,44 +1,45 @@
 services:
   postgres:
-    networks:
-      - app-network
-    image: postgres:13
+    image: postgres:15
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: mydb
     ports:
-      - 5432:5432
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-
+    networks:
+      - app-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mydb"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
       start_period: 10s
 
   app:
-    build:
-      context: .
+    build: .
     ports:
-      - 8000:8000
+      - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
-        restart: true
-
     networks:
       - app-network
     environment:
       DB_LINK: postgresql://postgres:password@postgres:5432/mydb
-    command: python run.py
+      ADMIN_PASSWORD: LivingDevops1!
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
 volumes:
   postgres_data:
 
 networks:
   app-network:
-
     driver: bridge

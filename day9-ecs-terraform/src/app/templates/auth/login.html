@@ -3,37 +3,31 @@
 {% block title %}Login{% endblock %}
 
 {% block content %}
-<div class="min-h-[80vh] flex items-center justify-center">
-    <div class="w-full max-w-md bg-white rounded-lg shadow-lg p-8">
-        <div class="text-center mb-8">
-            <h2 class="text-3xl font-bold text-gray-900">Login</h2>
-            <p class="mt-2 text-gray-600">Please log in to access this page.</p>
+<div class="auth-shell">
+    <div class="card auth-card">
+        <div class="auth-heading">
+            <h2>Welcome back</h2>
+            <p>Sign in to manage students, attendance, and classes.</p>
         </div>
 
-        <form method="POST" class="space-y-6">
-            <div>
-                <label for="username" class="block text-lg font-medium text-gray-700">Username</label>
-                <input type="text" id="username" name="username" required
-                       class="mt-2 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-navy focus:border-navy">
+        <form method="POST">
+            {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+            <div class="form-group">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" id="username" name="username" required class="form-input">
             </div>
 
-            <div>
-                <label for="password" class="block text-lg font-medium text-gray-700">Password</label>
-                <input type="password" id="password" name="password" required
-                       class="mt-2 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-navy focus:border-navy">
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" id="password" name="password" required class="form-input">
             </div>
 
-            <button type="submit" 
-                    class="w-full py-3 bg-navy text-white rounded-lg hover:bg-navy-light transition duration-200 text-lg">
-                Login
-            </button>
+            <button type="submit" class="btn btn-primary" style="width:100%; margin-top:0.5rem;">Login</button>
         </form>
 
-        <p class="mt-6 text-center text-gray-600">
-            Don't have an account? 
-            <a href="{{ url_for('auth.register') }}" class="text-navy hover:text-navy-light font-medium">
-                Register
-            </a>
+        <p style="text-align:center; margin-top:1.25rem; color:var(--text-muted);">
+            Don't have an account?
+            <a href="{{ url_for('auth.register') }}">Register</a>
         </p>
     </div>
 </div>

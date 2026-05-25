@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Create Retro{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Start a New Retro</h1>
+<p class="page-subtitle">Gather the squad. Deploy went fine… probably. Let's talk about it.</p>
+
+<div class="card" style="max-width:640px;">
+    <form method="POST">
+        <div class="form-group">
+            <label for="title" class="form-label">Retro Title *</label>
+            <input type="text" id="title" name="title" required class="form-input"
+                   placeholder="Sprint 12 — ECS Migration Retro">
+        </div>
+        <div class="form-group">
+            <label for="description" class="form-label">Description</label>
+            <textarea id="description" name="description" class="form-textarea"
+                      placeholder="What sprint, release, or incident are we reflecting on?"></textarea>
+        </div>
+        <div style="display:flex; gap:0.75rem;">
+            <a href="{{ url_for('retro.list_retros') }}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Create Retro Board</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,8 +1,8 @@
-from flask import Blueprint, render_template, request, flash, redirect, url_for, session
+from flask import Blueprint, render_template, request, flash, redirect, url_for
 from app.models.models import User, db
+from app.routes.helpers import safe_next_url
 import re
 from flask_login import login_user, logout_user, current_user
-from app.metrics import auth_attempts
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -26,64 +26,65 @@ def validate_email(email):
 
 @auth_bp.route("/register", methods=["GET", "POST"])
 def register():
+    next_url = safe_next_url(request.args.get("next"))
+
     if request.method == "POST":
         username = request.form.get("username")
         email = request.form.get("email")
         password = request.form.get("password")
+        next_url = safe_next_url(request.form.get("next")) or next_url
 
         if not username or not email or not password:
             flash("All fields are required", "error")
-            auth_attempts.labels(status="failed_validation").inc()
-            return redirect(url_for("auth.register"))
+            return redirect(url_for("auth.register", next=next_url))
 
         if not validate_email(email):
             flash("Invalid email format", "error")
-            auth_attempts.labels(status="failed_validation").inc()
-            return redirect(url_for("auth.register"))
+            return redirect(url_for("auth.register", next=next_url))
 
         if not validate_password(password):
             flash(
                 "Password must be at least 8 characters long and contain uppercase, lowercase, and numbers",
                 "error",
             )
-            auth_attempts.labels(status="failed_validation").inc()
-            return redirect(url_for("auth.register"))
+            return redirect(url_for("auth.register", next=next_url))
 
         if User.query.filter_by(username=username).first():
             flash("Username already exists", "error")
-            auth_attempts.labels(status="failed_duplicate").inc()
-            return redirect(url_for("auth.register"))
+            return redirect(url_for("auth.register", next=next_url))
 
         if User.query.filter_by(email=email).first():
             flash("Email already registered", "error")
-            auth_attempts.labels(status="failed_duplicate").inc()
-            return redirect(url_for("auth.register"))
+            return redirect(url_for("auth.register", next=next_url))
 
         user = User(username=username, email=email)
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
 
-        auth_attempts.labels(status="registered").inc()
+        login_user(user)
         flash("Registration successful", "success")
-        return redirect(url_for("auth.login"))
+        return redirect(next_url or url_for("main.dashboard"))
 
-    return render_template("auth/register.html")
+    return render_template("auth/register.html", next_url=next_url)
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
+    next_url = safe_next_url(request.args.get("next"))
+
     if request.method == "POST":
         username = request.form.get("username")
         password = request.form.get("password")
+        next_url = safe_next_url(request.form.get("next")) or next_url
         user = User.query.filter_by(username=username).first()
         if user and user.check_password(password):
             login_user(user)
-            auth_attempts.labels(status="success").inc()
-            return redirect(url_for("main.dashboard"))
-        auth_attempts.labels(status="failed").inc()
+            if user.is_guest:
+                return redirect(url_for("retro.list_retros"))
+            return redirect(next_url or url_for("main.dashboard"))
         flash("Invalid username or password", "error")
-    return render_template("auth/login.html")
+    return render_template("auth/login.html", next_url=next_url)
 
 
 @auth_bp.route("/logout")

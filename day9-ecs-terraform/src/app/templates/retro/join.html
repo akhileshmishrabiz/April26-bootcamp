@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Join {{ retro.title }}{% endblock %}
+
+{% block content %}
+<div class="join-shell">
+    <div class="card join-card">
+        <div class="join-badge">DevOps Retro</div>
+        <h1 class="page-title">{{ retro.title }}</h1>
+        {% if retro.description %}
+        <p class="page-subtitle">{{ retro.description }}</p>
+        {% endif %}
+
+        {% if retro.status == 'closed' %}
+        <div class="alert alert-error">This retro is closed. Ask the facilitator for the next session link.</div>
+        {% else %}
+
+        {% if is_logged_in %}
+        <div class="alert alert-success">
+            You're signed in as <strong>{{ current_user.label }}</strong>.
+            <a href="{{ board_url }}" style="margin-left:0.5rem;font-weight:700;">Go to board →</a>
+        </div>
+        {% else %}
+        <p class="join-lead">Pick how you want to join the board:</p>
+
+        <div class="join-options">
+            <section class="join-option">
+                <h2>Quick join as guest</h2>
+                <p>No account needed — just your name on the sticky notes.</p>
+                <form method="POST" action="{{ url_for('retro.join_as_guest', token=token) }}">
+                    <div class="form-group">
+                        <label for="display_name" class="form-label">Your name</label>
+                        <input type="text" id="display_name" name="display_name" required
+                               class="form-input" placeholder="e.g. Alex from Platform">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%;">Join as Guest</button>
+                </form>
+            </section>
+
+            <section class="join-option">
+                <h2>Login or register</h2>
+                <p>Use your portal account — great if you're already in the bootcamp.</p>
+                <div class="join-auth-buttons">
+                    <a href="{{ login_url }}" class="btn btn-secondary" style="flex:1;">Login</a>
+                    <a href="{{ register_url }}" class="btn btn-primary" style="flex:1;">Register</a>
+                </div>
+            </section>
+        </div>
+        {% endif %}
+        {% endif %}
+
+        <div class="share-box" style="margin-top:1.5rem;">
+            <label class="form-label">Share this link with the team</label>
+            <div class="share-row">
+                <input type="text" id="join-share-link" class="form-input" value="{{ share_url }}" readonly>
+                <button type="button" class="btn btn-secondary" data-copy-target="#join-share-link">Copy</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,15 +1,34 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, jsonify, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from app.models.models import Student, Attendance, db, Class, Assignment, Announcement
 from datetime import datetime, date
-from app.metrics import (
-    student_operations, student_total, class_operations, class_total,
-    assignment_operations, assignment_total, announcement_operations,
-    announcement_total, db_query_duration_seconds, student_attendance_marked
-)
-import time
+from sqlalchemy import text
 
 bp = Blueprint("main", __name__)
+
+
+@bp.before_request
+def block_guests_from_portal():
+    if not current_user.is_authenticated or not current_user.is_guest:
+        return None
+    if request.endpoint == "static":
+        return None
+    return redirect(url_for("retro.list_retros"))
+
+
+def _parse_date(value):
+    if isinstance(value, date):
+        return value
+    return datetime.strptime(value, "%Y-%m-%d").date()
+
+
+@bp.route("/health")
+def health():
+    try:
+        db.session.execute(text("SELECT 1"))
+        return jsonify({"status": "healthy", "database": "connected"}), 200
+    except Exception:
+        return jsonify({"status": "unhealthy", "database": "disconnected"}), 503
 
 
 @bp.route("/")
@@ -24,7 +43,9 @@ def dashboard():
     today_attendance = Attendance.query.filter_by(date=today, status="Present").count()
 
     # Calculate total attendance rate
-    total_marked_days = Attendance.query.distinct(Attendance.date).count()
+    total_marked_days = (
+        db.session.query(Attendance.date).distinct().count()
+    )
     total_present = Attendance.query.filter_by(status="Present").count()
     total_records = Attendance.query.count()
 
@@ -77,7 +98,7 @@ def students():
 @bp.route("/attendance")
 @login_required
 def attendance():
-    selected_date = request.args.get("date", date.today().isoformat())
+    selected_date = _parse_date(request.args.get("date", date.today().isoformat()))
     students = Student.query.all()
 
     for student in students:
@@ -86,7 +107,9 @@ def attendance():
         ).first()
 
     return render_template(
-        "attendance.html", students=students, selected_date=selected_date
+        "attendance.html",
+        students=students,
+        selected_date=selected_date.isoformat(),
     )
 
 
@@ -95,13 +118,9 @@ def attendance():
 def add_student():
     name = request.form.get("name")
     if name:
-        start_time = time.time()
         student = Student(name=name)
         db.session.add(student)
         db.session.commit()
-        db_query_duration_seconds.labels(operation="add_student").observe(time.time() - start_time)
-        student_operations.labels(operation="add").inc()
-        student_total.set(Student.query.count())
         flash("Student added successfully", "success")
     return redirect(url_for("main.students"))
 
@@ -110,15 +129,14 @@ def add_student():
 @login_required
 def mark_attendance():
     try:
-        start_time = time.time()
-        attendance_date = request.form.get("date", date.today().isoformat())
+        attendance_date = _parse_date(
+            request.form.get("date", date.today().isoformat())
+        )
         students = Student.query.all()
 
-        marked_count = 0
         for student in students:
             status = request.form.get(f"status_{student.id}")
             if status:
-                # Update existing or create new attendance record
                 attendance = Attendance.query.filter_by(
                     student_id=student.id, date=attendance_date
                 ).first()
@@ -130,14 +148,12 @@ def mark_attendance():
                         student_id=student.id, date=attendance_date, status=status
                     )
                     db.session.add(attendance)
-                marked_count += 1
 
         db.session.commit()
-        db_query_duration_seconds.labels(operation="mark_attendance").observe(time.time() - start_time)
-        student_attendance_marked.inc(marked_count)
         flash("Attendance marked successfully", "success")
-        return redirect(url_for("main.attendance", date=attendance_date))
-    except Exception as e:
+        return redirect(url_for("main.attendance", date=attendance_date.isoformat()))
+    except Exception:
+        db.session.rollback()
         flash("Error marking attendance", "error")
         return redirect(url_for("main.attendance"))
 
@@ -145,26 +161,19 @@ def mark_attendance():
 @bp.route("/edit_student/<int:id>", methods=["POST"])
 @login_required
 def edit_student(id):
-    start_time = time.time()
     student = Student.query.get_or_404(id)
     data = request.get_json()
     student.name = data["name"]
     db.session.commit()
-    db_query_duration_seconds.labels(operation="edit_student").observe(time.time() - start_time)
-    student_operations.labels(operation="edit").inc()
     return "", 204
 
 
 @bp.route("/delete_student/<int:id>", methods=["POST"])
 @login_required
 def delete_student(id):
-    start_time = time.time()
     student = Student.query.get_or_404(id)
     db.session.delete(student)
     db.session.commit()
-    db_query_duration_seconds.labels(operation="delete_student").observe(time.time() - start_time)
-    student_operations.labels(operation="delete").inc()
-    student_total.set(Student.query.count())
     return "", 204
 
 
@@ -180,7 +189,6 @@ def classes():
 def add_class():
     if request.method == "POST":
         try:
-            start_time = time.time()
             new_class = Class(
                 date=datetime.strptime(request.form["date"], "%Y-%m-%d").date(),
                 time=request.form["time"],
@@ -193,9 +201,6 @@ def add_class():
             )
             db.session.add(new_class)
             db.session.commit()
-            db_query_duration_seconds.labels(operation="add_class").observe(time.time() - start_time)
-            class_operations.labels(operation="add").inc()
-            class_total.set(Class.query.count())
             flash("Class added successfully!", "success")
             return redirect(url_for("main.classes"))
         except Exception as e:
@@ -207,13 +212,9 @@ def add_class():
 @bp.route("/delete_class/<int:id>", methods=["POST"])
 @login_required
 def delete_class(id):
-    start_time = time.time()
     class_obj = Class.query.get_or_404(id)
     db.session.delete(class_obj)
     db.session.commit()
-    db_query_duration_seconds.labels(operation="delete_class").observe(time.time() - start_time)
-    class_operations.labels(operation="delete").inc()
-    class_total.set(Class.query.count())
     return "", 204
 
 
@@ -265,7 +266,6 @@ def add_assignment():
     link = request.form.get("link", "").strip()
     if title and due_date_str:
         try:
-            start_time = time.time()
             due_date = datetime.strptime(due_date_str, "%Y-%m-%d").date()
             assignment = Assignment(
                 title=title,
@@ -276,9 +276,6 @@ def add_assignment():
             )
             db.session.add(assignment)
             db.session.commit()
-            db_query_duration_seconds.labels(operation="add_assignment").observe(time.time() - start_time)
-            assignment_operations.labels(operation="add").inc()
-            assignment_total.labels(status="pending").set(Assignment.query.filter_by(is_completed=False).count())
             flash("Assignment added successfully!", "success")
         except Exception:
             flash("Error adding assignment.", "error")
@@ -290,28 +287,18 @@ def add_assignment():
 @bp.route("/toggle_assignment/<int:id>", methods=["POST"])
 @login_required
 def toggle_assignment(id):
-    start_time = time.time()
     assignment = Assignment.query.get_or_404(id)
     assignment.is_completed = not assignment.is_completed
     db.session.commit()
-    db_query_duration_seconds.labels(operation="toggle_assignment").observe(time.time() - start_time)
-    assignment_operations.labels(operation="toggle").inc()
-    assignment_total.labels(status="pending").set(Assignment.query.filter_by(is_completed=False).count())
-    assignment_total.labels(status="completed").set(Assignment.query.filter_by(is_completed=True).count())
     return redirect(url_for("main.assignments"))
 
 
 @bp.route("/delete_assignment/<int:id>", methods=["POST"])
 @login_required
 def delete_assignment(id):
-    start_time = time.time()
     assignment = Assignment.query.get_or_404(id)
     db.session.delete(assignment)
     db.session.commit()
-    db_query_duration_seconds.labels(operation="delete_assignment").observe(time.time() - start_time)
-    assignment_operations.labels(operation="delete").inc()
-    assignment_total.labels(status="pending").set(Assignment.query.filter_by(is_completed=False).count())
-    assignment_total.labels(status="completed").set(Assignment.query.filter_by(is_completed=True).count())
     flash("Assignment deleted.", "success")
     return redirect(url_for("main.assignments"))
 
@@ -337,7 +324,6 @@ def add_announcement():
     content = request.form.get("content", "").strip()
     is_pinned = request.form.get("is_pinned") == "on"
     if title and content:
-        start_time = time.time()
         announcement = Announcement(
             title=title,
             content=content,
@@ -346,10 +332,6 @@ def add_announcement():
         )
         db.session.add(announcement)
         db.session.commit()
-        db_query_duration_seconds.labels(operation="add_announcement").observe(time.time() - start_time)
-        announcement_operations.labels(operation="add").inc()
-        announcement_total.labels(pinned="true").set(Announcement.query.filter_by(is_pinned=True).count())
-        announcement_total.labels(pinned="false").set(Announcement.query.filter_by(is_pinned=False).count())
         flash("Announcement posted!", "success")
     else:
         flash("Title and content are required.", "error")
@@ -359,13 +341,8 @@ def add_announcement():
 @bp.route("/delete_announcement/<int:id>", methods=["POST"])
 @login_required
 def delete_announcement(id):
-    start_time = time.time()
     announcement = Announcement.query.get_or_404(id)
     db.session.delete(announcement)
     db.session.commit()
-    db_query_duration_seconds.labels(operation="delete_announcement").observe(time.time() - start_time)
-    announcement_operations.labels(operation="delete").inc()
-    announcement_total.labels(pinned="true").set(Announcement.query.filter_by(is_pinned=True).count())
-    announcement_total.labels(pinned="false").set(Announcement.query.filter_by(is_pinned=False).count())
     flash("Announcement deleted.", "success")
     return redirect(url_for("main.announcements"))
