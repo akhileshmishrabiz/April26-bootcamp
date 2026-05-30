@@ -59,7 +59,7 @@ jobs:
       - name: Build image
         run: |
           cd ${{ env.path }}
-          docker --platform linux/amd64  build -t app .
+          docker buildx build --platform linux/amd64 -t app .
           docker tag app:latest ${{ env.ECR_REPO }}:${{ env.ECR_TAG }}
           docker tag app:latest ${{ env.ECR_REPO }}:latest
           docker push ${{ env.ECR_REPO }}:${{ env.ECR_TAG }}
