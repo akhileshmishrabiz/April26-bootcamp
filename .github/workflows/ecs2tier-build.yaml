@@ -12,7 +12,12 @@ on:
 
 env:
   AWS_REGION: ap-south-1
-  AWS_ACCOUNT_ID: 879381241087
+  ECR_REPO: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/april-ecs-2tier
+  ECR_TAG: ${{ github.sha }} # commit SHA used as image tag for traceability
+  path: day9-ecs-terraform/src # path to Dockerfile
+  ECS_TASK_DEF: 2tier-service
+  ECS_SERVICE: april-2tier-ecs-service
+  ECS_CLUSTER: april-2tier-ecs-cluster
 
 jobs:
   build-and-push-image:
@@ -25,8 +30,6 @@ jobs:
     #     AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
 
     env:
-      ECR_REPO: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/april-ecs-2tier
-      ECR_TAG: ${{ github.sha }} # commit SHA used as image tag for traceability
       path: day9-ecs-terraform/src # path to Dockerfile
 
     runs-on: ubuntu-latest
@@ -62,3 +65,39 @@ jobs:
       - name: Push image to ECR
         run: |
           docker push ${{ env.ECR_REPO }}:${{ env.ECR_TAG }}
+
+
+  deploy-ecs-service:
+    needs: build-and-push-image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # download the task definition 
+      - name: Download task definition
+        run: |
+          aws ecs describe-task-definition --task-definition ${{ env.ECS_TASK_DEF }} --region ${{ env.AWS_REGION }} > task-definition.json
+          cat task-definition.json
+
+      # update the task definition with the new image tag
+      - name: Update task definition
+        run: |
+          jq '.containerDefinitions[0].image = "${{ env.ECR_REPO }}:${{ env.ECR_TAG }}"' task-definition.json > task-definition-updated.json
+          cat task-definition-updated.json
+
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: task-definition.json
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: false
+
+      # force the deployemnt by updating the service and task def
