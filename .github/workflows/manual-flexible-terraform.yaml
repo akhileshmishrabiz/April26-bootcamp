@@ -1,4 +1,4 @@
-name: Terraform ECS 2 Tier infra
+name: Terraform manual
 
 on:
   workflow_dispatch:
