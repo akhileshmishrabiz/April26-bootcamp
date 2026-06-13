@@ -1,0 +1,65 @@
+---
+name: Terraform ECS 2 Tier infra
+
+on:
+  workflow_dispatch:
+  inputs:
+    environment:
+      type: choice
+      required: true
+      options:
+        - dev
+        - prod
+
+    plan_or_apply_or_destroy:
+      type: choice
+      required: true
+      options:
+        - plan
+        - apply
+        - destroy
+
+env:
+  AWS_REGION: ap-south-1
+  TF_VERSION: 1.12.1
+  infra_path: day13-ecs-3-tier/infra
+
+
+jobs:
+  terraform-apply:
+    runs-on: ubuntu-latest
+    steps:  
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      - name: Initialize Terraform
+        run: |
+          cd ${{ env.infra_path }}
+          terraform init -backend-config=vars/${{ inputs.environment }}.tfbackend
+      - name: Plan Terraform
+        if: inputs.plan_or_apply_or_destroy == 'plan'
+        working-directory: ${{ env.infra_path }}
+        run: |
+          terraform plan -var-file=vars/${{ inputs.environment }}.tfvars
+
+      - name: Apply Terraform
+        if: inputs.plan_or_apply_or_destroy == 'apply'
+        working-directory: ${{ env.infra_path }}
+        run: |
+          terraform apply -var-file=vars/${{ inputs.environment }}.tfvars -auto-approve
+
+      - name: Destroy Terraform
+        if: inputs.plan_or_apply_or_destroy == 'destroy'
+        working-directory: ${{ env.infra_path }}
+        run: |
+          terraform destroy -var-file=vars/${{ inputs.environment }}.tfvars -auto-approve
+
