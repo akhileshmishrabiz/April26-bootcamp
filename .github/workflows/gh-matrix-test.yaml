@@ -1,23 +1,39 @@
-name: GitHub Matrix Test
+# name: GitHub Matrix Test
 
-on:
-  workflow_dispatch:
+# on:
+#   workflow_dispatch:
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: [3.10, 3.11, 3.12]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+# jobs:
+#   test:
+#     runs-on: ubuntu-latest
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-          
-      - name: Run tests
-        run: echo "Hello, world! from ${{ matrix.os }} with Python ${{ matrix.python-version }}"
+#     strategy:
+#       matrix:
+#         services:
+#           - name: backend
+#             image: python:3.10-slim
+#             ecr_repo: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/april-ecs-3tier-backend
+#             path: day13-ecs-3-tier/app/backend
+#           - name: frontend
+#             image: node:14-alpine
+#             ecr_repo: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/april-ecs-3tier-frontend
+#             path: day13-ecs-3-tier/app/frontend
+
+#           - name: ms1
+
+#           - name: ms2
+  
+
+
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+
+
+#       - name: build ${{ matrix.services.name }}
+#         run: |
+#           cd ${{ matrix.services.path }}
+#           docker build -t ${{ matrix.services.ecr_repo }}:${{ github.sha }} .
+#           docker build -t ${{ matrix.services.ecr_repo }}:latest .
+#           docker push ${{ matrix.services.ecr_repo }}:${{ github.sha }}
+#           docker push ${{ matrix.services.ecr_repo }}:latest
