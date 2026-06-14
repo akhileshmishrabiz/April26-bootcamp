@@ -70,7 +70,7 @@ jobs:
 
       - name: Run database migration via ECS task
         run: |
-          aws ecs run-task --cluster ${{ matrix.services.ecs_cluster }} \
+          aws ecs run-task --cluster ${{ env.ECS_CLUSTER }} \
             --launch-type FARGATE \
             --task-definition ${{ env.ECS_TASK_DEFINITION }} \
             --network-configuration "awsvpcConfiguration={subnets=[${{ env.ECS_SUBNET }}],securityGroups=[${{ env.ECS_SECURITY_GROUP }}],assignPublicIp=DISABLED}" \
