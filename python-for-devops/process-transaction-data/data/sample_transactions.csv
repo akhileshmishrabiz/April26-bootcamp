@@ -1,0 +1,11 @@
+transaction_id,transaction_date,vendor_name,amount,currency,category,description,status
+TXN-20250628-001,2025-06-28,Acme Cloud Services,1250.00,USD,Infrastructure,Monthly AWS compute and storage invoice,completed
+TXN-20250628-002,2025-06-28,Global Office Supplies,342.18,USD,Operations,Printer cartridges and office stationery,completed
+TXN-20250628-003,2025-06-28,SecurePay Gateway,89.50,USD,Finance,Payment processing fees for June,pending
+TXN-20250628-004,2025-06-28,Northwind Logistics,2100.75,USD,Logistics,Freight charges for Q2 hardware shipment,completed
+TXN-20250628-005,2025-06-28,DataVault Analytics,499.00,USD,Software,SaaS subscription renewal,completed
+TXN-20250628-006,2025-06-28,GreenEnergy Utilities,780.32,USD,Facilities,Electricity bill for HQ building,completed
+TXN-20250628-007,2025-06-28,TravelEase Corp,1560.40,USD,Travel,Employee conference travel reimbursement,pending
+TXN-20250628-008,2025-06-28,ShieldIT Security,3200.00,USD,Security,Annual vulnerability scanning contract,completed
+TXN-20250628-009,2025-06-28,FreshCatering Ltd,425.60,USD,Operations,Team lunch catering for sprint review,completed
+TXN-20250628-010,2025-06-28,Metro Telecom,612.99,USD,Facilities,Business internet and phone services,failed
