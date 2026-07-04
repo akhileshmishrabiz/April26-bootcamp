@@ -107,6 +107,7 @@ jobs:
             ecs_service: dev-april26bootcamp-devopsdojo-backend
             ecs_cluster: dev-april26bootcamp-devopsdojo
             ecr_repo: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/dev-devopsdojo-backend
+            
           - name: frontend
             task_def: dev-april26bootcamp-devopsdojo-frontend
             ecs_service: dev-april26bootcamp-devopsdojo-frontend
