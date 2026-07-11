@@ -122,16 +122,49 @@
 # download_clamav_db_from_s3(bucket_name, key, DatabaseDirectory)
 
 
+# import boto3
+# sqs_client = boto3.client('sqs')
+# queue_url = 'https://sqs.ap-south-1.amazonaws.com/879381241087/clamav-automation-queue'
+# message_id = 'c3a828f6-b1f7-4781-83e4-4dfa082b20e0'
+# def delete_message_from_queue(queue_url, message_id):
+#     try:
+#         sqs_client.delete_message(QueueUrl=queue_url, ReceiptHandle=message_id)
+#         return True
+#     except Exception as e:
+#         print(e)
+#         return False
+
+# delete_message_from_queue(queue_url, message_id)
+
 import boto3
-sqs_client = boto3.client('sqs')
-queue_url = 'https://sqs.ap-south-1.amazonaws.com/879381241087/clamav-automation-queue'
-message_id = 'c3a828f6-b1f7-4781-83e4-4dfa082b20e0'
-def delete_message_from_queue(queue_url, message_id):
+import subprocess
+s3_client = boto3.client('s3')
+bucket_name = "landing-bucket-879381241087"
+result = "CLEAN"
+
+def create_tags_for_s3_object(bucket_name, key, result):
     try:
-        sqs_client.delete_message(QueueUrl=queue_url, ReceiptHandle=message_id)
+        s3_client.put_object_tagging(Bucket=bucket_name, Key=key, Tagging={'TagSet': [{'Key': 'scanned', 'Value': 'true'}, {'Key': 'result', 'Value': result}]})
         return True
     except Exception as e:
         print(e)
-        return False
+        # return False
 
-delete_message_from_queue(queue_url, message_id)
+
+def scan_file_for_malware(file_path):
+    result = subprocess.run(['clamscan', file_path], capture_output=True, text=True)
+    # if result.stdout.splitlines()[6].split()[2] == "0":
+    #     return "CLEAN"
+    # else:
+    #     return "DIRTY"
+    command_return_code = result.returncode
+    if command_return_code == 0:
+        return "CLEAN"
+    else:
+        return "DIRTY"
+key = "dirty.txt"
+result = scan_file_for_malware(key)
+print(f"Scan result: {result}")
+print(f"Scan result: {result}")
+create_tags_output = create_tags_for_s3_object(bucket_name, key, result)
+print(f"Create tags output: {create_tags_output}")

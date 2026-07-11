@@ -2,6 +2,7 @@ import boto3
 import json
 import subprocess
 import os
+from urllib.parse import unquote_plus
 sqs_client = boto3.client('sqs')
 s3_client = boto3.client('s3')
 sns_client = boto3.client('sns')
@@ -50,10 +51,26 @@ def upload_file_to_s3(destination_bucket_name, key, local_path):
 
 def scan_file_for_malware(file_path):
     result = subprocess.run(['clamscan', file_path], capture_output=True, text=True)
-    if result.stdout.splitlines()[6].split()[2] == "0":
+    # if result.stdout.splitlines()[6].split()[2] == "0":
+    #     return "CLEAN"
+    # else:
+    #     return "DIRTY"
+    command_return_code = result.returncode
+    if command_return_code == 0:
         return "CLEAN"
     else:
         return "DIRTY"
+
+
+# creat tags for s3 object -> scanned = true, result = "CLEAN" or "DIRTY"
+def create_tags_for_s3_object(bucket_name, key, result):
+    try:
+        decoded_key = unquote_plus(key)
+        s3_client.put_object_tagging(Bucket=bucket_name, Key=decoded_key, Tagging={'TagSet': [{'Key': 'SCANNED', 'Value': 'true'}, {'Key': 'RESULT', 'Value': result}]})
+        return True
+    except Exception as e:
+        print(e)
+        return False
 
 def send_sns_notification(key, sns_topic_arn):
     response = sns_client.publish(
@@ -153,3 +170,4 @@ def delete_message_from_queue(queue_url, ReceiptHandle):
     except Exception as e:
         print(e)
         return False
+
