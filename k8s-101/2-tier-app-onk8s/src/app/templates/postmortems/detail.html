@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}{{ postmortem.title }}{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <div>
+        <p style="margin:0 0 0.25rem;"><a href="{{ url_for('postmortems.list_postmortems') }}">← Postmortems</a> · <a href="{{ url_for('incidents.view_incident', incident_id=incident.id) }}">{{ incident.key }}</a></p>
+        <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+            <span class="badge {{ statuses[postmortem.status].badge }}">{{ statuses[postmortem.status].label }}</span>
+            <span class="badge {{ incident_statuses[incident.status].badge if incident.status in incident_statuses else 'badge-muted' }}">Incident: {{ incident_statuses[incident.status].label if incident.status in incident_statuses else incident.status }}</span>
+        </div>
+        <h1 class="page-title" style="margin:0.5rem 0 0;">{{ postmortem.title }}</h1>
+    </div>
+</div>
+
+<div class="postmortem-banner">
+    <strong>Blameless postmortem</strong> — focus on systems and processes, not individuals. Action items become tickets.
+</div>
+
+<form method="POST" action="{{ url_for('postmortems.update_postmortem', postmortem_id=postmortem.id) }}">
+    <div class="ticket-detail-grid">
+        <div class="ticket-detail-main">
+            <div class="card" style="margin-bottom:1rem;">
+                <h2 class="card-title">Executive Summary</h2>
+                <textarea name="summary" rows="3" class="form-textarea">{{ postmortem.summary or '' }}</textarea>
+            </div>
+
+            <div class="card" style="margin-bottom:1rem;">
+                <h2 class="card-title">Impact</h2>
+                <textarea name="impact" rows="3" class="form-textarea">{{ postmortem.impact or '' }}</textarea>
+            </div>
+
+            <div class="card" style="margin-bottom:1rem;">
+                <h2 class="card-title">Timeline</h2>
+                <textarea name="timeline_summary" rows="8" class="form-textarea" placeholder="Chronological events during the incident">{{ postmortem.timeline_summary or '' }}</textarea>
+            </div>
+
+            <div class="card" style="margin-bottom:1rem;">
+                <h2 class="card-title">Root Cause Analysis</h2>
+                <div class="form-group">
+                    <label class="form-label">Root Cause</label>
+                    <textarea name="root_cause" rows="3" class="form-textarea">{{ postmortem.root_cause or '' }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Contributing Factors</label>
+                    <textarea name="contributing_factors" rows="2" class="form-textarea">{{ postmortem.contributing_factors or '' }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Detection Analysis</label>
+                    <textarea name="detection_analysis" rows="2" class="form-textarea">{{ postmortem.detection_analysis or '' }}</textarea>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Resolution Summary</label>
+                    <textarea name="resolution_summary" rows="2" class="form-textarea">{{ postmortem.resolution_summary or '' }}</textarea>
+                </div>
+            </div>
+
+            <div class="two-col-grid" style="margin-bottom:1rem;">
+                <div class="card">
+                    <h2 class="card-title">✅ What Went Well</h2>
+                    <textarea name="what_went_well" rows="4" class="form-textarea">{{ postmortem.what_went_well or '' }}</textarea>
+                </div>
+                <div class="card">
+                    <h2 class="card-title">🔧 What Went Wrong</h2>
+                    <textarea name="what_went_wrong" rows="4" class="form-textarea">{{ postmortem.what_went_wrong or '' }}</textarea>
+                </div>
+            </div>
+
+            <div class="card" style="margin-bottom:1rem;">
+                <h2 class="card-title">Lessons Learned</h2>
+                <textarea name="lessons_learned" rows="3" class="form-textarea">{{ postmortem.lessons_learned or '' }}</textarea>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">Action Items</h2>
+                {% if postmortem.action_items %}
+                <div class="action-items-list">
+                    {% for item in postmortem.action_items %}
+                    <div class="action-item-row">
+                        <div>
+                            <strong>{{ item.title }}</strong>
+                            <p class="share-hint">
+                                {% if item.owner %}Owner: {{ item.owner.label }}{% endif %}
+                                {% if item.due_date %} · Due {{ item.due_date.strftime('%b %d, %Y') }}{% endif %}
+                            </p>
+                        </div>
+                        <div class="board-actions">
+                            {% if item.ticket %}
+                            <a href="{{ url_for('tickets.view_ticket', ticket_id=item.ticket.id) }}" class="btn btn-secondary btn-sm">{{ item.ticket.key }}</a>
+                            {% else %}
+                            <form method="POST" action="{{ url_for('postmortems.promote_action_item', item_id=item.id) }}" style="margin:0;">
+                                <button type="submit" class="btn btn-primary btn-sm">→ Create Ticket</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="empty-state">No action items yet — add follow-up work below.</p>
+                {% endif %}
+
+                <form method="POST" action="{{ url_for('postmortems.add_action_item', postmortem_id=postmortem.id) }}" class="action-item-add-form">
+                    <input type="text" name="title" class="form-input" placeholder="Add runbook for API outage" required>
+                    <select name="owner_id" class="form-select">
+                        <option value="">Owner</option>
+                        {% for user in users %}
+                        <option value="{{ user.id }}">{{ user.label }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="date" name="due_date" class="form-input">
+                    <button type="submit" class="btn btn-secondary btn-sm">Add Item</button>
+                </form>
+            </div>
+        </div>
+
+        <aside class="ticket-detail-sidebar">
+            <div class="card">
+                <h2 class="card-title">Publish</h2>
+                <div class="form-group">
+                    <label class="form-label">Title</label>
+                    <input type="text" name="title" value="{{ postmortem.title }}" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        {% for key, meta in statuses.items() %}
+                        <option value="{{ key }}" {% if postmortem.status == key %}selected{% endif %}>{{ meta.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <p class="ticket-sidebar-meta">
+                    Incident: {{ incident.key }}<br>
+                    Author: {{ postmortem.author.label }}<br>
+                    {% if postmortem.published_at %}Published: {{ postmortem.published_at.strftime('%b %d, %Y') }}{% endif %}
+                </p>
+                <button type="submit" class="btn btn-primary" style="width:100%;">Save Postmortem</button>
+            </div>
+        </aside>
+    </div>
+</form>
+{% endblock %}

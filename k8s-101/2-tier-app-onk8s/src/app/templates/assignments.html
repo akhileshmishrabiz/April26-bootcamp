@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Assignments{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Assignments</h1>
+
+<div class="card" style="margin-bottom:1rem;">
+    <h2 class="card-title">Add Assignment</h2>
+    <form method="POST" action="{{ url_for('main.add_assignment') }}">
+        <div class="two-col-grid">
+            <div class="form-group">
+                <label class="form-label">Title *</label>
+                <input type="text" name="title" required class="form-input" placeholder="Docker Lab Exercise">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Due Date *</label>
+                <input type="date" name="due_date" required class="form-input">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea name="description" rows="2" class="form-textarea" placeholder="What students need to do..."></textarea>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Link (optional)</label>
+            <input type="url" name="link" class="form-input" placeholder="https://github.com/...">
+        </div>
+        <button type="submit" class="btn btn-primary">Add Assignment</button>
+    </form>
+</div>
+
+<div class="card" style="margin-bottom:1rem;">
+    <h2 class="card-title">Pending ({{ pending|length }})</h2>
+    {% if pending %}
+        {% for a in pending %}
+        {% set days_left = (a.due_date - today).days %}
+        <div class="list-item" style="display:flex; justify-content:space-between; gap:1rem;">
+            <div style="display:flex; gap:0.75rem;">
+                <form method="POST" action="{{ url_for('main.toggle_assignment', id=a.id) }}">
+                    <button type="submit" class="btn btn-secondary" title="Mark complete">Done</button>
+                </form>
+                <div>
+                    <p style="margin:0; color:var(--text-primary); font-weight:600;">{{ a.title }}</p>
+                    {% if a.description %}<p style="margin:0.25rem 0 0; font-size:0.88rem;">{{ a.description }}</p>{% endif %}
+                    {% if a.link %}<a href="{{ a.link }}" target="_blank" rel="noopener" style="font-size:0.85rem;">Open link</a>{% endif %}
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <span class="badge {% if days_left < 0 %}badge-danger{% elif days_left == 0 %}badge-warning{% elif days_left <= 2 %}badge-warning{% else %}badge-success{% endif %}">
+                    {% if days_left < 0 %}{{ -days_left }}d overdue
+                    {% elif days_left == 0 %}Due today
+                    {% elif days_left == 1 %}Due tomorrow
+                    {% else %}{{ days_left }}d left{% endif %}
+                </span>
+                <p style="margin:0.35rem 0 0; font-size:0.8rem; color:var(--text-muted);">{{ a.due_date.strftime('%b %d, %Y') }}</p>
+                <form method="POST" action="{{ url_for('main.delete_assignment', id=a.id) }}" style="margin-top:0.35rem;">
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('Delete this assignment?')">Delete</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="empty-state">No pending assignments.</p>
+    {% endif %}
+</div>
+
+{% if completed %}
+<div class="card">
+    <h2 class="card-title">Recently Completed</h2>
+    {% for a in completed %}
+    <div class="list-item" style="display:flex; justify-content:space-between; gap:1rem;">
+        <div style="display:flex; gap:0.75rem; align-items:center;">
+            <form method="POST" action="{{ url_for('main.toggle_assignment', id=a.id) }}">
+                <button type="submit" class="btn btn-secondary">Undo</button>
+            </form>
+            <span style="text-decoration:line-through; color:var(--text-muted);">{{ a.title }}</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+            <span style="font-size:0.8rem; color:var(--text-muted);">{{ a.due_date.strftime('%b %d, %Y') }}</span>
+            <form method="POST" action="{{ url_for('main.delete_assignment', id=a.id) }}">
+                <button type="submit" class="btn btn-danger" onclick="return confirm('Delete this assignment?')">Delete</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

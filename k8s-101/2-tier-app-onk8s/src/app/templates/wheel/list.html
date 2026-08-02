@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Speak Wheel{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <div>
+        <h1 class="page-title" style="margin:0;">🎡 Speak Wheel</h1>
+        <p class="page-subtitle" style="margin:0.35rem 0 0;">Fair random picker for standups, retros, and group calls — upload names and spin.</p>
+    </div>
+    <a href="{{ url_for('wheel.create_wheel') }}" class="btn btn-primary">+ New Session</a>
+</div>
+
+{% if wheels %}
+<div class="wheel-list">
+    {% for wheel in wheels %}
+    <div class="card wheel-list-card">
+        <div class="section-header">
+            <div>
+                <h2 class="card-title" style="margin:0;">
+                    <a href="{{ url_for('wheel.view_wheel', wheel_id=wheel.id) }}">{{ wheel.title }}</a>
+                </h2>
+                <p class="share-hint" style="margin:0.35rem 0 0;">
+                    {{ modes[wheel.mode].label }} · {{ wheel.names|length }} names
+                    · {{ wheel.progress[0] }}/{{ wheel.progress[1] }} spoken
+                </p>
+            </div>
+            <span class="badge {% if wheel.status == 'open' %}badge-success{% else %}badge-muted{% endif %}">{{ wheel.status|upper }}</span>
+        </div>
+        {% if wheel.description %}
+        <p style="margin:0 0 0.75rem;">{{ wheel.description }}</p>
+        {% endif %}
+        <div class="board-actions">
+            <a href="{{ url_for('wheel.view_wheel', wheel_id=wheel.id) }}" class="btn btn-primary btn-sm">Open Wheel</a>
+            <a href="{{ url_for('wheel.watch_wheel', token=wheel.share_token) }}" class="btn btn-secondary btn-sm" target="_blank">Project View ↗</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <p class="empty-state">No speak wheels yet. Create one for your next standup or class session.</p>
+</div>
+{% endif %}
+{% endblock %}

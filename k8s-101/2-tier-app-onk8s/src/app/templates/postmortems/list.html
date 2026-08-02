@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Postmortems{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <div>
+        <h1 class="page-title" style="margin:0;">Blameless Postmortems</h1>
+        <p class="page-subtitle" style="margin:0.35rem 0 0;">Learn from incidents — root cause, timeline, lessons, and tracked action items.</p>
+    </div>
+</div>
+
+{% if postmortems %}
+<div class="card">
+    <div class="table-wrap">
+        <table class="data-table ticket-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Incident</th>
+                    <th>Status</th>
+                    <th>Action Items</th>
+                    <th>Published</th>
+                    <th>Updated</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pm in postmortems %}
+                <tr class="ticket-row" onclick="window.location='{{ url_for('postmortems.view_postmortem', postmortem_id=pm.id) }}'">
+                    <td><strong>{{ pm.title }}</strong></td>
+                    <td><span class="ticket-key incident-key">{{ pm.incident.key }}</span></td>
+                    <td><span class="badge {{ statuses[pm.status].badge }}">{{ statuses[pm.status].label }}</span></td>
+                    <td>{{ pm.action_items|length }}</td>
+                    <td>{% if pm.published_at %}{{ pm.published_at.strftime('%b %d, %Y') }}{% else %}—{% endif %}</td>
+                    <td>{{ pm.updated_at.strftime('%b %d, %Y') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <p class="empty-state">No postmortems yet. Resolve an <a href="{{ url_for('incidents.list_incidents') }}">incident</a> first, then write a blameless review.</p>
+</div>
+{% endif %}
+{% endblock %}

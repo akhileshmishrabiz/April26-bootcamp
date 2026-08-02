@@ -1,0 +1,37 @@
+{% set card = item.card %}
+<article class="retro-sticky" style="background: {{ meta.color }};" data-card-id="{{ card.id }}">
+    <p class="retro-sticky-text">{{ card.content }}</p>
+    <div class="retro-sticky-meta">
+        <span>— {{ card.author.label }}</span>
+        <span>{{ card.created_at.strftime('%b %d %H:%M') }}</span>
+    </div>
+
+    <div class="retro-sticky-actions">
+        {% if retro.status == 'open' and is_participant %}
+        <form method="POST" action="{{ url_for('retro.toggle_like', card_id=card.id) }}" class="retro-like-form">
+            <button type="submit" class="btn-like {% if item.liked_by_me %}liked{% endif %}" data-card-id="{{ card.id }}">
+                {% if item.liked_by_me %}❤️{% else %}🤍{% endif %}
+                <span class="like-count">{{ item.like_count }}</span>
+            </button>
+        </form>
+        {% else %}
+        <span class="btn-like">❤️ <span class="like-count">{{ item.like_count }}</span></span>
+        {% endif %}
+    </div>
+
+    <div class="retro-comments">
+        {% for comment in card.comments %}
+        <div class="retro-comment">
+            <strong>{{ comment.author.label }}</strong>
+            <span>{{ comment.content }}</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if retro.status == 'open' and is_participant %}
+    <form method="POST" action="{{ url_for('retro.add_comment', card_id=card.id) }}" class="retro-comment-form">
+        <input type="text" name="content" class="form-input" placeholder="Discuss..." required>
+        <button type="submit" class="btn btn-secondary btn-sm">Reply</button>
+    </form>
+    {% endif %}
+</article>

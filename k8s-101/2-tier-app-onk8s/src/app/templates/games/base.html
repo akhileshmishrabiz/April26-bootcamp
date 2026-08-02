@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block title %}{% block games_title %}DevOps Games{% endblock %}{% endblock %}
+
+{% block extra_head %}
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/devops-games.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="games-scope">
+    <nav class="games-subnav" aria-label="DevOps Games">
+        <a href="{{ url_for('games.home') }}" class="games-subnav-link {% if request.endpoint == 'games.home' %}active{% endif %}">Arcade</a>
+        <a href="{{ url_for('games.leaderboard') }}" class="games-subnav-link {% if request.endpoint == 'games.leaderboard' %}active{% endif %}">Leaderboard</a>
+        <a href="{{ url_for('games.achievements_page') }}" class="games-subnav-link {% if request.endpoint == 'games.achievements_page' %}active{% endif %}">Badges</a>
+        <span class="games-subnav-player">👤 {{ player|default(current_user.label) }}</span>
+        <button class="sound-toggle" id="sound-toggle" title="Toggle sound effects" aria-label="Toggle sound">🔇</button>
+    </nav>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <div class="games-main">
+        {% block games_content %}{% endblock %}
+    </div>
+</div>
+
+<script>
+    window.DEVOPS_GAMES = {
+        playerName: {{ (player|default(current_user.label))|tojson }},
+        apiScore: {{ url_for('games.submit_score')|tojson }},
+        homeUrl: {{ url_for('games.home')|tojson }}
+    };
+</script>
+<script src="{{ url_for('static', filename='js/common.js') }}"></script>
+{% block games_scripts %}{% endblock %}
+<style>
+.games-scope {
+    --games-bg: #0f1117;
+    background: var(--games-bg);
+    color: #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem 1.25rem 2rem;
+    margin: -0.5rem 0 0;
+}
+.games-subnav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.25rem;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #2d3348;
+}
+.games-subnav-link {
+    color: #94a3b8;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+.games-subnav-link:hover,
+.games-subnav-link.active { color: #e2e8f0; }
+.games-subnav-link.active { color: #6366f1; }
+.games-subnav-player {
+    margin-left: auto;
+    font-size: 0.85rem;
+    color: #94a3b8;
+    font-family: 'JetBrains Mono', monospace;
+}
+</style>
+{% endblock %}

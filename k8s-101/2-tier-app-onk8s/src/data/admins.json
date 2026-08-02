@@ -1,0 +1,16 @@
+{
+  "admins": [
+    {
+      "username": "livingdevops",
+      "email": "livingdevops@gmail.com",
+      "password": "LivingDevops1!",
+      "password_env": "ADMIN_PASSWORD"
+    },
+    {
+      "username": "devopscaptain",
+      "email": "devopscaptain@bootcamp.local",
+      "password": "ShipIt2026!",
+      "password_env": "DEVOPS_CAPTAIN_PASSWORD"
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}New Speak Wheel{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <div>
+        <p style="margin:0 0 0.25rem;"><a href="{{ url_for('wheel.list_wheels') }}">← Speak Wheel</a></p>
+        <h1 class="page-title" style="margin:0;">Create Speak Wheel</h1>
+        <p class="page-subtitle" style="margin:0.35rem 0 0;">Set up a session, add names, and share the project link on the big screen.</p>
+    </div>
+</div>
+
+<div class="two-col-grid">
+    <div class="card">
+        <form method="POST" action="{{ url_for('wheel.create_wheel') }}" enctype="multipart/form-data">
+            <div class="form-group">
+                <label class="form-label">Session Title *</label>
+                <input type="text" name="title" class="form-input" required placeholder="Sprint 12 Standup">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea name="description" rows="2" class="form-textarea" placeholder="Daily standup — who's up first?"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Mode</label>
+                <select name="mode" class="form-select">
+                    {% for key, meta in modes.items() %}
+                    <option value="{{ key }}">{{ meta.label }} — {{ meta.description }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Import from Team (optional)</label>
+                <select name="team_id" class="form-select">
+                    <option value="">— Manual names only —</option>
+                    {% for team in teams %}
+                    <option value="{{ team.id }}">{{ team.project_key }} · {{ team.name }}</option>
+                    {% endfor %}
+                </select>
+                <p class="share-hint">If selected and no manual names below, all team members are added automatically.</p>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Names (one per line)</label>
+                <textarea name="names" rows="10" class="form-textarea" placeholder="Alice&#10;Bob&#10;Charlie&#10;Diana"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Create & Open Wheel</button>
+        </form>
+    </div>
+
+    <div>
+        <div class="card" style="margin-bottom:1rem;">
+            <h2 class="card-title">How it works</h2>
+            <ol class="wheel-howto">
+                <li><strong>Add names</strong> — paste, upload, or import from a team</li>
+                <li><strong>Spin</strong> — animated wheel picks fairly at random</li>
+                <li><strong>Share</strong> — project the watch link on Zoom/Meet</li>
+                <li><strong>Track</strong> — see who spoke, mark absent, reset for next round</li>
+            </ol>
+        </div>
+        <div class="card">
+            <h2 class="card-title">Modes</h2>
+            {% for key, meta in modes.items() %}
+            <div class="severity-guide-item">
+                <span class="badge badge-info">{{ meta.label }}</span>
+                <p>{{ meta.description }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

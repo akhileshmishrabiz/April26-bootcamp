@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}{{ ticket.key }}{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <div>
+        <p style="margin:0 0 0.25rem;"><a href="{{ url_for('tickets.list_tickets') }}">← Tickets</a></p>
+        <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+            <span class="ticket-key ticket-key-lg">{{ ticket.key }}</span>
+            <span class="ticket-type">{{ ticket.team.project_key }} · {{ ticket.team.name }}</span>
+            <span class="ticket-type">{{ types[ticket.issue_type].emoji }} {{ types[ticket.issue_type].label }}</span>
+            <span class="badge {{ statuses[ticket.status].badge }}">{{ statuses[ticket.status].label }}</span>
+            <span class="badge {{ priorities[ticket.priority].badge }}">{{ priorities[ticket.priority].label }}</span>
+        </div>
+        <h1 class="page-title" style="margin:0.5rem 0 0;">{{ ticket.title }}</h1>
+    </div>
+</div>
+
+<div class="ticket-detail-grid">
+    <div class="ticket-detail-main">
+        <div class="card" style="margin-bottom:1rem;">
+            <h2 class="card-title">Description</h2>
+            {% if ticket.description %}
+            <p class="ticket-description">{{ ticket.description }}</p>
+            {% else %}
+            <p class="empty-state">No description yet.</p>
+            {% endif %}
+        </div>
+
+        <div class="card" style="margin-bottom:1rem;">
+            <div class="section-header">
+                <h2 class="card-title" style="margin:0;">
+                    Subtasks
+                    {% set progress = ticket.subtask_progress %}
+                    {% if progress %}
+                    <span class="ticket-subtask-progress">({{ progress[0] }}/{{ progress[1] }} done)</span>
+                    {% endif %}
+                </h2>
+            </div>
+
+            {% if ticket.subtasks %}
+            <div class="subtask-list">
+                {% for subtask in ticket.subtasks %}
+                <div class="subtask-item {% if subtask.status == 'done' %}subtask-done{% endif %}">
+                    <div class="subtask-header">
+                        <form method="POST" action="{{ url_for('tickets.toggle_subtask', subtask_id=subtask.id) }}" style="margin:0;">
+                            <button type="submit" class="subtask-check" title="Toggle done" aria-label="Toggle subtask">
+                                {% if subtask.status == 'done' %}✓{% else %}○{% endif %}
+                            </button>
+                        </form>
+                        <div class="subtask-body">
+                            <div class="subtask-title-row">
+                                <strong>{{ subtask.title }}</strong>
+                                <span class="badge {{ subtask_statuses[subtask.status].badge }}">{{ subtask_statuses[subtask.status].label }}</span>
+                            </div>
+                            {% if subtask.description %}
+                            <p class="subtask-desc">{{ subtask.description }}</p>
+                            {% endif %}
+                            <p class="subtask-meta">
+                                {% if subtask.assignee %}Assignee: {{ subtask.assignee.label }}{% else %}Unassigned{% endif %}
+                            </p>
+
+                            {% if subtask.comments %}
+                            <div class="subtask-comments">
+                                {% for comment in subtask.comments %}
+                                <div class="ticket-comment subtask-comment">
+                                    <strong>{{ comment.author.label }}</strong>
+                                    <span class="comment-time">{{ comment.created_at.strftime('%b %d, %H:%M') }}</span>
+                                    <p>{{ comment.content }}</p>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+
+                            <form method="POST" action="{{ url_for('tickets.add_subtask_comment', subtask_id=subtask.id) }}" class="ticket-comment-form">
+                                <input type="text" name="content" class="form-input" placeholder="Comment on this subtask…" required>
+                                <button type="submit" class="btn btn-secondary btn-sm">Comment</button>
+                            </form>
+
+                            <form method="POST" action="{{ url_for('tickets.update_subtask', subtask_id=subtask.id) }}" class="subtask-update-form">
+                                <select name="status" class="form-select">
+                                    {% for key, meta in subtask_statuses.items() %}
+                                    <option value="{{ key }}" {% if subtask.status == key %}selected{% endif %}>{{ meta.label }}</option>
+                                    {% endfor %}
+                                </select>
+                                <select name="assignee_id" class="form-select">
+                                    <option value="">Unassigned</option>
+                                    {% for user in users %}
+                                    <option value="{{ user.id }}" {% if subtask.assignee_id == user.id %}selected{% endif %}>{{ user.label }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn btn-secondary btn-sm">Update</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="empty-state">No subtasks yet — break this ticket into smaller pieces below.</p>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('tickets.add_subtask', ticket_id=ticket.id) }}" class="subtask-add-form">
+                <div class="form-group">
+                    <label class="form-label">Add subtask</label>
+                    <input type="text" name="title" class="form-input" placeholder="Write Terraform module for RDS subnet group" required>
+                </div>
+                <div class="two-col-grid">
+                    <div class="form-group">
+                        <textarea name="description" rows="2" class="form-textarea" placeholder="Optional details"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <select name="assignee_id" class="form-select">
+                            <option value="">Unassigned</option>
+                            {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Add Subtask</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">Activity</h2>
+            {% if timeline %}
+            <div class="ticket-activity">
+                {% for entry in timeline %}
+                {% if entry.type == 'comment' %}
+                {% set comment = entry.item %}
+                <div class="ticket-comment">
+                    <div class="ticket-comment-head">
+                        <strong>{{ comment.author.label }}</strong>
+                        <span class="comment-time">{{ comment.created_at.strftime('%b %d, %Y %H:%M') }}</span>
+                    </div>
+                    <p>{{ comment.content }}</p>
+                </div>
+                {% else %}
+                {% set activity = entry.item %}
+                <div class="ticket-comment activity-entry">
+                    <div class="ticket-comment-head">
+                        <strong>{{ activity.author.label }}</strong>
+                        <span class="comment-time">{{ activity.created_at.strftime('%b %d, %Y %H:%M') }}</span>
+                    </div>
+                    <p class="activity-log">
+                        {% if activity.activity_type == 'status_change' %}
+                        changed <strong>{{ activity.field_name }}</strong> from {{ activity.old_value }} to {{ activity.new_value }}
+                        {% elif activity.field_name %}
+                        changed <strong>{{ activity.field_name }}</strong> from {{ activity.old_value }} to {{ activity.new_value }}
+                        {% else %}{{ activity.content }}{% endif %}
+                    </p>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="empty-state">No activity yet.</p>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('tickets.add_ticket_comment', ticket_id=ticket.id) }}" class="ticket-comment-form" style="margin-top:1rem;">
+                <textarea name="content" rows="3" class="form-textarea" placeholder="Add a comment…" required></textarea>
+                <button type="submit" class="btn btn-primary">Add Comment</button>
+            </form>
+        </div>
+    </div>
+
+    <aside class="ticket-detail-sidebar">
+        <div class="card">
+            <h2 class="card-title">Details</h2>
+            <form method="POST" action="{{ url_for('tickets.update_ticket', ticket_id=ticket.id) }}">
+                <div class="form-group">
+                    <label class="form-label">Summary</label>
+                    <input type="text" name="title" value="{{ ticket.title }}" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" rows="4" class="form-textarea">{{ ticket.description or '' }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        {% for key, meta in statuses.items() %}
+                        <option value="{{ key }}" {% if ticket.status == key %}selected{% endif %}>{{ meta.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Priority</label>
+                    <select name="priority" class="form-select">
+                        {% for key, meta in priorities.items() %}
+                        <option value="{{ key }}" {% if ticket.priority == key %}selected{% endif %}>{{ meta.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Type</label>
+                    <select name="issue_type" class="form-select">
+                        {% for key, meta in types.items() %}
+                        <option value="{{ key }}" {% if ticket.issue_type == key %}selected{% endif %}>{{ meta.emoji }} {{ meta.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Assignee</label>
+                    <select name="assignee_id" class="form-select">
+                        <option value="">Unassigned</option>
+                        {% for user in users %}
+                        <option value="{{ user.id }}" {% if ticket.assignee_id == user.id %}selected{% endif %}>{{ user.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <p class="ticket-sidebar-meta">
+                    Reporter: {{ ticket.reporter.label }}<br>
+                    Created: {{ ticket.created_at.strftime('%b %d, %Y') }}<br>
+                    Updated: {{ ticket.updated_at.strftime('%b %d, %Y %H:%M') }}
+                    {% if linked_incident %}<br><a href="{{ url_for('incidents.view_incident', incident_id=linked_incident.id) }}">🚨 {{ linked_incident.key }}</a>{% endif %}
+                </p>
+                <button type="submit" class="btn btn-primary" style="width:100%;">Save Changes</button>
+            </form>
+        </div>
+    </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,12 @@
+{
+  "wheels": [
+    {
+      "title": "Platform DevOps Standup — Who Speaks First?",
+      "description": "Daily standup random picker. Spin to decide speaking order — no more awkward silence!",
+      "mode": "elimination",
+      "share_token": "wheeldevopsstandup2026abc123",
+      "team_key": "DEV",
+      "names": []
+    }
+  ]
+}

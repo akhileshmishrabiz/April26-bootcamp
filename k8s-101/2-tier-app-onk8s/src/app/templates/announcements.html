@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Announcements{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Announcements</h1>
+
+<div class="card" style="margin-bottom:1rem;">
+    <h2 class="card-title">Post Announcement</h2>
+    <form method="POST" action="{{ url_for('main.add_announcement') }}">
+        <div class="form-group">
+            <label class="form-label">Title *</label>
+            <input type="text" name="title" required class="form-input" placeholder="Week 9 ECS Lab Instructions">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Content *</label>
+            <textarea name="content" rows="4" required class="form-textarea" placeholder="Write your announcement..."></textarea>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem;">
+            <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+                <input type="checkbox" name="is_pinned">
+                <span>Pin this announcement</span>
+            </label>
+            <button type="submit" class="btn btn-primary">Post</button>
+        </div>
+    </form>
+</div>
+
+{% if pinned %}
+<div class="card" style="margin-bottom:1rem;">
+    <h2 class="card-title">Pinned</h2>
+    {% for a in pinned %}
+    <div class="list-item">
+        <div style="display:flex; justify-content:space-between; gap:1rem;">
+            <div>
+                <p style="margin:0; color:var(--text-primary); font-weight:600;">{{ a.title }}</p>
+                <p style="margin:0.5rem 0 0; white-space:pre-line;">{{ a.content }}</p>
+                <p style="margin:0.35rem 0 0; font-size:0.8rem; color:var(--text-muted);">Posted {{ a.created_at.strftime('%b %d, %Y at %H:%M') }}</p>
+            </div>
+            <form method="POST" action="{{ url_for('main.delete_announcement', id=a.id) }}">
+                <button type="submit" class="btn btn-danger" onclick="return confirm('Delete this announcement?')">Delete</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="card">
+    <h2 class="card-title">All Announcements</h2>
+    {% if others %}
+        {% for a in others %}
+        <div class="list-item">
+            <div style="display:flex; justify-content:space-between; gap:1rem;">
+                <div>
+                    <p style="margin:0; color:var(--text-primary); font-weight:600;">{{ a.title }}</p>
+                    <p style="margin:0.5rem 0 0; white-space:pre-line;">{{ a.content }}</p>
+                    <p style="margin:0.35rem 0 0; font-size:0.8rem; color:var(--text-muted);">Posted {{ a.created_at.strftime('%b %d, %Y at %H:%M') }}</p>
+                </div>
+                <form method="POST" action="{{ url_for('main.delete_announcement', id=a.id) }}">
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('Delete this announcement?')">Delete</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="empty-state">No announcements yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

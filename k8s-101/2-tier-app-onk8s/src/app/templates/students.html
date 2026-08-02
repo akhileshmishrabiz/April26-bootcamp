@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Students{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <h1 class="page-title" style="margin:0;">Student Management</h1>
+    <button type="button" class="btn btn-primary" onclick="openModal('addStudentModal')">Add Student</button>
+</div>
+
+<div class="card">
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Attendance Rate</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                <tr>
+                    <td>{{ student.id }}</td>
+                    <td>{{ student.name }}</td>
+                    <td>{{ student.attendance_rate }}%</td>
+                    <td>
+                        <button type="button" class="btn btn-secondary" onclick="editStudent({{ student.id }})">Edit</button>
+                        <button type="button" class="btn btn-danger" onclick="deleteStudent({{ student.id }})">Delete</button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="empty-state">No students yet. Add your first student to get started.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="addStudentModal" class="modal-backdrop">
+    <div class="card modal-panel">
+        <div class="modal-header">
+            <h3 style="margin:0;">Add New Student</h3>
+            <button type="button" class="modal-close" onclick="closeModal('addStudentModal')">&times;</button>
+        </div>
+
+        <form action="{{ url_for('main.add_student') }}" method="POST">
+            <div class="form-group">
+                <label for="name" class="form-label">Student Name</label>
+                <input type="text" id="name" name="name" required class="form-input">
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;">Add Student</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

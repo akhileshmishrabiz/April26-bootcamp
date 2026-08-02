@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Teams{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <div>
+        <h1 class="page-title" style="margin:0;">Teams</h1>
+        <p class="page-subtitle" style="margin:0.35rem 0 0;">Create squads, add members, and assign tickets to your people.</p>
+    </div>
+    <a href="{{ url_for('teams.create_team') }}" class="btn btn-primary">+ Create Team</a>
+</div>
+
+{% if team_cards %}
+<div class="team-grid">
+    {% for item in team_cards %}
+    <div class="card team-card">
+        <div class="section-header">
+            <div>
+                <span class="ticket-key">{{ item.team.project_key }}</span>
+                <h2 class="card-title" style="margin:0.35rem 0 0;">{{ item.team.name }}</h2>
+            </div>
+            <span class="badge {% if item.role == 'owner' %}badge-warning{% else %}badge-info{% endif %}">
+                {{ item.role|title }}
+            </span>
+        </div>
+        {% if item.team.description %}
+        <p style="margin:0 0 0.75rem;">{{ item.team.description }}</p>
+        {% endif %}
+        <p style="margin:0 0 1rem; font-size:0.9rem; color:var(--text-muted);">
+            {{ item.member_count }} member{{ 's' if item.member_count != 1 else '' }}
+            · {{ item.ticket_count }} ticket{{ 's' if item.ticket_count != 1 else '' }}
+        </p>
+        <div class="board-actions">
+            <a href="{{ url_for('teams.view_team', team_id=item.team.id) }}" class="btn btn-secondary btn-sm">Manage Team</a>
+            <a href="{{ url_for('tickets.list_tickets', team_id=item.team.id) }}" class="btn btn-primary btn-sm">View Tickets</a>
+            <a href="{{ url_for('tickets.create_ticket', team_id=item.team.id) }}" class="btn btn-primary btn-sm">New Ticket</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <p class="empty-state">You're not on any teams yet. <a href="{{ url_for('teams.create_team') }}">Create your first team</a> to start assigning tickets.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,178 @@
+{
+  "incidents": [
+    {
+      "incident_number": 1,
+      "title": "Production API 502 errors after ECS deploy",
+      "summary": "After merging PR #142 (gunicorn bind fix), ECS rolling deploy left 3/4 tasks unhealthy. ALB returned 502 to all users for ~23 minutes.",
+      "severity": "sev2",
+      "status": "closed",
+      "service_name": "student-portal-api",
+      "customer_impact": "All users unable to access dashboard and login for 23 minutes. ~1,200 failed requests/min at peak.",
+      "runbook_url": "https://wiki.example.com/runbooks/ecs-health-check-failure",
+      "reporter": "livingdevops",
+      "commander": "devopscaptain",
+      "on_call": "devopscaptain",
+      "ticket_number": 1,
+      "detected_at_offset_hours": -72,
+      "acknowledged_at_offset_minutes": -4238,
+      "mitigated_at_offset_minutes": -4220,
+      "resolved_at_offset_minutes": -4217,
+      "events": [
+        {
+          "author": "livingdevops",
+          "event_type": "created",
+          "description": "Incident DEV-INC-1 declared — SEV-2 Major",
+          "offset_minutes": -4240
+        },
+        {
+          "author": "livingdevops",
+          "event_type": "alert",
+          "description": "Prometheus: http_requests_total{status=502} > 100/min for 3m. PagerDuty page sent to primary on-call.",
+          "offset_minutes": -4240
+        },
+        {
+          "author": "devopscaptain",
+          "event_type": "status_change",
+          "description": "Status changed to Investigating. Joined war room Slack channel #inc-dev-inc-1.",
+          "offset_minutes": -4238
+        },
+        {
+          "author": "devopscaptain",
+          "event_type": "note",
+          "description": "ECS tasks failing health checks — container logs show connection refused on :8000.",
+          "offset_minutes": -4235
+        },
+        {
+          "author": "livingdevops",
+          "event_type": "mitigation",
+          "description": "Identified root cause: gunicorn binding to 127.0.0.1. Rolling back to previous task definition rev 41.",
+          "offset_minutes": -4220
+        },
+        {
+          "author": "devopscaptain",
+          "event_type": "deployment",
+          "description": "Rollback complete — 4/4 targets healthy. Error rate back to baseline.",
+          "offset_minutes": -4218
+        },
+        {
+          "author": "devopscaptain",
+          "event_type": "resolved",
+          "description": "Incident marked resolved. Monitoring for 30 minutes before closing.",
+          "offset_minutes": -4217
+        }
+      ],
+      "postmortem": {
+        "title": "Postmortem: Production API 502 after ECS deploy",
+        "status": "published",
+        "summary": "A Dockerfile change caused gunicorn to bind localhost only. ECS health checks failed, causing a 23-minute outage. Rollback restored service.",
+        "impact": "23 minutes of full outage. ~28,000 failed requests. No data loss.",
+        "root_cause": "Gunicorn CMD missing --bind 0.0.0.0:8000 in Dockerfile. Worked locally but failed ALB health checks in ECS.",
+        "contributing_factors": "Staging environment uses host networking (masks the bug). No smoke test against ALB after deploy.",
+        "detection_analysis": "Prometheus alert fired within 3 minutes. PagerDuty page was effective. Could add pre-deploy health check in CI.",
+        "resolution_summary": "Rolled back ECS task definition to rev 41. Fixed Dockerfile in follow-up PR with staging ALB verification.",
+        "what_went_well": "Fast rollback via ECS console. Clear war room comms. On-call responded in 2 minutes.",
+        "what_went_wrong": "Staging didn't catch bind issue. No deployment checklist enforced.",
+        "lessons_learned": "Always verify container binds 0.0.0.0 in staging with real ALB. Add deploy smoke test to CI pipeline.",
+        "action_items": [
+          {
+            "title": "Add ALB health check to staging deploy pipeline",
+            "assignee": "livingdevops",
+            "status": "ticket_created",
+            "ticket_title": "[PM] Add ALB health check to staging deploy pipeline"
+          },
+          {
+            "title": "Update Dockerfile gunicorn bind and add test",
+            "assignee": "devopscaptain",
+            "status": "open"
+          }
+        ]
+      }
+    },
+    {
+      "incident_number": 2,
+      "title": "Postgres connection pool exhaustion",
+      "summary": "Database connections maxed out during load test. API returning 500 on all DB-backed endpoints.",
+      "severity": "sev3",
+      "status": "postmortem_pending",
+      "service_name": "student-portal-db",
+      "customer_impact": "Intermittent 500 errors for ~45 minutes during peak load test. No production users affected (staging only).",
+      "reporter": "devopscaptain",
+      "commander": "livingdevops",
+      "on_call": "livingdevops",
+      "ticket_number": 3,
+      "detected_at_offset_hours": -24,
+      "acknowledged_at_offset_minutes": -1410,
+      "mitigated_at_offset_minutes": -1390,
+      "resolved_at_offset_minutes": -1380,
+      "events": [
+        {
+          "author": "devopscaptain",
+          "event_type": "alert",
+          "description": "CloudWatch: DatabaseConnections > 95 for 5m on staging RDS.",
+          "offset_minutes": -1440
+        },
+        {
+          "author": "livingdevops",
+          "event_type": "status_change",
+          "description": "Investigating connection leak in SQLAlchemy pool config.",
+          "offset_minutes": -1410
+        },
+        {
+          "author": "livingdevops",
+          "event_type": "mitigation",
+          "description": "Reduced pool_size from 50 to 10, added pool_recycle=300. Restarted ECS tasks.",
+          "offset_minutes": -1390
+        },
+        {
+          "author": "devopscaptain",
+          "event_type": "resolved",
+          "description": "Connection count stable. Load test passes at 2x previous throughput.",
+          "offset_minutes": -1380
+        }
+      ]
+    },
+    {
+      "incident_number": 3,
+      "title": "CI pipeline blocked — SonarQube quality gate failure",
+      "summary": "All PRs failing SonarQube quality gate. Team unable to merge for 4 hours.",
+      "severity": "sev4",
+      "status": "investigating",
+      "service_name": "ci-cd-pipeline",
+      "customer_impact": "Internal only — no customer impact. Deploy velocity blocked.",
+      "reporter": "livingdevops",
+      "commander": "livingdevops",
+      "on_call": "devopscaptain",
+      "detected_at_offset_hours": -2,
+      "events": [
+        {
+          "author": "livingdevops",
+          "event_type": "created",
+          "description": "Incident declared — CI pipeline red on all branches.",
+          "offset_minutes": -120
+        },
+        {
+          "author": "livingdevops",
+          "event_type": "note",
+          "description": "SonarQube reporting 0% coverage after scanner config change. Investigating sonar-project.properties.",
+          "offset_minutes": -90
+        }
+      ]
+    }
+  ],
+  "on_call_schedules": [
+    {
+      "team_key": "DEV",
+      "username": "devopscaptain",
+      "role": "primary",
+      "start_offset_days": -3,
+      "end_offset_days": 4
+    },
+    {
+      "team_key": "DEV",
+      "username": "livingdevops",
+      "role": "secondary",
+      "start_offset_days": -3,
+      "end_offset_days": 4
+    }
+  ]
+}

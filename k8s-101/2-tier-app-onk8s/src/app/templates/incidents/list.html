@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Incidents{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <div>
+        <h1 class="page-title" style="margin:0;">Incident Management</h1>
+        <p class="page-subtitle" style="margin:0.35rem 0 0;">Declare incidents, run the response timeline, and drive blameless postmortems.</p>
+    </div>
+    {% if not no_teams %}
+    <div class="board-actions">
+        <a href="{{ url_for('incidents.simulate_alert') }}" class="btn btn-secondary">🔔 Simulate Alert</a>
+        <a href="{{ url_for('incidents.create_incident', team_id=filters.team_id) }}" class="btn btn-danger">+ Declare Incident</a>
+    </div>
+    {% endif %}
+</div>
+
+{% if not no_teams %}
+<div class="devops-flow-banner">
+    <div class="flow-step"><span class="flow-num">1</span> Alert / Detect</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><span class="flow-num">2</span> Triage & Respond</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><span class="flow-num">3</span> Mitigate & Resolve</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><span class="flow-num">4</span> Postmortem</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><span class="flow-num">5</span> Action Items → Tickets</div>
+</div>
+{% endif %}
+
+{% if no_teams %}
+<div class="card">
+    <p class="empty-state">Join or <a href="{{ url_for('teams.create_team') }}">create a team</a> first — incidents are scoped to on-call teams.</p>
+</div>
+{% else %}
+
+{% if active_count %}
+<div class="alert alert-error" style="margin-bottom:1rem;">
+    🚨 <strong>{{ active_count }} active incident{{ 's' if active_count != 1 else '' }}</strong> — check commander assignments and timelines.
+</div>
+{% endif %}
+
+<div class="ticket-status-tabs">
+    <a href="{{ url_for('incidents.list_incidents', team_id=filters.team_id, severity=filters.severity, q=filters.q) }}"
+       class="ticket-tab {% if not filters.status %}active{% endif %}">
+        All <span class="ticket-tab-count">{{ total_count }}</span>
+    </a>
+    {% for key, meta in statuses.items() %}
+    <a href="{{ url_for('incidents.list_incidents', status=key, team_id=filters.team_id, severity=filters.severity, q=filters.q) }}"
+       class="ticket-tab {% if filters.status == key %}active{% endif %}">
+        {{ meta.label }} <span class="ticket-tab-count">{{ status_counts[key] }}</span>
+    </a>
+    {% endfor %}
+</div>
+
+<div class="card" style="margin-bottom:1rem;">
+    <form method="GET" action="{{ url_for('incidents.list_incidents') }}" class="ticket-filters">
+        {% if filters.status %}<input type="hidden" name="status" value="{{ filters.status }}">{% endif %}
+        <div class="form-group" style="margin:0;">
+            <select name="team_id" class="form-select">
+                <option value="">All my teams</option>
+                {% for team in teams %}
+                <option value="{{ team.id }}" {% if filters.team_id == team.id|string %}selected{% endif %}>{{ team.project_key }} · {{ team.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin:0; flex:2;">
+            <input type="search" name="q" value="{{ filters.q }}" class="form-input" placeholder="Search incidents…">
+        </div>
+        <div class="form-group" style="margin:0;">
+            <select name="severity" class="form-select">
+                <option value="">All severities</option>
+                {% for key, meta in severities.items() %}
+                <option value="{{ key }}" {% if filters.severity == key %}selected{% endif %}>{{ meta.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-secondary">Filter</button>
+    </form>
+</div>
+
+{% if incidents %}
+<div class="card">
+    <div class="table-wrap">
+        <table class="data-table ticket-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Service</th>
+                    <th>Severity</th>
+                    <th>Status</th>
+                    <th>Commander</th>
+                    <th>Duration</th>
+                    <th>Postmortem</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for incident in incidents %}
+                <tr class="ticket-row" onclick="window.location='{{ url_for('incidents.view_incident', incident_id=incident.id) }}'">
+                    <td><span class="ticket-key incident-key">{{ incident.key }}</span></td>
+                    <td>
+                        <strong>{{ incident.title }}</strong>
+                        {% if incident.summary %}
+                        <p class="ticket-summary">{{ incident.summary[:80] }}{% if incident.summary|length > 80 %}…{% endif %}</p>
+                        {% endif %}
+                    </td>
+                    <td>{{ incident.service_name or '—' }}</td>
+                    <td><span class="badge {{ severities[incident.severity].badge }}">{{ severities[incident.severity].label }}</span></td>
+                    <td><span class="badge {{ statuses[incident.status].badge }}">{{ statuses[incident.status].label }}</span></td>
+                    <td>{% if incident.commander %}{{ incident.commander.label }}{% else %}<span class="empty-state">Unassigned</span>{% endif %}</td>
+                    <td>
+                        {% if incident.duration_minutes is not none %}
+                        {% if incident.resolved_at %}{{ incident.duration_minutes }}m{% else %}<span class="badge badge-danger">{{ incident.duration_minutes }}m ongoing</span>{% endif %}
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% if incident.postmortem %}
+                        <span class="badge badge-success">Yes</span>
+                        {% elif incident.status in ['resolved', 'postmortem_pending', 'closed'] %}
+                        <span class="badge badge-warning">Needed</span>
+                        {% else %}—{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <p class="empty-state">No incidents match your filters. Try <a href="{{ url_for('incidents.simulate_alert') }}">simulating an alert</a> for a lab exercise.</p>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

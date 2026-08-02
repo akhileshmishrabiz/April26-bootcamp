@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ wheel.title }} · Speak Wheel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body class="wheel-watch-body">
+    <div class="wheel-watch-shell"
+         data-wheel-watch
+         data-state-url="{{ url_for('wheel.wheel_state', wheel_id=wheel.id) }}"
+         data-initial-state='{{ state | tojson }}'>
+
+        <header class="wheel-watch-header">
+            <h1>{{ wheel.title }}</h1>
+            <p data-progress-text>{{ state.spoken_count }} / {{ state.total }} spoken</p>
+        </header>
+
+        <div class="wheel-watch-main">
+            <div class="wheel-canvas-wrap wheel-canvas-wrap-lg">
+                <canvas id="speak-wheel-canvas" aria-label="Speak wheel"></canvas>
+            </div>
+        </div>
+
+        <div class="wheel-watch-panels">
+            <div class="wheel-watch-panel">
+                <h3>Up Next</h3>
+                <ul class="wheel-name-list" data-waiting-list></ul>
+            </div>
+            <div class="wheel-watch-panel">
+                <h3>Spoken</h3>
+                <ul class="wheel-name-list" data-spoken-list></ul>
+            </div>
+            <div class="wheel-watch-panel">
+                <h3>History</h3>
+                <ul class="wheel-name-list wheel-picks-list" data-picks-list></ul>
+            </div>
+        </div>
+
+        <p class="wheel-watch-footer">LivingDevOps Speak Wheel · Live sync</p>
+    </div>
+
+    <div id="wheel-winner-overlay" class="wheel-winner-overlay">
+        <div class="wheel-winner-card wheel-winner-card-lg">
+            <p class="wheel-winner-label">You're up!</p>
+            <h2 data-winner-name></h2>
+            <p class="share-hint">🎤 Time to speak</p>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='wheel.js') }}"></script>
+</body>
+</html>

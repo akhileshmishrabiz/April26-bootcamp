@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Daily Attendance{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Daily Attendance</h1>
+
+<div class="card">
+    <form action="{{ url_for('main.attendance') }}" method="GET" style="margin-bottom:1.5rem;">
+        <label for="date" class="form-label">Select date</label>
+        <input type="date" id="date" name="date" value="{{ selected_date }}" class="form-input" style="max-width:240px;" onchange="this.form.submit()">
+    </form>
+
+    <form action="{{ url_for('main.mark_attendance') }}" method="POST">
+        <input type="hidden" name="date" value="{{ selected_date }}">
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Current Status</th>
+                        <th>Mark</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students %}
+                    <tr>
+                        <td>{{ student.name }}</td>
+                        <td>
+                            {% if student.today_attendance %}
+                                <span class="badge {% if student.today_attendance.status == 'Present' %}badge-success{% else %}badge-danger{% endif %}">
+                                    {{ student.today_attendance.status }}
+                                </span>
+                            {% else %}
+                                <span class="empty-state">Not marked</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <select name="status_{{ student.id }}" class="form-select" style="max-width:180px;">
+                                <option value="">Select status</option>
+                                <option value="Present">Present</option>
+                                <option value="Absent">Absent</option>
+                            </select>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" class="empty-state">Add students before marking attendance.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="margin-top:1.25rem;">Save Attendance</button>
+    </form>
+</div>
+{% endblock %}

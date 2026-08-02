@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}{{ incident.key }}{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <div>
+        <p style="margin:0 0 0.25rem;"><a href="{{ url_for('incidents.list_incidents') }}">← Incidents</a></p>
+        <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+            <span class="ticket-key ticket-key-lg incident-key">{{ incident.key }}</span>
+            <span class="badge {{ severities[incident.severity].badge }}">{{ severities[incident.severity].label }}</span>
+            <span class="badge {{ statuses[incident.status].badge }}">{{ statuses[incident.status].label }}</span>
+            {% if incident.service_name %}<span class="ticket-type">📦 {{ incident.service_name }}</span>{% endif %}
+        </div>
+        <h1 class="page-title" style="margin:0.5rem 0 0;">{{ incident.title }}</h1>
+    </div>
+    <div class="board-actions">
+        {% if incident.ticket %}
+        <a href="{{ url_for('tickets.view_ticket', ticket_id=incident.ticket.id) }}" class="btn btn-secondary">View Ticket {{ incident.ticket.key }}</a>
+        {% else %}
+        <form method="POST" action="{{ url_for('incidents.create_linked_ticket', incident_id=incident.id) }}" style="margin:0;">
+            <button type="submit" class="btn btn-secondary">Create Tracking Ticket</button>
+        </form>
+        {% endif %}
+        {% if incident.status in ['resolved', 'postmortem_pending', 'closed'] %}
+            {% if incident.postmortem %}
+            <a href="{{ url_for('postmortems.view_postmortem', postmortem_id=incident.postmortem.id) }}" class="btn btn-primary">View Postmortem</a>
+            {% else %}
+            <a href="{{ url_for('postmortems.create_postmortem', incident_id=incident.id) }}" class="btn btn-primary">Write Postmortem</a>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+{% if incident.status not in ['resolved', 'postmortem_pending', 'closed'] %}
+<div class="incident-status-bar">
+    {% set flow = ['triggered', 'investigating', 'identified', 'monitoring', 'resolved'] %}
+    {% for step in flow %}
+    <div class="incident-status-step {% if incident.status == step %}active{% elif loop.index0 < flow.index(incident.status) %}done{% endif %}">
+        {{ statuses[step].label }}
+    </div>
+    {% if not loop.last %}<div class="incident-status-connector"></div>{% endif %}
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="ticket-detail-grid">
+    <div class="ticket-detail-main">
+        <div class="card" style="margin-bottom:1rem;">
+            <h2 class="card-title">Summary</h2>
+            {% if incident.summary %}
+            <p class="ticket-description">{{ incident.summary }}</p>
+            {% else %}
+            <p class="empty-state">No summary yet.</p>
+            {% endif %}
+            {% if incident.customer_impact %}
+            <h3 style="margin:1rem 0 0.35rem; font-size:0.95rem;">Customer Impact</h3>
+            <p class="ticket-description">{{ incident.customer_impact }}</p>
+            {% endif %}
+            {% if incident.runbook_url %}
+            <p style="margin:1rem 0 0;"><a href="{{ incident.runbook_url }}" target="_blank" rel="noopener">📖 Open Runbook</a></p>
+            {% endif %}
+        </div>
+
+        <div class="card" style="margin-bottom:1rem;">
+            <h2 class="card-title">Response Timeline</h2>
+            <p class="share-hint" style="margin:0 0 1rem;">Log every key event — alerts, escalations, mitigations, comms. This becomes your postmortem timeline.</p>
+
+            {% if incident.events %}
+            <div class="incident-timeline">
+                {% for event in incident.events %}
+                <div class="timeline-item">
+                    <div class="timeline-marker">{{ event_types[event.event_type].icon if event.event_type in event_types else '📝' }}</div>
+                    <div class="timeline-content">
+                        <div class="timeline-head">
+                            <strong>{{ event_types[event.event_type].label if event.event_type in event_types else event.event_type }}</strong>
+                            <span class="comment-time">{{ event.created_at.strftime('%b %d, %H:%M:%S UTC') }}</span>
+                        </div>
+                        <p class="timeline-meta">by {{ event.author.label }}</p>
+                        <p>{{ event.description }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="empty-state">No timeline entries yet — add the first update below.</p>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('incidents.add_incident_event', incident_id=incident.id) }}" class="timeline-add-form">
+                <div class="two-col-grid">
+                    <div class="form-group" style="margin:0;">
+                        <select name="event_type" class="form-select">
+                            {% for key, meta in event_types.items() %}
+                            <option value="{{ key }}">{{ meta.icon }} {{ meta.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin:0; flex:2;">
+                        <input type="text" name="description" class="form-input" placeholder="e.g. Rolled back deploy v2.3.1 — error rate dropping" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Add to Timeline</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">Key Timestamps</h2>
+            <div class="timestamp-grid">
+                <div class="timestamp-item">
+                    <span class="timestamp-label">Detected</span>
+                    <span>{{ incident.detected_at.strftime('%b %d, %H:%M UTC') if incident.detected_at else '—' }}</span>
+                </div>
+                <div class="timestamp-item">
+                    <span class="timestamp-label">Acknowledged</span>
+                    <span>{{ incident.acknowledged_at.strftime('%b %d, %H:%M UTC') if incident.acknowledged_at else '—' }}</span>
+                </div>
+                <div class="timestamp-item">
+                    <span class="timestamp-label">Mitigated</span>
+                    <span>{{ incident.mitigated_at.strftime('%b %d, %H:%M UTC') if incident.mitigated_at else '—' }}</span>
+                </div>
+                <div class="timestamp-item">
+                    <span class="timestamp-label">Resolved</span>
+                    <span>{{ incident.resolved_at.strftime('%b %d, %H:%M UTC') if incident.resolved_at else '—' }}</span>
+                </div>
+                <div class="timestamp-item">
+                    <span class="timestamp-label">Duration</span>
+                    <span>{% if incident.duration_minutes is not none %}{{ incident.duration_minutes }} minutes{% else %}—{% endif %}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <aside class="ticket-detail-sidebar">
+        <div class="card">
+            <h2 class="card-title">Incident Details</h2>
+            <form method="POST" action="{{ url_for('incidents.update_incident', incident_id=incident.id) }}">
+                <div class="form-group">
+                    <label class="form-label">Title</label>
+                    <input type="text" name="title" value="{{ incident.title }}" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Summary</label>
+                    <textarea name="summary" rows="3" class="form-textarea">{{ incident.summary or '' }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Severity</label>
+                    <select name="severity" class="form-select">
+                        {% for key, meta in severities.items() %}
+                        <option value="{{ key }}" {% if incident.severity == key %}selected{% endif %}>{{ meta.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        {% for key in allowed_statuses %}
+                        <option value="{{ key }}" {% if incident.status == key %}selected{% endif %}>{{ statuses[key].label }}</option>
+                        {% endfor %}
+                    </select>
+                    <p class="share-hint">Workflow enforced — only valid transitions shown.</p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Service</label>
+                    <input type="text" name="service_name" value="{{ incident.service_name or '' }}" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Customer Impact</label>
+                    <textarea name="customer_impact" rows="2" class="form-textarea">{{ incident.customer_impact or '' }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Runbook URL</label>
+                    <input type="url" name="runbook_url" value="{{ incident.runbook_url or '' }}" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Incident Commander</label>
+                    <select name="commander_id" class="form-select">
+                        <option value="">Unassigned</option>
+                        {% for user in users %}
+                        <option value="{{ user.id }}" {% if incident.commander_id == user.id %}selected{% endif %}>{{ user.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">On-Call</label>
+                    <select name="on_call_user_id" class="form-select">
+                        <option value="">Unassigned</option>
+                        {% for user in users %}
+                        <option value="{{ user.id }}" {% if incident.on_call_user_id == user.id %}selected{% endif %}>{{ user.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <p class="ticket-sidebar-meta">
+                    Reporter: {{ incident.reporter.label }}<br>
+                    Team: {{ incident.team.name }}<br>
+                    Created: {{ incident.created_at.strftime('%b %d, %Y') }}
+                </p>
+                <button type="submit" class="btn btn-primary" style="width:100%;">Save Changes</button>
+            </form>
+        </div>
+    </aside>
+</div>
+{% endblock %}

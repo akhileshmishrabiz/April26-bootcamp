@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Dashboard</h1>
+
+<div class="devops-flow-banner" style="margin-bottom:1.25rem;">
+    <div class="flow-step"><span class="flow-num">1</span> Alert</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><span class="flow-num">2</span> Incident Response</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><span class="flow-num">3</span> Tickets</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><span class="flow-num">4</span> Postmortem</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><span class="flow-num">5</span> Improve</div>
+</div>
+
+<div class="stat-grid">
+    <div class="card {% if open_incidents %}stat-card-alert{% endif %}">
+        <h2 class="card-title">Active Incidents</h2>
+        <p class="stat-value">{{ open_incidents|length }}</p>
+        <a href="{{ url_for('incidents.list_incidents') }}">View incidents →</a>
+    </div>
+    <div class="card">
+        <h2 class="card-title">My Open Tickets</h2>
+        <p class="stat-value">{{ my_tickets|length }}</p>
+        <a href="{{ url_for('tickets.list_tickets', assignee='me') }}">View tickets →</a>
+    </div>
+    <div class="card">
+        <h2 class="card-title">On-Call Shifts</h2>
+        <p class="stat-value">{{ on_call_shifts|length }}</p>
+        <a href="{{ url_for('teams.list_teams') }}">View teams →</a>
+    </div>
+</div>
+
+{% if open_incidents or my_tickets or on_call_shifts %}
+<div class="two-col-grid" style="margin-bottom:1.25rem;">
+    {% if open_incidents %}
+    <div class="card">
+        <div class="section-header">
+            <h2 class="card-title" style="margin:0;">🚨 Active Incidents</h2>
+            <a href="{{ url_for('incidents.list_incidents') }}">View all</a>
+        </div>
+        {% for incident in open_incidents %}
+        <div class="list-item">
+            <a href="{{ url_for('incidents.view_incident', incident_id=incident.id) }}">
+                <strong>{{ incident.key }}</strong> — {{ incident.title }}
+            </a>
+            <p style="margin:0.25rem 0 0; font-size:0.85rem; color:var(--text-muted);">{{ incident.service_name or 'No service' }} · {{ incident.status|replace('_', ' ')|title }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="section-header">
+            <h2 class="card-title" style="margin:0;">{% if on_call_shifts %}On-Call & {% endif %}My Tickets</h2>
+        </div>
+        {% if on_call_shifts %}
+        {% for entry in on_call_shifts %}
+        <div class="list-item">
+            <strong>{{ entry.team.project_key }}</strong> — {{ entry.shift.user.label }} (primary until {{ entry.shift.end_at.strftime('%b %d') }})
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% if my_tickets %}
+        {% for ticket in my_tickets %}
+        <div class="list-item">
+            <a href="{{ url_for('tickets.view_ticket', ticket_id=ticket.id) }}">
+                <span class="ticket-key">{{ ticket.key }}</span> {{ ticket.title }}
+            </a>
+        </div>
+        {% endfor %}
+        {% elif not on_call_shifts %}
+        <p class="empty-state">No open tickets assigned to you.</p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<div class="stat-grid">
+    <div class="card">
+        <h2 class="card-title">Total Students</h2>
+        <p class="stat-value">{{ total_students }}</p>
+    </div>
+    <div class="card">
+        <h2 class="card-title">Today's Attendance</h2>
+        <p class="stat-value">{{ today_attendance }}</p>
+    </div>
+    <div class="card">
+        <h2 class="card-title">Attendance Rate</h2>
+        <p class="stat-value">{{ attendance_rate }}%</p>
+    </div>
+</div>
+
+<div class="two-col-grid">
+    <div class="card">
+        <div class="section-header">
+            <h2 class="card-title" style="margin:0;">Announcements</h2>
+            <a href="{{ url_for('main.announcements') }}">View all</a>
+        </div>
+        {% if announcements %}
+            {% for a in announcements %}
+            <div class="list-item">
+                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.35rem;">
+                    {% if a.is_pinned %}<span class="badge badge-warning">Pinned</span>{% endif %}
+                    <strong style="color:var(--text-primary);">{{ a.title }}</strong>
+                </div>
+                <p style="margin:0; font-size:0.92rem;">{{ a.content[:120] }}{% if a.content|length > 120 %}…{% endif %}</p>
+                <p style="margin:0.35rem 0 0; font-size:0.8rem; color:var(--text-muted);">{{ a.created_at.strftime('%b %d, %Y') }}</p>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="empty-state">No announcements yet.</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="section-header">
+            <h2 class="card-title" style="margin:0;">Upcoming Assignments</h2>
+            <a href="{{ url_for('main.assignments') }}">View all</a>
+        </div>
+        {% if upcoming_assignments %}
+            {% for a in upcoming_assignments %}
+            {% set days_left = (a.due_date - today).days %}
+            <div class="list-item" style="display:flex; justify-content:space-between; gap:1rem;">
+                <div>
+                    <p style="margin:0; color:var(--text-primary); font-weight:600;">{{ a.title }}</p>
+                    {% if a.description %}
+                    <p style="margin:0.25rem 0 0; font-size:0.88rem;">{{ a.description[:80] }}{% if a.description|length > 80 %}…{% endif %}</p>
+                    {% endif %}
+                </div>
+                <div style="text-align:right;">
+                    <span class="badge {% if days_left == 0 %}badge-danger{% elif days_left <= 2 %}badge-warning{% else %}badge-success{% endif %}">
+                        {% if days_left == 0 %}Due today{% elif days_left == 1 %}Due tomorrow{% else %}{{ days_left }}d left{% endif %}
+                    </span>
+                    <p style="margin:0.35rem 0 0; font-size:0.8rem; color:var(--text-muted);">{{ a.due_date.strftime('%b %d') }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="empty-state">No upcoming assignments.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

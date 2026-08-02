@@ -1,0 +1,11 @@
+{
+  "teams": [
+    {
+      "name": "Platform DevOps",
+      "project_key": "DEV",
+      "description": "Core platform squad — ECS, Terraform, CI/CD, and prod incidents.",
+      "owner": "livingdevops",
+      "members": ["livingdevops", "devopscaptain"]
+    }
+  ]
+}

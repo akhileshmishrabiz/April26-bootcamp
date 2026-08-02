@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}{{ retro.title }}{% endblock %}
+
+{% block content %}
+<div class="section-header retro-board-header">
+    <div>
+        <h1 class="page-title" style="margin:0;">{{ retro.title }}</h1>
+        {% if retro.description %}
+        <p class="page-subtitle" style="margin:0;">{{ retro.description }}</p>
+        {% endif %}
+    </div>
+    <div class="board-actions">
+        {% if current_user.is_admin and retro.status == 'open' %}
+        <form method="POST" action="{{ url_for('retro.close_retro', retro_id=retro.id) }}"
+              onsubmit="return confirm('Close this retro?');">
+            <button type="submit" class="btn btn-danger btn-sm">Close Retro</button>
+        </form>
+        {% endif %}
+        <a href="{{ url_for('retro.list_retros') }}" class="btn btn-secondary btn-sm">All Retros</a>
+    </div>
+</div>
+
+<div class="card share-box">
+    <label class="form-label">Invite link — share with your team</label>
+    <div class="share-row">
+        <input type="text" id="board-share-link" class="form-input" value="{{ share_url }}" readonly>
+        <button type="button" class="btn btn-primary btn-sm" data-copy-target="#board-share-link">Copy Link</button>
+    </div>
+    <p class="share-hint">Anyone with this link can join as a guest or log in.</p>
+</div>
+
+<div class="card retro-meta">
+    <span class="badge {% if retro.status == 'open' %}badge-success{% else %}badge-muted{% endif %}">
+        {{ retro.status|upper }}
+    </span>
+    <span>👥 {{ participants|length }} joined:
+        {% for p in participants %}{{ p.user.label }}{% if not loop.last %}, {% endif %}{% endfor %}
+    </span>
+</div>
+
+<div id="retro-toast" class="retro-toast" role="status" aria-live="polite"></div>
+
+{% if retro.status == 'closed' %}
+<div class="alert alert-error">This retro is closed — read-only mode.</div>
+{% endif %}
+
+<div class="retro-board" id="retro-board" data-retro-open="{{ 'true' if retro.status == 'open' and is_participant else 'false' }}">
+    {% for key, meta in categories.items() %}
+    <section class="retro-column" data-category="{{ key }}">
+        <header class="retro-column-header" style="background: {{ meta.color }};">
+            <h2>{{ meta.emoji }} {{ meta.label }}</h2>
+        </header>
+
+        {% if retro.status == 'open' and is_participant %}
+        <form method="POST" action="{{ url_for('retro.add_card', retro_id=retro.id) }}" class="retro-add-form">
+            <input type="hidden" name="category" value="{{ key }}">
+            <textarea name="content" class="form-textarea retro-sticky-input" rows="3"
+                      placeholder="Add a sticky note..." required></textarea>
+            <button type="submit" class="btn btn-primary btn-sm">Add Note</button>
+        </form>
+        {% endif %}
+
+        <div class="retro-cards">
+            {% for item in cards_by_category[key] %}
+            {% set meta = categories[key] %}
+            {% include "retro/_card.html" %}
+            {% else %}
+            <p class="empty-state retro-empty">No notes yet — go first!</p>
+            {% endfor %}
+        </div>
+    </section>
+    {% endfor %}
+</div>
+
+<script>
+(function() {
+    const board = document.getElementById('retro-board');
+    const toast = document.getElementById('retro-toast');
+    if (!board || board.dataset.retroOpen !== 'true') return;
+
+    function showToast(message, isError) {
+        if (!toast) return;
+        toast.textContent = message;
+        toast.className = 'retro-toast show' + (isError ? ' retro-toast-error' : '');
+        clearTimeout(showToast._timer);
+        showToast._timer = setTimeout(() => { toast.className = 'retro-toast'; }, 2500);
+    }
+
+    async function postForm(form) {
+        const body = new FormData(form);
+        const response = await fetch(form.action, {
+            method: 'POST',
+            body,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+            credentials: 'same-origin',
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) {
+            throw new Error(data.error || 'Something went wrong');
+        }
+        return data;
+    }
+
+    function updateLikeButton(cardEl, likeCount, likedByMe) {
+        const btn = cardEl.querySelector('.btn-like');
+        if (!btn) return;
+        btn.classList.toggle('liked', likedByMe);
+        btn.innerHTML = (likedByMe ? '❤️' : '🤍') + ' <span class="like-count">' + likeCount + '</span>';
+    }
+
+    board.addEventListener('submit', async (event) => {
+        const form = event.target;
+        if (!form.matches('.retro-add-form, .retro-like-form, .retro-comment-form')) return;
+
+        event.preventDefault();
+        const submitBtn = form.querySelector('[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
+
+        try {
+            const data = await postForm(form);
+
+            if (form.classList.contains('retro-add-form')) {
+                const column = form.closest('.retro-column');
+                const list = column.querySelector('.retro-cards');
+                const empty = list.querySelector('.retro-empty');
+                if (empty) empty.remove();
+                list.insertAdjacentHTML('afterbegin', data.html);
+                form.reset();
+                showToast('Sticky note added!');
+            } else if (form.classList.contains('retro-like-form')) {
+                const cardEl = form.closest('[data-card-id]');
+                updateLikeButton(cardEl, data.like_count, data.liked_by_me);
+            } else if (form.classList.contains('retro-comment-form')) {
+                const cardEl = form.closest('[data-card-id]');
+                const comments = cardEl.querySelector('.retro-comments');
+                comments.insertAdjacentHTML('beforeend', data.html);
+                form.reset();
+                showToast('Reply added');
+            }
+        } catch (err) {
+            showToast(err.message, true);
+        } finally {
+            if (submitBtn) submitBtn.disabled = false;
+        }
+    });
+})();
+</script>
+{% endblock %}

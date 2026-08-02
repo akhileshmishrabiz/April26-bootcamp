@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Classes{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <h1 class="page-title" style="margin:0;">Class Sessions</h1>
+    <a href="{{ url_for('main.add_class') }}" class="btn btn-primary">Add Class</a>
+</div>
+
+{% for class in classes %}
+<div class="card" style="margin-bottom:1rem;">
+    <div class="section-header">
+        <div>
+            <h3 style="margin:0;">{{ class.date.strftime('%B %d, %Y') }}</h3>
+            <p style="margin:0.35rem 0 0; color:var(--text-muted);">{{ class.time }}</p>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <a href="{{ url_for('main.edit_class', id=class.id) }}" class="btn btn-secondary">Edit</a>
+            <button type="button" class="btn btn-danger" onclick="deleteClass({{ class.id }})">Delete</button>
+        </div>
+    </div>
+
+    <div style="display:grid; gap:0.65rem;">
+        {% if class.session_link %}
+        <div style="display:flex; justify-content:space-between; gap:1rem;">
+            <span>Session</span><a href="{{ class.session_link }}" target="_blank" rel="noopener">Join</a>
+        </div>
+        {% endif %}
+        {% if class.code_link %}
+        <div style="display:flex; justify-content:space-between; gap:1rem;">
+            <span>Code</span><a href="{{ class.code_link }}" target="_blank" rel="noopener">View</a>
+        </div>
+        {% endif %}
+        {% if class.recording_link %}
+        <div style="display:flex; justify-content:space-between; gap:1rem;">
+            <span>Recording</span><a href="{{ class.recording_link }}" target="_blank" rel="noopener">Watch</a>
+        </div>
+        {% endif %}
+        {% if class.resource_link %}
+        <div style="display:flex; justify-content:space-between; gap:1rem;">
+            <span>Resources</span><a href="{{ class.resource_link }}" target="_blank" rel="noopener">Download</a>
+        </div>
+        {% endif %}
+        {% if class.remarks %}
+        <div style="margin-top:0.5rem; padding-top:0.75rem; border-top:1px solid var(--border-subtle);">
+            <strong style="color:var(--text-primary);">Remarks</strong>
+            <p style="margin:0.35rem 0 0;">{{ class.remarks }}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<div class="card"><p class="empty-state">No classes scheduled yet.</p></div>
+{% endfor %}
+
+<script>
+function deleteClass(id) {
+    if (confirm('Delete this class session?')) {
+        fetch(`/delete_class/${id}`, { method: 'POST' }).then(() => location.reload());
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Tickets{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <div>
+        <h1 class="page-title" style="margin:0;">DevOps Tickets</h1>
+        <p class="page-subtitle" style="margin:0.35rem 0 0;">Jira-style issue tracking — bugs, stories, and the deploy that broke prod.</p>
+    </div>
+    {% if not no_teams %}
+    <a href="{{ url_for('tickets.create_ticket', team_id=filters.team_id) }}" class="btn btn-primary">+ Create Ticket</a>
+    {% endif %}
+</div>
+
+{% if no_teams %}
+<div class="card">
+    <p class="empty-state">Join or <a href="{{ url_for('teams.create_team') }}">create a team</a> first — tickets belong to teams and assignees must be team members.</p>
+</div>
+{% else %}
+
+<div class="ticket-status-tabs">
+    <a href="{{ url_for('tickets.list_tickets', team_id=filters.team_id, q=filters.q, priority=filters.priority, assignee=filters.assignee, type=filters.type) }}"
+       class="ticket-tab {% if not filters.status %}active{% endif %}">
+        All <span class="ticket-tab-count">{{ total_ticket_count }}</span>
+    </a>
+    {% for key, meta in statuses.items() %}
+    <a href="{{ url_for('tickets.list_tickets', status=key, team_id=filters.team_id, q=filters.q, priority=filters.priority, assignee=filters.assignee, type=filters.type) }}"
+       class="ticket-tab {% if filters.status == key %}active{% endif %}">
+        {{ meta.label }} <span class="ticket-tab-count">{{ status_counts[key] }}</span>
+    </a>
+    {% endfor %}
+</div>
+
+<div class="card" style="margin-bottom:1rem;">
+    <form method="GET" action="{{ url_for('tickets.list_tickets') }}" class="ticket-filters">
+        {% if filters.status %}<input type="hidden" name="status" value="{{ filters.status }}">{% endif %}
+        <div class="form-group" style="margin:0;">
+            <select name="team_id" class="form-select">
+                <option value="">All my teams</option>
+                {% for team in teams %}
+                <option value="{{ team.id }}" {% if filters.team_id == team.id|string %}selected{% endif %}>{{ team.project_key }} · {{ team.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin:0; flex:2;">
+            <input type="search" name="q" value="{{ filters.q }}" class="form-input" placeholder="Search tickets…">
+        </div>
+        <div class="form-group" style="margin:0;">
+            <select name="type" class="form-select">
+                <option value="">All types</option>
+                {% for key, meta in types.items() %}
+                <option value="{{ key }}" {% if filters.type == key %}selected{% endif %}>{{ meta.emoji }} {{ meta.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin:0;">
+            <select name="priority" class="form-select">
+                <option value="">All priorities</option>
+                {% for key, meta in priorities.items() %}
+                <option value="{{ key }}" {% if filters.priority == key %}selected{% endif %}>{{ meta.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin:0;">
+            <select name="assignee" class="form-select">
+                <option value="">Anyone</option>
+                <option value="me" {% if filters.assignee == 'me' %}selected{% endif %}>Assigned to me</option>
+                <option value="unassigned" {% if filters.assignee == 'unassigned' %}selected{% endif %}>Unassigned</option>
+                {% for user in users %}
+                <option value="{{ user.id }}" {% if filters.assignee == user.id|string %}selected{% endif %}>{{ user.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-secondary">Filter</button>
+    </form>
+</div>
+
+{% if tickets %}
+<div class="card">
+    <div class="table-wrap">
+        <table class="data-table ticket-table">
+            <thead>
+                <tr>
+                    <th>Key</th>
+                    <th>Team</th>
+                    <th>Summary</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Priority</th>
+                    <th>Assignee</th>
+                    <th>Subtasks</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ticket in tickets %}
+                <tr class="ticket-row" onclick="window.location='{{ url_for('tickets.view_ticket', ticket_id=ticket.id) }}'">
+                    <td><span class="ticket-key">{{ ticket.key }}</span></td>
+                    <td>{{ ticket.team.name }}</td>
+                    <td>
+                        <strong>{{ ticket.title }}</strong>
+                        {% if ticket.description %}
+                        <p class="ticket-summary">{{ ticket.description[:90] }}{% if ticket.description|length > 90 %}…{% endif %}</p>
+                        {% endif %}
+                    </td>
+                    <td><span class="ticket-type">{{ types[ticket.issue_type].emoji }} {{ types[ticket.issue_type].label }}</span></td>
+                    <td><span class="badge {{ statuses[ticket.status].badge }}">{{ statuses[ticket.status].label }}</span></td>
+                    <td><span class="badge {{ priorities[ticket.priority].badge }}">{{ priorities[ticket.priority].label }}</span></td>
+                    <td>{% if ticket.assignee %}{{ ticket.assignee.label }}{% else %}<span class="empty-state">Unassigned</span>{% endif %}</td>
+                    <td>
+                        {% set progress = ticket.subtask_progress %}
+                        {% if progress %}{{ progress[0] }}/{{ progress[1] }}{% else %}—{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <p class="empty-state">No tickets match your filters. <a href="{{ url_for('tickets.create_ticket', team_id=filters.team_id) }}">Create one</a> to get started.</p>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

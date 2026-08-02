@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}{{ wheel.title }}{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <div>
+        <p style="margin:0 0 0.25rem;"><a href="{{ url_for('wheel.list_wheels') }}">← Speak Wheel</a></p>
+        <h1 class="page-title" style="margin:0;">{{ wheel.title }}</h1>
+        {% if wheel.description %}<p class="page-subtitle" style="margin:0.35rem 0 0;">{{ wheel.description }}</p>{% endif %}
+    </div>
+    <div class="board-actions">
+        <a href="{{ url_for('wheel.watch_wheel', token=wheel.share_token) }}" class="btn btn-secondary btn-sm" target="_blank">Project View ↗</a>
+        {% if wheel.status == 'closed' %}<span class="badge badge-muted">CLOSED</span>{% endif %}
+    </div>
+</div>
+
+<div class="card share-box">
+    <label class="form-label">📺 Project this link on Zoom / Meet — updates live when you spin</label>
+    <div class="share-row">
+        <input type="text" id="wheel-share-link" class="form-input" value="{{ share_url }}" readonly>
+        <button type="button" class="btn btn-primary btn-sm" data-copy-target="#wheel-share-link">Copy Link</button>
+    </div>
+</div>
+
+<div class="wheel-board"
+     data-wheel-board
+     data-wheel-id="{{ wheel.id }}"
+     data-spin-url="{{ url_for('wheel.spin_wheel', wheel_id=wheel.id) }}"
+     data-can-facilitate="{{ 'true' if can_facilitate else 'false' }}"
+     data-initial-state='{{ state | tojson }}'>
+
+    <div class="wheel-stage card">
+        <div class="wheel-canvas-wrap">
+            <canvas id="speak-wheel-canvas" aria-label="Speak wheel"></canvas>
+        </div>
+
+        {% if can_facilitate and wheel.status == 'open' %}
+        <button type="button" id="wheel-spin-btn" class="btn btn-danger wheel-spin-btn" {% if not state.can_spin %}disabled{% endif %}>
+            {% if state.can_spin %}🎡 SPIN!{% else %}All done 🎉{% endif %}
+        </button>
+        {% elif not can_facilitate %}
+        <p class="share-hint" style="text-align:center;">Facilitator spins — you're on project view. Open the share link on the big screen.</p>
+        {% endif %}
+
+        <div class="wheel-progress-wrap">
+            <div class="wheel-progress-bar"><div class="wheel-progress-fill" data-progress-bar style="width:{{ (state.spoken_count / state.total * 100) if state.total else 0 }}%"></div></div>
+            <span data-progress-text>{{ state.spoken_count }} / {{ state.total }} spoken</span>
+        </div>
+    </div>
+
+    <aside class="wheel-sidebar">
+        {% if can_facilitate and wheel.status == 'open' %}
+        <div class="card" style="margin-bottom:1rem;">
+            <h2 class="card-title">Add Names</h2>
+            <form id="wheel-add-names-form" method="POST" action="{{ url_for('wheel.add_names', wheel_id=wheel.id) }}" enctype="multipart/form-data">
+                <textarea name="names" rows="4" class="form-textarea" placeholder="One name per line…"></textarea>
+                <div class="form-group" style="margin:0.5rem 0;">
+                    <input type="file" name="names_file" accept=".txt,.csv" class="form-input">
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Add to Wheel</button>
+            </form>
+        </div>
+
+        <div class="card" style="margin-bottom:1rem;">
+            <h2 class="card-title">Facilitator</h2>
+            <div class="board-actions" style="flex-direction:column; align-items:stretch;">
+                <button type="button" class="btn btn-secondary btn-sm" data-wheel-action="{{ url_for('wheel.shuffle_wheel', wheel_id=wheel.id) }}" data-confirm="Shuffle wheel colors?">🔀 Shuffle</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-wheel-action="{{ url_for('wheel.reset_wheel', wheel_id=wheel.id) }}" data-confirm="Reset everyone back to the wheel?">↺ Reset All</button>
+                <button type="button" class="btn btn-danger btn-sm" data-wheel-action="{{ url_for('wheel.close_wheel', wheel_id=wheel.id) }}" data-confirm="Close this session?">Close Session</button>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="card" style="margin-bottom:1rem;">
+            <h2 class="card-title">🟢 Up Next</h2>
+            <ul class="wheel-name-list" data-waiting-list></ul>
+        </div>
+
+        <div class="card" style="margin-bottom:1rem;">
+            <h2 class="card-title">✅ Spoken</h2>
+            <ul class="wheel-name-list" data-spoken-list></ul>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">📋 Pick History</h2>
+            <ul class="wheel-name-list wheel-picks-list" data-picks-list></ul>
+        </div>
+    </aside>
+</div>
+
+<div id="wheel-winner-overlay" class="wheel-winner-overlay">
+    <div class="wheel-winner-card">
+        <p class="wheel-winner-label">You're up!</p>
+        <h2 data-winner-name></h2>
+        <p class="share-hint">🎤 Time to speak</p>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='wheel.js') }}"></script>
+{% endblock %}

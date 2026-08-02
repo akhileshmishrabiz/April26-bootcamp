@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Create Ticket{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <div>
+        <h1 class="page-title" style="margin:0;">Create Ticket</h1>
+        <p class="page-subtitle" style="margin:0.35rem 0 0;">Log a bug, story, or epic for your team.</p>
+    </div>
+    <a href="{{ url_for('tickets.list_tickets', team_id=selected_team.id) }}" class="btn btn-secondary">← Back to board</a>
+</div>
+
+<div class="card" style="max-width:760px;">
+    <form method="GET" action="{{ url_for('tickets.create_ticket') }}" class="ticket-filters" style="margin-bottom:1rem;">
+        <div class="form-group" style="margin:0; flex:1;">
+            <label class="form-label">Team *</label>
+            <select name="team_id" class="form-select" onchange="this.form.submit()">
+                {% for team in teams %}
+                <option value="{{ team.id }}" {% if team.id == selected_team.id %}selected{% endif %}>{{ team.project_key }} · {{ team.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+
+    <form method="POST" action="{{ url_for('tickets.create_ticket') }}">
+        <input type="hidden" name="team_id" value="{{ selected_team.id }}">
+        <div class="form-group">
+            <label class="form-label">Summary *</label>
+            <input type="text" name="title" required class="form-input" placeholder="ALB health checks failing after deploy">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea name="description" rows="5" class="form-textarea" placeholder="Steps to reproduce, expected vs actual behavior…"></textarea>
+        </div>
+        <div class="two-col-grid">
+            <div class="form-group">
+                <label class="form-label">Type</label>
+                <select name="issue_type" class="form-select">
+                    {% for key, meta in types.items() %}
+                    <option value="{{ key }}">{{ meta.emoji }} {{ meta.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Priority</label>
+                <select name="priority" class="form-select">
+                    {% for key, meta in priorities.items() %}
+                    <option value="{{ key }}" {% if key == 'medium' %}selected{% endif %}>{{ meta.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                    {% for key, meta in statuses.items() %}
+                    <option value="{{ key }}" {% if key == 'todo' %}selected{% endif %}>{{ meta.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Assignee</label>
+                <select name="assignee_id" class="form-select">
+                    <option value="">Unassigned</option>
+                    {% for user in users %}
+                    <option value="{{ user.id }}" {% if user.id == current_user.id %}selected{% endif %}>{{ user.label }}</option>
+                    {% endfor %}
+                </select>
+                <p class="share-hint">Only members of {{ selected_team.name }} can be assigned.</p>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Create Ticket</button>
+    </form>
+</div>
+{% endblock %}

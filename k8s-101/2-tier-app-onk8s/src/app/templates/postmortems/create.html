@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Write Postmortem{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <div>
+        <p style="margin:0 0 0.25rem;"><a href="{{ url_for('incidents.view_incident', incident_id=incident.id) }}">← {{ incident.key }}</a></p>
+        <h1 class="page-title" style="margin:0;">Write Postmortem</h1>
+        <p class="page-subtitle" style="margin:0.35rem 0 0;">Blameless review for: {{ incident.title }}</p>
+    </div>
+</div>
+
+<div class="card">
+    <form method="POST" action="{{ url_for('postmortems.create_postmortem', incident_id=incident.id) }}">
+        <input type="hidden" name="incident_id" value="{{ incident.id }}">
+
+        <div class="form-group">
+            <label class="form-label">Postmortem Title</label>
+            <input type="text" name="title" class="form-input" value="Postmortem: {{ incident.title }}">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Executive Summary</label>
+            <textarea name="summary" rows="3" class="form-textarea" placeholder="One paragraph — what happened and the outcome">{{ incident.summary or '' }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Impact</label>
+            <textarea name="impact" rows="2" class="form-textarea">{{ incident.customer_impact or '' }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Timeline (from incident response)</label>
+            <textarea name="timeline_summary" rows="6" class="form-textarea">{{ timeline_prefill }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Root Cause</label>
+            <textarea name="root_cause" rows="3" class="form-textarea" placeholder="The underlying technical or process failure"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Contributing Factors</label>
+            <textarea name="contributing_factors" rows="2" class="form-textarea" placeholder="What made it worse or delayed detection?"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Detection Analysis</label>
+            <textarea name="detection_analysis" rows="2" class="form-textarea" placeholder="How was it detected? Could we detect faster?"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Resolution Summary</label>
+            <textarea name="resolution_summary" rows="2" class="form-textarea" placeholder="What fixed it?"></textarea>
+        </div>
+
+        <div class="two-col-grid">
+            <div class="form-group">
+                <label class="form-label">What Went Well</label>
+                <textarea name="what_went_well" rows="3" class="form-textarea" placeholder="Communication, fast rollback, runbook helped…"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">What Went Wrong</label>
+                <textarea name="what_went_wrong" rows="3" class="form-textarea" placeholder="Alert fatigue, missing runbook, slow escalation…"></textarea>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Lessons Learned</label>
+            <textarea name="lessons_learned" rows="2" class="form-textarea" placeholder="Key takeaways for the team"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Create Postmortem Draft</button>
+    </form>
+</div>
+{% endblock %}

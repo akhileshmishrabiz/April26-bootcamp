@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Declare Incident{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <div>
+        <p style="margin:0 0 0.25rem;"><a href="{{ url_for('incidents.list_incidents') }}">← Incidents</a></p>
+        <h1 class="page-title" style="margin:0;">Declare Incident</h1>
+        <p class="page-subtitle" style="margin:0.35rem 0 0;">Page the on-call, assign a commander, and start the response timeline.</p>
+    </div>
+</div>
+
+{% if alert_prefill.source == 'alert' %}
+<div class="alert alert-error" style="margin-bottom:1rem;">
+    🔔 <strong>Alert received</strong> — review the pre-filled details below and declare the incident to begin response.
+</div>
+{% endif %}
+
+<div class="two-col-grid">
+    <div class="card">
+        <form method="POST" action="{{ url_for('incidents.create_incident') }}">
+            <input type="hidden" name="source" value="{{ alert_prefill.source }}">
+            <input type="hidden" name="alert_message" value="Prometheus alert fired: high error rate on /health">
+
+            <div class="form-group">
+                <label class="form-label">Team *</label>
+                <select name="team_id" class="form-select" required>
+                    {% for team in teams %}
+                    <option value="{{ team.id }}" {% if selected_team.id == team.id %}selected{% endif %}>{{ team.project_key }} · {{ team.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Title *</label>
+                <input type="text" name="title" class="form-input" required
+                       value="{{ alert_prefill.title }}"
+                       placeholder="Payment API returning 503 errors">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Summary</label>
+                <textarea name="summary" rows="4" class="form-textarea" placeholder="What broke, when it started, initial symptoms…">{{ alert_prefill.summary }}</textarea>
+            </div>
+
+            <div class="two-col-grid">
+                <div class="form-group">
+                    <label class="form-label">Severity *</label>
+                    <select name="severity" class="form-select" required>
+                        {% for key, meta in severities.items() %}
+                        <option value="{{ key }}" {% if alert_prefill.severity == key %}selected{% endif %}>{{ meta.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Affected Service</label>
+                    <input type="text" name="service_name" class="form-input"
+                           value="{{ alert_prefill.service_name }}"
+                           placeholder="student-portal-api">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Customer Impact</label>
+                <textarea name="customer_impact" rows="2" class="form-textarea" placeholder="Who is affected and how?">{{ alert_prefill.customer_impact }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Runbook URL</label>
+                <input type="url" name="runbook_url" class="form-input" placeholder="https://wiki/runbooks/api-outage">
+            </div>
+
+            <div class="two-col-grid">
+                <div class="form-group">
+                    <label class="form-label">Incident Commander</label>
+                    <select name="commander_id" class="form-select">
+                        <option value="">Default to on-call</option>
+                        {% for user in users %}
+                        <option value="{{ user.id }}" {% if on_call and on_call.user_id == user.id %}selected{% endif %}>{{ user.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">On-Call Assignee</label>
+                    <select name="on_call_user_id" class="form-select">
+                        <option value="">Current primary on-call</option>
+                        {% for user in users %}
+                        <option value="{{ user.id }}" {% if on_call and on_call.user_id == user.id %}selected{% endif %}>{{ user.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-danger">🚨 Declare Incident</button>
+        </form>
+    </div>
+
+    <div>
+        <div class="card" style="margin-bottom:1rem;">
+            <h2 class="card-title">On-Call Now</h2>
+            {% if on_call %}
+            <p style="margin:0;"><strong>Primary:</strong> {{ on_call.user.label }}</p>
+            <p class="share-hint">Until {{ on_call.end_at.strftime('%b %d, %H:%M UTC') }}</p>
+            {% else %}
+            <p class="empty-state">No primary on-call scheduled. Assign commander manually.</p>
+            {% endif %}
+            {% if secondary %}
+            <p style="margin:0.75rem 0 0;"><strong>Secondary:</strong> {{ secondary.user.label }}</p>
+            {% endif %}
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">Severity Guide</h2>
+            {% for key, meta in severities.items() %}
+            <div class="severity-guide-item">
+                <span class="badge {{ meta.badge }}">{{ meta.label }}</span>
+                <p>{{ meta.description }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

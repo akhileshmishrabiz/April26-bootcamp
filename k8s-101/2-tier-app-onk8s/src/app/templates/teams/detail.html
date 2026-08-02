@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}{{ team.name }}{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <div>
+        <p style="margin:0 0 0.25rem;"><a href="{{ url_for('teams.list_teams') }}">← Teams</a></p>
+        <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+            <span class="ticket-key ticket-key-lg">{{ team.project_key }}</span>
+            <h1 class="page-title" style="margin:0;">{{ team.name }}</h1>
+        </div>
+        {% if team.description %}
+        <p class="page-subtitle" style="margin:0.35rem 0 0;">{{ team.description }}</p>
+        {% endif %}
+    </div>
+    <div class="board-actions">
+        <a href="{{ url_for('incidents.create_incident', team_id=team.id) }}" class="btn btn-danger btn-sm">🚨 Incident</a>
+        <a href="{{ url_for('tickets.create_ticket', team_id=team.id) }}" class="btn btn-primary">+ New Ticket</a>
+        <a href="{{ url_for('tickets.list_tickets', team_id=team.id) }}" class="btn btn-secondary">Team Tickets</a>
+        <a href="{{ url_for('incidents.list_incidents', team_id=team.id) }}" class="btn btn-secondary">Incidents</a>
+    </div>
+</div>
+
+{% if on_call_primary or on_call_secondary %}
+<div class="card" style="margin-bottom:1rem;">
+    <h2 class="card-title">On-Call Schedule</h2>
+    <div class="on-call-grid">
+        {% if on_call_primary %}
+        <div class="on-call-card">
+            <span class="badge badge-danger">Primary</span>
+            <strong>{{ on_call_primary.user.label }}</strong>
+            <p class="share-hint">Until {{ on_call_primary.end_at.strftime('%b %d, %H:%M UTC') }}</p>
+        </div>
+        {% endif %}
+        {% if on_call_secondary %}
+        <div class="on-call-card">
+            <span class="badge badge-warning">Secondary</span>
+            <strong>{{ on_call_secondary.user.label }}</strong>
+            <p class="share-hint">Until {{ on_call_secondary.end_at.strftime('%b %d, %H:%M UTC') }}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<div class="two-col-grid">
+    <div class="card">
+        <h2 class="card-title">Members ({{ members|length }})</h2>
+        {% if members %}
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        {% if is_owner %}<th></th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for membership in members %}
+                    <tr>
+                        <td>{{ membership.user.label }}</td>
+                        <td>{{ membership.user.email }}</td>
+                        <td><span class="badge {% if membership.role == 'owner' %}badge-warning{% else %}badge-muted{% endif %}">{{ membership.role|title }}</span></td>
+                        {% if is_owner %}
+                        <td>
+                            {% if membership.user_id != current_user.id %}
+                            <form method="POST" action="{{ url_for('teams.remove_member', team_id=team.id, user_id=membership.user_id) }}" style="margin:0;">
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Remove this member?')">Remove</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="empty-state">No members yet.</p>
+        {% endif %}
+    </div>
+
+    {% if is_owner %}
+    <div class="card">
+        <h2 class="card-title">Add Member</h2>
+        <form method="POST" action="{{ url_for('teams.add_member', team_id=team.id) }}">
+            <div class="form-group">
+                <label class="form-label">Email *</label>
+                <input type="email" name="email" required class="form-input" placeholder="engineer@company.com">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input type="password" name="password" class="form-input" placeholder="Required for new accounts">
+                <p class="share-hint">If the email is new, an account is created with this password.</p>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Username (optional)</label>
+                <input type="text" name="username" class="form-input" placeholder="Defaults from email">
+            </div>
+            <button type="submit" class="btn btn-primary">Add to Team</button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+
+{% if is_owner %}
+<div class="card" style="margin-top:1rem;">
+    <h2 class="card-title">Bulk Import Members</h2>
+    <p style="margin:0 0 1rem;">Upload a CSV or paste rows with <strong>email, password, username</strong> (username optional). Header row optional.</p>
+
+    <form method="POST" action="{{ url_for('teams.bulk_add_members', team_id=team.id) }}" enctype="multipart/form-data">
+        <div class="form-group">
+            <label class="form-label">CSV file</label>
+            <input type="file" name="bulk_file" accept=".csv,text/csv" class="form-input">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Or paste rows</label>
+            <textarea name="bulk_data" rows="8" class="form-textarea" placeholder="email,password,username&#10;sre1@bootcamp.local,SrePass1!,sre1&#10;sre2@bootcamp.local,SrePass2!,sre2"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Import Members</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}DevOps Retros{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <div>
+        <h1 class="page-title" style="margin:0;">DevOps Retrospectives</h1>
+        <p class="page-subtitle" style="margin:0.35rem 0 0;">Sprint reflections — the real post-deploy therapy session.</p>
+    </div>
+    {% if current_user.is_admin %}
+    <a href="{{ url_for('retro.create_retro') }}" class="btn btn-primary">+ New Retro</a>
+    {% endif %}
+</div>
+
+{% if retros %}
+    <div class="retro-list">
+        {% for retro in retros %}
+        <div class="card retro-list-card">
+            <div class="section-header">
+                <div>
+                    <h2 class="card-title" style="margin:0;">{{ retro.title }}</h2>
+                    {% if retro.description %}
+                    <p style="margin:0.35rem 0 0;">{{ retro.description }}</p>
+                    {% endif %}
+                </div>
+                <span class="badge {% if retro.status == 'open' %}badge-success{% else %}badge-muted{% endif %}">
+                    {{ retro.status|upper }}
+                </span>
+            </div>
+            <p style="margin:0.75rem 0; font-size:0.9rem; color:var(--text-muted);">
+                {{ retro.participants|length }} participant{{ 's' if retro.participants|length != 1 else '' }}
+                · {{ retro.cards|length }} note{{ 's' if retro.cards|length != 1 else '' }}
+            </p>
+            <div class="share-row" style="margin-bottom:0.75rem;">
+                <input type="text" id="share-{{ retro.id }}" class="form-input"
+                       value="{{ url_for('retro.join_landing', token=retro.share_token, _external=True) }}" readonly>
+                <button type="button" class="btn btn-secondary btn-sm" data-copy-target="#share-{{ retro.id }}">Copy Link</button>
+            </div>
+            <a href="{{ url_for('retro.view_retro', retro_id=retro.id) }}" class="btn btn-primary">Open Board</a>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="card">
+        <p class="empty-state">No retros yet.
+            {% if current_user.is_admin %}Create one and share the invite link!{% else %}Ask an admin for a join link.{% endif %}
+        </p>
+    </div>
+{% endif %}
+{% endblock %}

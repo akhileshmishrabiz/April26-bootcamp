@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Register{% endblock %}
+
+{% block content %}
+<div class="auth-shell">
+    <div class="card auth-card">
+        <div class="auth-heading">
+            <h2>Create account</h2>
+            <p>Join the LivingDevOps portal.</p>
+        </div>
+
+        <form method="POST">
+            {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+            <div class="form-group">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" id="username" name="username" required class="form-input">
+            </div>
+
+            <div class="form-group">
+                <label for="email" class="form-label">Email</label>
+                <input type="email" id="email" name="email" required class="form-input">
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" id="password" name="password" required class="form-input">
+                <p style="margin:0.4rem 0 0; font-size:0.82rem; color:var(--text-muted);">
+                    8+ characters with uppercase, lowercase, and numbers
+                </p>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width:100%; margin-top:0.5rem;">Register</button>
+        </form>
+
+        <p style="text-align:center; margin-top:1.25rem; color:var(--text-muted);">
+            Already have an account?
+            <a href="{{ url_for('auth.login') }}">Login</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,134 @@
+{
+  "retros": [
+    {
+      "slug": "ecs-terraform-day9",
+      "title": "ECS Day 9 — Terraform Ship Retro",
+      "description": "We containerized the portal, wired up Postgres, and prayed to the ALB gods. How did deploy day go?",
+      "share_token": "ecsday9terraformretro00000001",
+      "cards": [
+        {
+          "category": "went_well",
+          "content": "Docker Compose came up on the first try (after the third try).",
+          "author": "livingdevops"
+        },
+        {
+          "category": "went_well",
+          "content": "Health check endpoint actually returns healthy — rare win.",
+          "author": "devopscaptain"
+        },
+        {
+          "category": "needs_improvement",
+          "content": "Terraform plan output is longer than our sprint notes.",
+          "author": "livingdevops"
+        },
+        {
+          "category": "action_items",
+          "content": "Add staging environment before prod deploy Friday.",
+          "author": "devopscaptain"
+        }
+      ]
+    },
+    {
+      "slug": "k8s-pod-crash-bingo",
+      "title": "Kubernetes Pod Crash Bingo",
+      "description": "CrashLoopBackOff, OOMKilled, ImagePullBackOff — mark your cards. What blew up this sprint?",
+      "share_token": "k8spodcrashbingoretro00000002",
+      "cards": [
+        {
+          "category": "went_well",
+          "content": "kubectl explain saved us from YAML archaeology.",
+          "author": "livingdevops"
+        },
+        {
+          "category": "needs_improvement",
+          "content": "Forgot resource limits — node ran out of memory at 2am.",
+          "author": "devopscaptain"
+        },
+        {
+          "category": "needs_improvement",
+          "content": "ConfigMap typo took down three microservices. Classic.",
+          "author": "livingdevops"
+        },
+        {
+          "category": "action_items",
+          "content": "Add liveness/readiness probes to every deployment.",
+          "author": "devopscaptain"
+        }
+      ]
+    },
+    {
+      "slug": "cicd-green-button",
+      "title": "CI/CD Green Button Envy",
+      "description": "Pipelines, flaky tests, and the mythical all-green main branch. Retro the build life.",
+      "share_token": "cicdgreenbuttonretro00000003",
+      "cards": [
+        {
+          "category": "went_well",
+          "content": "Parallel test jobs cut pipeline time from 22 min to 8.",
+          "author": "livingdevops"
+        },
+        {
+          "category": "needs_improvement",
+          "content": "Integration tests fail only on Tuesdays. Still investigating.",
+          "author": "devopscaptain"
+        },
+        {
+          "category": "action_items",
+          "content": "Cache Docker layers in CI — rebuilds are eating our souls.",
+          "author": "livingdevops"
+        }
+      ]
+    },
+    {
+      "slug": "docker-image-intervention",
+      "title": "Docker Image Size Intervention",
+      "description": "When your base image is bigger than the app. Time for multi-stage builds and alpine therapy.",
+      "share_token": "dockerimagesizeretro00000004",
+      "cards": [
+        {
+          "category": "went_well",
+          "content": "Multi-stage build dropped image from 1.2GB to 180MB.",
+          "author": "devopscaptain"
+        },
+        {
+          "category": "needs_improvement",
+          "content": "Someone committed node_modules to the build context. Again.",
+          "author": "livingdevops"
+        },
+        {
+          "category": "action_items",
+          "content": "Add .dockerignore lint step to pre-commit hooks.",
+          "author": "devopscaptain"
+        }
+      ]
+    },
+    {
+      "slug": "prod-incident-postmortem",
+      "title": "Incident Post-Mortem: Who Pushed to Prod?",
+      "description": "Blameless retro for the deploy that made the pager go brrrr. What happened and what we learned.",
+      "share_token": "prodincidentpostmortem000005",
+      "cards": [
+        {
+          "category": "went_well",
+          "content": "Rollback script worked — back online in 4 minutes.",
+          "author": "livingdevops"
+        },
+        {
+          "category": "needs_improvement",
+          "content": "No one knew who had prod deploy keys. Spreadsheet archaeology ensued.",
+          "author": "devopscaptain"
+        },
+        {
+          "category": "action_items",
+          "content": "Require two approvals for production deploys.",
+          "author": "livingdevops"
+        },
+        {
+          "category": "action_items",
+          "content": "Write runbook for database migration rollback.",
+          "author": "devopscaptain"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,183 @@
+{
+  "tickets": [
+    {
+      "ticket_number": 1,
+      "title": "ECS task fails health check after Terraform apply",
+      "description": "After deploying the new task definition, the ALB marks targets unhealthy. Container logs show the app binds to 127.0.0.1 instead of 0.0.0.0.",
+      "status": "in_progress",
+      "priority": "highest",
+      "issue_type": "bug",
+      "reporter": "livingdevops",
+      "assignee": "devopscaptain",
+      "comments": [
+        {
+          "author": "livingdevops",
+          "content": "Reproduced in staging — health endpoint returns 200 locally but ALB gets connection refused."
+        },
+        {
+          "author": "devopscaptain",
+          "content": "Found it: gunicorn bind flag missing in Dockerfile CMD. PR incoming."
+        }
+      ],
+      "subtasks": [
+        {
+          "title": "Update Dockerfile to bind 0.0.0.0:8000",
+          "status": "done",
+          "assignee": "devopscaptain",
+          "comments": [
+            {
+              "author": "devopscaptain",
+              "content": "Fixed in commit abc123 — ready for review."
+            }
+          ]
+        },
+        {
+          "title": "Verify ALB target group health in staging",
+          "status": "in_progress",
+          "assignee": "livingdevops"
+        },
+        {
+          "title": "Roll out fix to production ECS service",
+          "status": "todo",
+          "assignee": "devopscaptain"
+        }
+      ]
+    },
+    {
+      "ticket_number": 2,
+      "title": "Add GitHub Actions pipeline for Docker build and push to ECR",
+      "description": "Epic to automate container builds on every push to main. Should run tests, build image, push to ECR, and trigger ECS deploy.",
+      "status": "todo",
+      "priority": "high",
+      "issue_type": "epic",
+      "reporter": "devopscaptain",
+      "assignee": "livingdevops",
+      "comments": [
+        {
+          "author": "devopscaptain",
+          "content": "Let's start with CI only — CD can be a follow-up once we're confident."
+        }
+      ],
+      "subtasks": [
+        {
+          "title": "Create workflow file for pytest on PR",
+          "status": "done",
+          "assignee": "livingdevops"
+        },
+        {
+          "title": "Add Docker build step with layer caching",
+          "status": "in_progress",
+          "assignee": "livingdevops"
+        },
+        {
+          "title": "Configure AWS OIDC for ECR push (no long-lived keys)",
+          "status": "todo",
+          "assignee": "devopscaptain"
+        },
+        {
+          "title": "Wire ECS service update on main branch merge",
+          "status": "todo",
+          "assignee": "devopscaptain"
+        }
+      ]
+    },
+    {
+      "ticket_number": 3,
+      "title": "Postgres connection pool exhausted under load test",
+      "description": "Running locust against /health and dashboard routes causes SQLAlchemy pool timeout errors after ~200 concurrent users.",
+      "status": "in_review",
+      "priority": "high",
+      "issue_type": "bug",
+      "reporter": "livingdevops",
+      "assignee": "livingdevops",
+      "comments": [
+        {
+          "author": "livingdevops",
+          "content": "Default pool size is 5 — bumped to 20 in config. Need review before prod."
+        }
+      ],
+      "subtasks": [
+        {
+          "title": "Tune SQLAlchemy pool_size and max_overflow",
+          "status": "done",
+          "assignee": "livingdevops"
+        },
+        {
+          "title": "Re-run load test and capture metrics",
+          "status": "done",
+          "assignee": "devopscaptain"
+        }
+      ]
+    },
+    {
+      "ticket_number": 4,
+      "title": "Story: Self-service retro board creation for team leads",
+      "description": "Currently only admins can create retros. Team leads should request retro creation through a ticket workflow.",
+      "status": "backlog",
+      "priority": "medium",
+      "issue_type": "story",
+      "reporter": "devopscaptain",
+      "assignee": null,
+      "comments": [],
+      "subtasks": [
+        {
+          "title": "Define team_lead role in User model",
+          "status": "todo"
+        },
+        {
+          "title": "Update retro create route permissions",
+          "status": "todo"
+        }
+      ]
+    },
+    {
+      "ticket_number": 5,
+      "title": "Rotate exposed DATABASE_URL in docker-compose",
+      "description": "Bootcamp repo has plaintext postgres password in compose file. Rotate creds and document env-based secrets for ECS.",
+      "status": "todo",
+      "priority": "medium",
+      "issue_type": "task",
+      "reporter": "livingdevops",
+      "assignee": "devopscaptain",
+      "comments": [
+        {
+          "author": "livingdevops",
+          "content": "Not a prod leak but good hygiene before open-sourcing the lab."
+        }
+      ],
+      "subtasks": [
+        {
+          "title": "Move DB password to .env.example",
+          "status": "todo",
+          "assignee": "devopscaptain"
+        },
+        {
+          "title": "Update Terraform to pull secret from AWS Secrets Manager",
+          "status": "todo",
+          "assignee": "livingdevops"
+        }
+      ]
+    },
+    {
+      "ticket_number": 6,
+      "title": "Prometheus metrics missing retro endpoint labels",
+      "description": "The /metrics counter groups all retro routes as unknown. Need proper endpoint names for retro.list_retros, retro.view_retro, etc.",
+      "status": "done",
+      "priority": "low",
+      "issue_type": "task",
+      "reporter": "devopscaptain",
+      "assignee": "livingdevops",
+      "comments": [
+        {
+          "author": "devopscaptain",
+          "content": "Low priority but makes Grafana dashboards useless."
+        },
+        {
+          "author": "livingdevops",
+          "content": "Fixed — retro blueprint now registers named endpoints correctly."
+        }
+      ],
+      "subtasks": []
+    }
+  ]
+}

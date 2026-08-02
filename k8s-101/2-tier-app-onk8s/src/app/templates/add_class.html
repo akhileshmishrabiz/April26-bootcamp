@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}{% if class_obj %}Edit{% else %}Add{% endif %} Class{% endblock %}
+
+{% block content %}
+<h1 class="page-title">{% if class_obj %}Edit Class{% else %}Add New Class{% endif %}</h1>
+
+<div class="card" style="max-width:720px;">
+    <form method="POST">
+        <div class="form-group">
+            <label for="date" class="form-label">Date</label>
+            <input type="date" id="date" name="date"
+                   value="{{ class_obj.date.strftime('%Y-%m-%d') if class_obj else '' }}"
+                   class="form-input" required>
+        </div>
+
+        <div class="form-group">
+            <label for="time" class="form-label">Time</label>
+            <input type="text" id="time" name="time"
+                   value="{{ class_obj.time if class_obj else '' }}"
+                   placeholder="e.g. 10:00 AM - 11:30 AM"
+                   class="form-input" required>
+        </div>
+
+        <div class="form-group">
+            <label for="session_link" class="form-label">Session Link</label>
+            <input type="url" id="session_link" name="session_link"
+                   value="{{ class_obj.session_link if class_obj else '' }}"
+                   placeholder="https://..."
+                   class="form-input">
+        </div>
+
+        <div class="form-group">
+            <label for="code_link" class="form-label">Code Link</label>
+            <input type="url" id="code_link" name="code_link"
+                   value="{{ class_obj.code_link if class_obj else '' }}"
+                   placeholder="https://..."
+                   class="form-input">
+        </div>
+
+        <div class="form-group">
+            <label for="recording_link" class="form-label">Recording Link</label>
+            <input type="url" id="recording_link" name="recording_link"
+                   value="{{ class_obj.recording_link if class_obj else '' }}"
+                   placeholder="https://..."
+                   class="form-input">
+        </div>
+
+        <div class="form-group">
+            <label for="resource_link" class="form-label">Resource Link</label>
+            <input type="url" id="resource_link" name="resource_link"
+                   value="{{ class_obj.resource_link if class_obj else '' }}"
+                   placeholder="https://..."
+                   class="form-input">
+        </div>
+
+        <div class="form-group">
+            <label for="remarks" class="form-label">Remarks</label>
+            <textarea id="remarks" name="remarks" class="form-textarea">{{ class_obj.remarks if class_obj else '' }}</textarea>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+            <a href="{{ url_for('main.classes') }}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">{% if class_obj %}Update{% else %}Add{% endif %} Class</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
