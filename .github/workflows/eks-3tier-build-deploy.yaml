@@ -1,0 +1,44 @@
+name: EKS 3 Tier Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Kubernetes-world/3-tier-app/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        services:
+          - frontend
+            path: 'Kubernetes-world/3-tier-app/src/frontend'
+            ecr_repo: 'augk8s26-frontend'
+          - backend
+            path: 'Kubernetes-world/3-tier-app/src/backend'
+            ecr_repo: 'augk8s26-backend'
+  
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      # - name: aws creds with oidc
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #     aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: ecr login
+
+      # use github action cache
+      - name: Build and Push ${{ matrix.services }}
+        run: |
+          docker buildx build --platform linux/amd64  -t ${{ matrix.ecr_repo }}:${{ github.sha }} ${{ matrix.path }} .
+          docker push ${{ matrix.ecr_repo }}:${{ github.sha }}
