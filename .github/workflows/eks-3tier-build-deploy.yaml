@@ -12,6 +12,7 @@ env:
   AWS_ACCOUNT_ID: 879381241087
   AWS_REGION: ap-south-1
   AWS_ROLE_ARN: arn:aws:iam::879381241087:role/aws-github-oidc-aug26
+  ECR_REGISTRY: 879381241087.dkr.ecr.ap-south-1.amazonaws.com
 
 jobs:
   build:
@@ -53,7 +54,7 @@ jobs:
         run: |
           docker buildx build \
             --platform linux/amd64 \
-            -t ${{ matrix.services.ecr_repo }}:${{ github.sha }} \
-            --cache-from type=registry,ref=${{ matrix.services.ecr_repo }}:buildcache \
-            --cache-to type=registry,ref=${{ matrix.services.ecr_repo }}:buildcache,mode=max,image-manifest=true,oci-mediatypes=true \
+            -t ${{ env.ECR_REGISTRY }}/${{ matrix.services.ecr_repo }}:${{ github.sha }} \
+            --cache-from type=registry,ref=${{ env.ECR_REGISTRY }}/${{ matrix.services.ecr_repo }}:buildcache \
+            --cache-to type=registry,ref=${{ env.ECR_REGISTRY }}/${{ matrix.services.ecr_repo }}:buildcache,mode=max,image-manifest=true,oci-mediatypes=true \
             --push ${{ matrix.services.path }}
