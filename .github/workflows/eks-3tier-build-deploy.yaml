@@ -8,16 +8,25 @@ on:
       - 'Kubernetes-world/3-tier-app/**'
   workflow_dispatch:
 
+env:
+  AWS_ACCOUNT_ID: 879381241087
+  AWS_REGION: ap-south-1
+  AWS_ROLE_ARN: arn:aws:iam::879381241087:role/aws-github-oidc-aug26
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
     strategy:
       matrix:
         services:
-          - frontend
+          - name: frontend
             path: 'Kubernetes-world/3-tier-app/src/frontend'
             ecr_repo: 'augk8s26-frontend'
-          - backend
+          - name: backend
             path: 'Kubernetes-world/3-tier-app/src/backend'
             ecr_repo: 'augk8s26-backend'
   
@@ -28,17 +37,23 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      # - name: aws creds with oidc
-      #   uses: aws-actions/configure-aws-credentials@v4
-      #   with:
-      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      #     aws-region: ${{ secrets.AWS_REGION }}
+      - name: aws creds with oidc
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          # aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          # aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: ecr login
-
+        run: |
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
       # use github action cache
       - name: Build and Push ${{ matrix.services }}
         run: |
-          docker buildx build --platform linux/amd64  -t ${{ matrix.ecr_repo }}:${{ github.sha }} ${{ matrix.path }} .
-          docker push ${{ matrix.ecr_repo }}:${{ github.sha }}
+          docker buildx build \
+            --platform linux/amd64 \
+            -t ${{ matrix.services.ecr_repo }}:${{ github.sha }} \
+            --cache-from type=registry,ref=${{ matrix.services.ecr_repo }}:buildcache \
+            --cache-to type=registry,ref=${{ matrix.services.ecr_repo }}:buildcache,mode=max,image-manifest=true,oci-mediatypes=true \
+            --push ${{ matrix.services.path }}
