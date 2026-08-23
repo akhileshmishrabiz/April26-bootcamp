@@ -1,0 +1,84 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: backend-job
+  namespace: devopsdozo
+  labels:
+    app: backend
+spec:
+  backoffLimit: 3
+
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      restartPolicy: Never
+
+      containers:
+        - name: backend
+          image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/augk8s26-backend:dafc1c583ef1f4fb2836569cc7f87ce1063b7cc4
+          command: ["/bin/sh", "-c", "./migrate.sh"]
+
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secret
+                  key: DB_LINK
+
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secret
+                  key: SECRET_KEY
+
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secret
+                  key: DB_USERNAME
+
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secret
+                  key: DB_PASSWORD
+
+            - name: ALLOWED_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-config
+                  key: ALLOWED_ORIGINS
+
+            - name: APP_VERSION
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-config
+                  key: APP_VERSION
+
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-config
+                  key: DB_HOST
+
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-config
+                  key: DB_PORT
+
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-config
+                  key: DB_NAME

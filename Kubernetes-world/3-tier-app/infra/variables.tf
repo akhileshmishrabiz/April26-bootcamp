@@ -15,3 +15,21 @@ variable "region" {
   type = string
   default = "ap-south-1"
 }
+
+variable "app_subdomain" {
+  description = "The subdomain of the application"
+  type = string
+  default = "devopsdozo"
+}
+
+variable "app_namepace" {
+  description = "The namespace of the application"
+  type = string
+  default = "devopsdozo"
+}
+
+variable "domain_name" {
+  description = "The domain of the application"
+  type = string
+  default = "mansipandey.in"
+}
