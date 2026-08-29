@@ -23,6 +23,8 @@ env:
 jobs:
   infra-plan:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -50,6 +52,8 @@ jobs:
   infra-apply:
     runs-on: ubuntu-latest
     environment: dev
+    permissions:
+      id-token: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
