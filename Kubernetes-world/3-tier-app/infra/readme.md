@@ -29,3 +29,11 @@ kubectl run postgres-test \
   --env="DATABASE_URL=postgresql://postgres:UiQ94pjLUO@devopsdozo.cvik8accw2tk.ap-south-1.rds.amazonaws.com:5432/devopsdozodb" \
   -- bash -c 'psql "$DATABASE_URL" -c "SELECT 1;"'
 ```
+
+
+```bash
+aws secretsmanager delete-secret \
+    --secret-id db/devopsdozo-db \
+    --force-delete-without-recovery
+
+```

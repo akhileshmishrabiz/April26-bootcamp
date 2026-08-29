@@ -91,7 +91,7 @@ resource "aws_acm_certificate" "app" {
   validation_method = "DNS"
 
   tags = {
-    Name = "${var.prefix}-cert"
+    Name = "${var.app_subdomain}-cert"
   }
 }
 
