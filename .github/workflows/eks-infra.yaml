@@ -1,0 +1,51 @@
+name: EKS Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      region:
+        description: 'AWS Region'
+        required: true
+        default: 'ap-south-1'
+      path_to_infra:
+        description: 'Path to Terraform infrastructure code'
+        required: true
+        type: choice
+        options:
+          - Kubernetes-world/EKS/eks-core-infra
+          - Kubernetes-world/EKS/k8s-services
+          - Kubernetes-world/3-tier-app/infra
+        default: 
+
+env:
+  AWS_ROLE_ARN: arn:aws:iam::879381241087:role/aws-github-oidc-aug26
+  TERRAFORM_VERSION: 1.15.1
+  Env: dev
+
+jobs:
+  infra:
+    runs-on: ubuntu-latest
+    environment: ${{ env.Env }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: aws creds with oidc
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ inputs.region }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      - name: Initialize Terraform
+        run: |
+          cd ${{ inputs.path_to_infra }}
+          terraform init 
+
+      - name: Apply Terraform
+        run: |
+          cd ${{ inputs.path_to_infra }}
+          terraform apply -auto-approve
