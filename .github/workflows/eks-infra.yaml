@@ -21,39 +21,40 @@ env:
   TERRAFORM_VERSION: 1.15.1
 
 jobs:
-  infra-plan:
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+  # infra-plan:
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     id-token: write
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v2
 
-      - name: aws creds with oidc
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
-          aws-region: ${{ inputs.region }}
+  #     - name: aws creds with oidc
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         role-to-assume: ${{ env.AWS_ROLE_ARN }}
+  #         aws-region: ${{ inputs.region }}
 
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: ${{ env.TERRAFORM_VERSION }}
-      - name: Initialize Terraform
-        run: |
-          cd ${{ inputs.path_to_infra }}
-          terraform init 
+  #     - name: Set up Terraform
+  #       uses: hashicorp/setup-terraform@v2
+  #       with:
+  #         terraform_version: ${{ env.TERRAFORM_VERSION }}
+  #     - name: Initialize Terraform
+  #       run: |
+  #         cd ${{ inputs.path_to_infra }}
+  #         terraform init 
 
-      - name: Apply Terraform
-        run: |
-          cd ${{ inputs.path_to_infra }}
-          terraform plan
+  #     - name: plan Terraform
+  #       run: |
+  #         cd ${{ inputs.path_to_infra }}
+  #         terraform plan
 
   infra-apply:
     runs-on: ubuntu-latest
     environment: dev
     permissions:
       id-token: write
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
