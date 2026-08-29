@@ -51,7 +51,7 @@ jobs:
 
   infra-apply:
     runs-on: ubuntu-latest
-    environment: dev
+    # environment: dev
     permissions:
       id-token: write
       contents: write
