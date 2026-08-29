@@ -1,11 +1,11 @@
 name: EKS 3 Tier Build and Deploy
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'Kubernetes-world/3-tier-app/**'
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'Kubernetes-world/3-tier-app/**'
   workflow_dispatch:
 
 env:
