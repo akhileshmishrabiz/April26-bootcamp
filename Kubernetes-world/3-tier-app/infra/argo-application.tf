@@ -3,7 +3,7 @@
 # uncomment the code when you have setup the argo cd in the cluster
 
 provider "argocd" {
-  server_addr = "https://argocd.mansipandey.in/"
+  server_addr = "argocd.mansipandey.in"
   username    = "admin"
   password    = "IWHdyr20UOX5rSNH"
 }
