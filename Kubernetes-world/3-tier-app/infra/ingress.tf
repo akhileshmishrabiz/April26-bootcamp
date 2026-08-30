@@ -27,8 +27,10 @@ resource "kubernetes_ingress_v1" "app_ingress_tls" {
     }
   }
 
+  wait_for_load_balancer = true
+
   depends_on = [
-    kubernetes_namespace.namespace,
+    kubernetes_namespace.devopsdozo,
     aws_acm_certificate_validation.app
   ]
 
@@ -45,9 +47,9 @@ resource "kubernetes_ingress_v1" "app_ingress_tls" {
           path_type = "Prefix"
           backend {
             service {
-              name = kubernetes_service.backend.metadata[0].name
+              name = kubernetes_service.backend_service.metadata[0].name
               port {
-                number = 8000
+                number = 8080
               }
             }
           }
@@ -59,7 +61,7 @@ resource "kubernetes_ingress_v1" "app_ingress_tls" {
           path_type = "Prefix"
           backend {
             service {
-              name = kubernetes_service.frontend.metadata[0].name
+              name = kubernetes_service.frontend_service.metadata[0].name
               port {
                 number = 80
               }
@@ -119,6 +121,15 @@ resource "aws_acm_certificate_validation" "app" {
   validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
 }
 
+# ALB created by this ingress (tagged via alb.ingress.kubernetes.io/tags)
+data "aws_lb" "ingress" {
+  tags = {
+    Name = "${var.app_subdomain}-ingress"
+  }
+
+  depends_on = [kubernetes_ingress_v1.app_ingress_tls]
+}
+
 # Create Route53 alias record to point subdomain to ALB
 resource "aws_route53_record" "app" {
   zone_id = data.aws_route53_zone.main.zone_id
@@ -126,10 +137,8 @@ resource "aws_route53_record" "app" {
   type    = "A"
 
   alias {
-    name                   = kubernetes_ingress_v1.app_ingress_tls.status[0].load_balancer[0].ingress[0].hostname
-    zone_id                = "ZP97RAFLXTNZK"
+    name                   = data.aws_lb.ingress.dns_name
+    zone_id                = data.aws_lb.ingress.zone_id
     evaluate_target_health = true
   }
-
-  depends_on = [kubernetes_ingress_v1.app_ingress_tls]
 }
