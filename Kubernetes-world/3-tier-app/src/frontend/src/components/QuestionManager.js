@@ -233,7 +233,7 @@ function QuestionManager() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-blue-300"
+              className="w-full bg-pink-500 text-white px-4 py-2 rounded hover:bg-pink-600 disabled:bg-pink-300"
             >
               {loading ? 'Adding...' : 'Add Question'}
             </button>

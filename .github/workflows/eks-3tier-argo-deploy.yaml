@@ -1,11 +1,11 @@
 name: EKS 3Tier argo Deploy
 
 on:
-  # push:
-  #   branches:
-  #     - main
-  #   paths:
-  #     - 'Kubernetes-world/3-tier-app/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'Kubernetes-world/3-tier-app/src/**'
   workflow_dispatch:
 
 env:

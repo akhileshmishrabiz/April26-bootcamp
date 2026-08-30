@@ -11,7 +11,7 @@ import WikiEditor from './components/wiki/WikiEditor';
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-gray-100">
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-fuchsia-50 to-orange-50">
         <Navbar />
         <Routes>
           <Route path="/" element={<Home />} />

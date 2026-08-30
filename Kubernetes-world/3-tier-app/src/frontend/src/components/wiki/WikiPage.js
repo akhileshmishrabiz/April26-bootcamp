@@ -67,7 +67,7 @@ function WikiPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
           <p>{error}</p>
-          <Link to="/wiki" className="text-blue-600 underline mt-2 inline-block">
+          <Link to="/wiki" className="text-pink-600 underline mt-2 inline-block">
             Return to Wiki Home
           </Link>
         </div>
@@ -80,7 +80,7 @@ function WikiPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <p>Page not found</p>
-          <Link to="/wiki" className="text-blue-600 underline mt-2 inline-block">
+          <Link to="/wiki" className="text-pink-600 underline mt-2 inline-block">
             Return to Wiki Home
           </Link>
         </div>
@@ -96,7 +96,7 @@ function WikiPage() {
           <div className="space-x-2">
             <button
               onClick={handleEdit}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+              className="bg-pink-500 text-white px-4 py-2 rounded hover:bg-pink-600 transition-colors"
             >
               Edit
             </button>
@@ -146,7 +146,7 @@ function WikiPage() {
         <div className="mt-6 pt-6 border-t">
           <Link
             to="/wiki"
-            className="text-blue-600 hover:text-blue-800"
+            className="text-pink-600 hover:text-pink-800"
           >
             ← Back to Wiki Home
           </Link>
