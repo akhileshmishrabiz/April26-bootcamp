@@ -227,7 +227,7 @@ function WikiEditor() {
               <button
                 type="button"
                 onClick={togglePreview}
-                className="text-blue-500 hover:text-blue-700"
+                className="text-pink-500 hover:text-pink-700"
               >
                 {previewMode ? 'Edit' : 'Preview'}
               </button>
@@ -272,7 +272,7 @@ function WikiEditor() {
             <button
               type="submit"
               disabled={saving}
-              className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 transition-colors disabled:bg-blue-300"
+              className="bg-pink-500 text-white px-6 py-2 rounded hover:bg-pink-600 transition-colors disabled:bg-pink-300"
             >
               {saving ? 'Saving...' : 'Save Page'}
             </button>

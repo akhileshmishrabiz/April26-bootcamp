@@ -64,8 +64,8 @@ function WikiList() {
               <li>
                 <button
                   onClick={() => handleCategorySelect(null)}
-                  className={`block w-full text-left px-3 py-2 rounded hover:bg-blue-50 ${
-                    !category ? 'bg-blue-100 font-medium' : ''
+                  className={`block w-full text-left px-3 py-2 rounded hover:bg-pink-50 ${
+                    !category ? 'bg-pink-100 font-medium' : ''
                   }`}
                 >
                   All Pages
@@ -75,8 +75,8 @@ function WikiList() {
                 <li key={cat}>
                   <button
                     onClick={() => handleCategorySelect(cat)}
-                    className={`block w-full text-left px-3 py-2 rounded hover:bg-blue-50 ${
-                      category === cat ? 'bg-blue-100 font-medium' : ''
+                    className={`block w-full text-left px-3 py-2 rounded hover:bg-pink-50 ${
+                      category === cat ? 'bg-pink-100 font-medium' : ''
                     }`}
                   >
                     {cat.charAt(0).toUpperCase() + cat.slice(1)}
@@ -88,7 +88,7 @@ function WikiList() {
             <div className="mt-6">
               <Link
                 to="/wiki/create"
-                className="block w-full bg-blue-500 text-white text-center px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+                className="block w-full bg-pink-500 text-white text-center px-4 py-2 rounded hover:bg-pink-600 transition-colors"
               >
                 Create New Page
               </Link>
@@ -120,7 +120,7 @@ function WikiList() {
                 </p>
                 <Link
                   to="/wiki/create"
-                  className="inline-block mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+                  className="inline-block mt-4 bg-pink-500 text-white px-4 py-2 rounded hover:bg-pink-600 transition-colors"
                 >
                   Create First Page
                 </Link>
@@ -130,7 +130,7 @@ function WikiList() {
                 {pages.map((page) => (
                   <div key={page.slug} className="border rounded-lg p-4 hover:bg-gray-50">
                     <Link to={`/wiki/${page.slug}`} className="block">
-                      <h2 className="text-xl font-bold text-blue-600 hover:text-blue-800">
+                      <h2 className="text-xl font-bold text-pink-600 hover:text-pink-800">
                         {page.title}
                       </h2>
                       <div className="flex items-center mt-2 text-sm text-gray-500">

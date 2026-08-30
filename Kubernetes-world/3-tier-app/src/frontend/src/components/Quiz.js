@@ -144,7 +144,7 @@ function Quiz() {
                     key={optionIndex}
                     className={`flex items-center p-3 rounded-lg cursor-pointer transition-colors ${
                       answers[question.id] === optionIndex
-                        ? 'bg-blue-50 border border-blue-200'
+                        ? 'bg-pink-50 border border-pink-200'
                         : 'hover:bg-gray-50 border border-transparent'
                     }`}
                   >
@@ -164,7 +164,7 @@ function Quiz() {
           
           <button
             onClick={handleSubmit}
-            className="w-full bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 font-medium transition-colors"
+            className="w-full bg-pink-500 text-white px-6 py-3 rounded-lg hover:bg-pink-600 font-medium transition-colors"
           >
             Submit Quiz
           </button>
@@ -172,18 +172,18 @@ function Quiz() {
       ) : (
         <div className="bg-white rounded-lg shadow-md p-8 text-center">
           <h2 className="text-2xl font-bold mb-4">Quiz Results</h2>
-          <div className="bg-blue-50 p-6 rounded-lg mb-6">
-            <p className="text-4xl font-bold text-blue-600 mb-2">
+          <div className="bg-pink-50 p-6 rounded-lg mb-6">
+            <p className="text-4xl font-bold text-pink-600 mb-2">
               {Math.round(result.score)}%
             </p>
-            <p className="text-lg text-blue-800">
+            <p className="text-lg text-pink-800">
               You got {result.correct} out of {result.total} questions correct
             </p>
           </div>
           <div className="space-x-4">
             <button
               onClick={handleTryAgain}
-              className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 transition-colors"
+              className="bg-pink-500 text-white px-6 py-2 rounded hover:bg-pink-600 transition-colors"
             >
               Try Another Quiz
             </button>
