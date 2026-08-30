@@ -39,3 +39,9 @@ variable "domain_name" {
   type = string
   default = "mansipandey.in"
 }
+
+variable "alb_group_name" {
+  description = "The name of the ALB group"
+  type = string
+  default = "devopsdozo-alb-group"
+}

@@ -1,0 +1,100 @@
+name: EKS 3Tier argo Deploy
+
+on:
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'Kubernetes-world/3-tier-app/**'
+  workflow_dispatch:
+
+env:
+  AWS_ACCOUNT_ID: 879381241087
+  AWS_REGION: ap-south-1
+  AWS_ROLE_ARN: arn:aws:iam::879381241087:role/aws-github-oidc-aug26
+  ECR_REGISTRY: 879381241087.dkr.ecr.ap-south-1.amazonaws.com
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+
+    strategy:
+      matrix:
+        services:
+          - name: frontend
+            path: 'Kubernetes-world/3-tier-app/src/frontend'
+            ecr_repo: 'augk8s26-frontend'
+          - name: backend
+            path: 'Kubernetes-world/3-tier-app/src/backend'
+            ecr_repo: 'augk8s26-backend'
+  
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: aws creds with oidc
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          # aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          # aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: ecr login
+        run: |
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+      # use github action cache
+      - name: Build and Push ${{ matrix.services.name }}
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            -t ${{ env.ECR_REGISTRY }}/${{ matrix.services.ecr_repo }}:${{ github.sha }} \
+            --cache-from type=registry,ref=${{ env.ECR_REGISTRY }}/${{ matrix.services.ecr_repo }}:buildcache \
+            --cache-to type=registry,ref=${{ env.ECR_REGISTRY }}/${{ matrix.services.ecr_repo }}:buildcache,mode=max,image-manifest=true,oci-mediatypes=true \
+            --push ${{ matrix.services.path }}
+
+  # GitOps: after both images are in ECR, bump the manifests Argo CD syncs.
+  # One job (not the matrix) so frontend and backend land in a single commit.
+  update-k8s-images:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v3
+
+      - name: Point backend and frontend Deployments at the new images
+        run: |
+          BACKEND_IMAGE="${{ env.ECR_REGISTRY }}/augk8s26-backend:${{ github.sha }}"
+          FRONTEND_IMAGE="${{ env.ECR_REGISTRY }}/augk8s26-frontend:${{ github.sha }}"
+
+          sed -i "s|image: ${{ env.ECR_REGISTRY }}/augk8s26-backend:.*|image: ${BACKEND_IMAGE}|" \
+            Kubernetes-world/3-tier-app/k8s/backend.yaml
+          sed -i "s|image: ${{ env.ECR_REGISTRY }}/augk8s26-frontend:.*|image: ${FRONTEND_IMAGE}|" \
+            Kubernetes-world/3-tier-app/k8s/frontend.yaml
+
+          echo "backend image -> ${BACKEND_IMAGE}"
+          echo "frontend image -> ${FRONTEND_IMAGE}"
+          grep "image:" Kubernetes-world/3-tier-app/k8s/backend.yaml Kubernetes-world/3-tier-app/k8s/frontend.yaml
+
+      - name: Commit and push manifest updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            Kubernetes-world/3-tier-app/k8s/backend.yaml \
+            Kubernetes-world/3-tier-app/k8s/frontend.yaml
+          if git diff --cached --quiet; then
+            echo "Images already match ${{ github.sha }}; nothing to commit"
+            exit 0
+          fi
+          git commit -m "chore(k8s): bump 3-tier images to ${{ github.sha }}"
+          git push

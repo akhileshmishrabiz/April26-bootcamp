@@ -37,3 +37,11 @@ aws secretsmanager delete-secret \
     --force-delete-without-recovery
 
 ```
+
+# argocd
+```bash
+helm repo add argo https://argoproj.github.io/argo-helm
+helm repo update
+helm install argocd argo/argo-cd -n argocd --create-namespace
+
+```
