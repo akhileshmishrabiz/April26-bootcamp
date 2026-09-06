@@ -1,0 +1,37 @@
+# Demo 2: Node Affinity
+#
+# worker is labeled node-role=frontend.
+# requiredDuringSchedulingIgnoredDuringExecution means the pod MUST land on
+# a node with that label or it stays Pending.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: affinity-demo
+  namespace: scheduling-demo
+  labels:
+    demo: node-affinity
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: affinity-demo
+  template:
+    metadata:
+      labels:
+        app: affinity-demo
+        demo: node-affinity
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role
+                    operator: In
+                    values:
+                      - frontend
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80

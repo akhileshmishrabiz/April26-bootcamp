@@ -1,0 +1,35 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-host
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: demo1-volume
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-host
+  hostPath:
+    path: /mnt/host-volume/host-volume-data/demo1
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: demo1-claim
+  namespace: demo1-persistence
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-host
+  volumeName: demo1-volume
+  resources:
+    requests:
+      storage: 1Gi

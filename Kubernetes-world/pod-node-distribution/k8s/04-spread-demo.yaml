@@ -1,0 +1,34 @@
+# Demo 4: Topology Spread Constraints
+#
+# Spread pods evenly across nodes (kubernetes.io/hostname).
+# maxSkew: 1 allows at most one pod difference between the fullest and emptiest node.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spread-demo
+  namespace: scheduling-demo
+  labels:
+    demo: topology-spread
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: spread-demo
+  template:
+    metadata:
+      labels:
+        app: spread-demo
+        demo: topology-spread
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: spread-demo
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80

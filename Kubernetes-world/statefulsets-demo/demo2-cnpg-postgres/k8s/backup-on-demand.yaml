@@ -1,0 +1,12 @@
+# Apply manually to take a one-off backup:
+#   kubectl apply -f k8s/backup-on-demand.yaml
+#   kubectl -n demo2-cnpg get backup
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: demo-pg-manual
+  namespace: demo2-cnpg
+spec:
+  cluster:
+    name: demo-pg
+  method: barmanObjectStore

@@ -1,0 +1,14 @@
+# Daily backup schedule. Applied after the cluster is Ready.
+# Also triggers one backup immediately on create (immediate: true).
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: demo-pg-daily
+  namespace: demo2-cnpg
+spec:
+  cluster:
+    name: demo-pg
+  schedule: "0 0 2 * * *"
+  backupOwnerReference: cluster
+  method: barmanObjectStore
+  immediate: true

@@ -1,0 +1,18 @@
+# Headless Service — no ClusterIP. Creates stable DNS records per pod:
+#   postgres-0.postgres.demo1-statefulset.svc.cluster.local
+#   postgres-1.postgres.demo1-statefulset.svc.cluster.local
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: demo1-statefulset
+  labels:
+    app: postgres
+spec:
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432

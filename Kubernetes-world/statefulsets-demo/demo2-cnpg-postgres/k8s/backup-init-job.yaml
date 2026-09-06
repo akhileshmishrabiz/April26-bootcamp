@@ -1,0 +1,24 @@
+# CNPG requires the bucket to exist before archiving WALs.
+# Applied after MinIO is running (see deploy.sh).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-init-bucket
+  namespace: demo2-cnpg
+spec:
+  backoffLimit: 6
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          image: minio/mc:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              until mc alias set local http://minio:9000 minio minio123; do
+                echo "waiting for minio..."
+                sleep 3
+              done
+              mc mb local/cnpg-backups --ignore-existing

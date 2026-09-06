@@ -1,0 +1,14 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+
+nodes:
+  - role: control-plane
+    extraMounts:
+      # Set this to the absolute path of this folder on your machine (see EXERCISE.md Step 0)
+      - hostPath: /Users/akhilesh/projects/April26-bootcamp/Kubernetes-world/stateful-workload-k8s
+        containerPath: /mnt/host-volume
+
+  - role: worker
+    extraMounts:
+      - hostPath: /Users/akhilesh/projects/April26-bootcamp/Kubernetes-world/stateful-workload-k8s
+        containerPath: /mnt/host-volume

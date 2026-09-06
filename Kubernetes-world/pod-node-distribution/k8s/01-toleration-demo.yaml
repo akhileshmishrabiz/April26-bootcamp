@@ -1,0 +1,36 @@
+# Demo 1: Taints & Tolerations
+#
+# worker3 is tainted with special=true:NoSchedule.
+# This deployment carries a matching toleration, so it is allowed on that node.
+# The other deployments in this namespace do NOT tolerate the taint and will
+# never schedule on worker3.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: toleration-demo
+  namespace: scheduling-demo
+  labels:
+    demo: taint-toleration
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: toleration-demo
+  template:
+    metadata:
+      labels:
+        app: toleration-demo
+        demo: taint-toleration
+    spec:
+      tolerations:
+        - key: special
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      nodeSelector:
+        node-role: special
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80

@@ -45,3 +45,6 @@ helm repo update
 helm install argocd argo/argo-cd -n argocd --create-namespace
 
 ```
+
+
+kubectl set image deployment/frontend-deployment frontend=879381241087.dkr.ecr.ap-south-1.amazonaws.com/augk8s26-frontend:dafc1c583ef1f4fb2836569cc7f87ce1063b7cc4 -n devopsdozo

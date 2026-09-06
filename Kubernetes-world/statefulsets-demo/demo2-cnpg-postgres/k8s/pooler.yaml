@@ -1,0 +1,17 @@
+# PgBouncer connection pooler in front of the primary (read-write).
+# Apps connect to demo-pg-pooler-rw instead of demo-pg-rw.
+apiVersion: postgresql.cnpg.io/v1
+kind: Pooler
+metadata:
+  name: demo-pg-pooler-rw
+  namespace: demo2-cnpg
+spec:
+  cluster:
+    name: demo-pg
+  instances: 2
+  type: rw
+  pgbouncer:
+    poolMode: transaction
+    parameters:
+      max_client_conn: "100"
+      default_pool_size: "10"
