@@ -1,135 +1,93 @@
-# StatefulSets & CloudNativePG Lab
+# StatefulSet & CloudNativePG — One Exercise
 
-Hands-on exercise to understand **StatefulSets** (ordered pods, sticky names, headless services) and why operators like **CloudNativePG (CNPG)** use **CRDs** for production Postgres on Kubernetes.
+Follow this guide **top to bottom**. You deploy both demos once, then walk through StatefulSet behavior (Demo 1) and CNPG HA Postgres (Demo 2) in a single session.
+
+**Time:** ~45 minutes  
+**Cluster:** 1 kind cluster, 2 namespaces, 2 Postgres setups side by side
 
 ---
 
 ## What you will learn
 
-| Demo | Folder | What it shows |
-|------|--------|---------------|
-| **Demo 1** | `demo1-postgres-statefulset/` | Raw StatefulSet + headless Service + Postgres |
-| **Demo 2** | `demo2-cnpg-postgres/` | CNPG operator + `Cluster` CRD for HA Postgres |
+| Part | Demo | Key idea |
+|------|------|----------|
+| A | StatefulSet + Postgres | Stable pod names, ordered scaling, one disk per pod |
+| B | CloudNativePG (CNPG) | One CRD gives you HA Postgres, replication, failover, backups, pooling |
 
-### Demo 1 — StatefulSet basics
-
-- **Ordered startup** — `postgres-0` starts before `postgres-1`, then `postgres-2`
-- **Ordered shutdown** — scale down removes highest ordinal first
-- **Sticky pod names** — delete `postgres-1`, the replacement is still `postgres-1`
-- **Headless Service** — stable DNS per pod: `postgres-0.postgres.demo1-statefulset.svc.cluster.local`
-- **One PVC per pod** — via `volumeClaimTemplates`
-
-### Demo 2 — Why use a CRD (CNPG)?
-
-A plain StatefulSet gives you stable names and disks, but **does not** give you:
-
-- Automatic primary/replica roles
-- Streaming replication setup
-- Failover when the primary dies
-- Rolling upgrades, backups, connection pooling services
-
-CNPG installs an operator and you declare a **`Cluster`** CRD. The operator builds and manages the StatefulSet, secrets, services, and replication for you.
+**One-liner:** StatefulSet gives every pod a name and a disk. CNPG gives you a **database cluster**.
 
 ---
 
-## Prerequisites
+## Before you start
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (running)
-- [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation)
-- [kubectl](https://kubernetes.io/docs/tasks/tools/)
-- Internet access (Demo 2 downloads the CNPG operator manifest)
-
-Verify:
+**Prerequisites:** Docker, kind, kubectl, internet (CNPG operator download)
 
 ```bash
-docker info
-kind version
-kubectl version --client
-```
-
----
-
-## Project layout
-
-```text
-statefulsets-demo/
-├── EXERCISE.md
-├── kind-config.yaml
-├── deploy.sh                         # fresh cluster + both demos
-├── demo1-postgres-statefulset/
-│   ├── deploy.sh
-│   └── k8s/
-│       ├── namespace.yaml
-│       ├── secret.yaml
-│       ├── service.yaml              # headless
-│       └── statefulset.yaml
-└── demo2-cnpg-postgres/
-    ├── deploy.sh
-    └── k8s/
-        ├── namespace.yaml
-        └── cluster.yaml              # CNPG Cluster CRD
-```
-
----
-
-## Step 1 — Bootstrap from scratch
-
-```bash
+docker info && kind version && kubectl version --client
 cd Kubernetes-world/statefulsets-demo
+```
+
+---
+
+## Part 0 — Deploy everything
+
+### Step 0.1 — Create cluster and both demos
+
+```bash
 bash deploy.sh
 ```
 
 This script:
+1. Creates a fresh `statefulsets-demo` kind cluster
+2. Deploys Demo 1 — Postgres StatefulSet (`demo1-statefulset`)
+3. Installs CloudNativePG operator
+4. Deploys Demo 2 — CNPG cluster with backups + pooler (`demo2-cnpg`)
 
-1. Deletes any existing `statefulsets-demo` kind cluster
-2. Creates a new cluster (1 control-plane + 1 worker)
-3. Deploys Demo 1 (Postgres StatefulSet)
-4. Installs CloudNativePG operator
-5. Deploys Demo 2 (CNPG `Cluster`)
+Demo 2 takes **3–5 minutes**. Wait for the script to finish.
 
-Demo 2 can take **3–5 minutes** while Postgres pods start and replication initializes.
-
-Confirm:
+### Step 0.2 — Confirm both demos are up
 
 ```bash
 kubectl config use-context kind-statefulsets-demo
-kubectl get nodes
 kubectl -n demo1-statefulset get pods
-kubectl -n demo2-cnpg get cluster,pods,svc
+kubectl -n demo2-cnpg get cluster,pods,svc,pooler
 ```
+
+**Expected:**
+
+| Namespace | Pods | Status |
+|-----------|------|--------|
+| `demo1-statefulset` | `postgres-0`, `postgres-1`, `postgres-2` | All Running |
+| `demo2-cnpg` | `demo-pg-1`, `demo-pg-2`, `demo-pg-3` + pooler pods | All Running |
+| `demo2-cnpg` | Cluster `demo-pg` | Ready |
 
 ---
 
-## Step 2 — Demo 1: StatefulSet with Postgres
+## Part A — StatefulSet (Demo 1)
 
-> **Important:** Demo 1 runs **three independent Postgres instances** (one database per pod). That is intentional — we are teaching StatefulSet mechanics, not HA replication. Demo 2 shows proper HA Postgres.
+> Demo 1 runs **three independent Postgres instances** — one database per pod. That is intentional. We learn StatefulSet mechanics here; Demo 2 shows real HA.
 
-### 2.1 See ordered pod startup
+### Step A.1 — Ordered pod startup
 
-If you just ran `deploy.sh`, pods are already up. To replay ordered startup:
+Replay ordered startup:
 
 ```bash
 kubectl -n demo1-statefulset delete statefulset postgres --cascade=orphan
 kubectl -n demo1-statefulset delete pod -l app=postgres
 kubectl apply -f demo1-postgres-statefulset/k8s/statefulset.yaml
-```
-
-Watch in another terminal:
-
-```bash
 kubectl -n demo1-statefulset get pods -l app=postgres -w
 ```
 
-**Pass:** Pods appear in order: `postgres-0` → Ready, then `postgres-1` → Ready, then `postgres-2` → Ready.
+**Expected:** `postgres-0` → Ready, then `postgres-1` → Ready, then `postgres-2` → Ready (Ctrl+C to stop watch).
 
-### 2.2 See ordered scale-down
+### Step A.2 — Ordered scale-down
 
 ```bash
 kubectl -n demo1-statefulset scale statefulset postgres --replicas=1
 kubectl -n demo1-statefulset get pods -l app=postgres -w
 ```
 
-**Pass:** `postgres-2` terminates first, then `postgres-1`, leaving only `postgres-0`.
+**Expected:** `postgres-2` dies first, then `postgres-1`, only `postgres-0` remains.
 
 Scale back up:
 
@@ -138,27 +96,15 @@ kubectl -n demo1-statefulset scale statefulset postgres --replicas=3
 kubectl -n demo1-statefulset wait --for=condition=Ready pod/postgres-2 --timeout=180s
 ```
 
-### 2.3 Headless Service — stable DNS per pod
-
-Inspect the Service:
+### Step A.3 — Headless Service (stable DNS per pod)
 
 ```bash
 kubectl -n demo1-statefulset get svc postgres
 ```
 
-**Pass:** `CLUSTER-IP` is `None` (headless).
+**Expected:** `CLUSTER-IP` is `None` (headless).
 
-Resolve DNS from inside the cluster:
-
-```bash
-kubectl -n demo1-statefulset run dns-test --rm -it --restart=Never \
-  --image=busybox:1.36 -- \
-  nslookup postgres-0.postgres.demo1-statefulset.svc.cluster.local
-```
-
-**Pass:** nslookup returns the pod IP for `postgres-0`.
-
-Each pod gets its own hostname:
+Each pod gets stable DNS:
 
 ```text
 postgres-0.postgres.demo1-statefulset.svc.cluster.local
@@ -166,109 +112,82 @@ postgres-1.postgres.demo1-statefulset.svc.cluster.local
 postgres-2.postgres.demo1-statefulset.svc.cluster.local
 ```
 
-### 2.4 Write data and prove name stickiness
+### Step A.4 — Sticky name + persistent data
 
-Connect to `postgres-0` and insert a row:
+Write data on `postgres-0`:
 
 ```bash
 kubectl -n demo1-statefulset exec postgres-0 -- psql -U postgres -c \
-  "CREATE TABLE IF NOT EXISTS demo (id serial PRIMARY KEY, note text, pod text);"
+  "CREATE TABLE IF NOT EXISTS demo (id serial PRIMARY KEY, note text);"
 
 kubectl -n demo1-statefulset exec postgres-0 -- psql -U postgres -c \
-  "INSERT INTO demo (note, pod) VALUES ('first write', 'postgres-0');"
+  "INSERT INTO demo (note) VALUES ('first write');"
 
-kubectl -n demo1-statefulset exec postgres-0 -- psql -U postgres -c \
-  "SELECT * FROM demo;"
+kubectl -n demo1-statefulset exec postgres-0 -- psql -U postgres -c "SELECT * FROM demo;"
 ```
 
-Delete the pod:
+Delete the pod and read again:
 
 ```bash
 kubectl -n demo1-statefulset delete pod postgres-0
 kubectl -n demo1-statefulset wait --for=condition=Ready pod/postgres-0 --timeout=120s
-```
-
-Read the data again:
-
-```bash
 kubectl -n demo1-statefulset exec postgres-0 -- psql -U postgres -c "SELECT * FROM demo;"
 ```
 
-**Pass:**
+**Expected:**
+1. Pod name is still `postgres-0`
+2. Row `first write` is still there (same PVC reattached)
 
-1. Pod name is still **`postgres-0`** (not a random Deployment name)
-2. Row `first write` is **still there** (same PVC reattached)
-
-Check the per-pod PVCs:
+Check one PVC per pod:
 
 ```bash
 kubectl -n demo1-statefulset get pvc
 ```
 
-**Pass:** `data-postgres-0`, `data-postgres-1`, `data-postgres-2` — one disk per ordinal.
+**Expected:** `data-postgres-0`, `data-postgres-1`, `data-postgres-2`
 
-### 2.5 Prove pods do NOT share data (Demo 1 limitation)
+### Step A.5 — Pods do NOT share data (StatefulSet limitation)
 
 ```bash
 kubectl -n demo1-statefulset exec postgres-1 -- psql -U postgres -c "SELECT * FROM demo;"
 ```
 
-**Pass:** Error or empty — `postgres-1` has its **own** empty database. This is why raw StatefulSet is not enough for HA Postgres.
+**Expected:** Empty or error — `postgres-1` has its own separate database.
+
+**Takeaway:** StatefulSet gives names and disks, but not replication. That is why we need CNPG next.
 
 ---
 
-## Step 3 — Demo 2: CloudNativePG (CRD)
+## Part B — CloudNativePG (Demo 2)
 
-### 3.1 See the CRD and operator
+### Step B.1 — See what one CRD created
 
 ```bash
 kubectl get crd clusters.postgresql.cnpg.io
 kubectl -n cnpg-system get pods
 kubectl -n demo2-cnpg get cluster demo-pg
+kubectl -n demo2-cnpg get pods,svc,pvc,pooler
 ```
 
-**Pass:** CRD exists, operator pod is Running, Cluster status shows `Ready`.
+**Expected:**
 
-### 3.2 Compare what CNPG created vs Demo 1
-
-```bash
-kubectl -n demo2-cnpg get pods
-kubectl -n demo2-cnpg get svc
-kubectl -n demo2-cnpg get pvc
-```
-
-**Pass:** You should see:
-
-| Resource | Names |
-|----------|-------|
+| Resource | What CNPG created |
+|----------|-------------------|
 | Pods | `demo-pg-1`, `demo-pg-2`, `demo-pg-3` |
-| Services | `demo-pg-rw`, `demo-pg-ro`, `demo-pg-r` |
-| PVCs | one per instance |
+| Services | `demo-pg-rw` (primary), `demo-pg-ro` (replicas), `demo-pg-r` (any) |
+| Pooler | `demo-pg-pooler-rw` (PgBouncer in front of primary) |
+| Backups | MinIO store + `ScheduledBackup` |
 
-You declared **one** `Cluster` manifest. The operator created StatefulSet, secrets, services, and replication.
+You wrote **one** `Cluster` manifest. The operator built everything else.
 
-### 3.3 Find the primary and connect
+### Step B.2 — Connect to the primary and write data
 
 ```bash
 kubectl -n demo2-cnpg get cluster demo-pg -o jsonpath='Primary: {.status.currentPrimary}{"\n"}'
-```
 
-Connect via the read-write service (always hits the primary):
-
-```bash
-kubectl -n demo2-cnpg exec demo-pg-1 -- psql -U postgres -c "SELECT version();"
-```
-
-Or use the app user (password from bootstrap secret):
-
-```bash
 kubectl -n demo2-cnpg exec demo-pg-1 -- env PGPASSWORD=demo-password \
   psql -U appuser -d appdb -h 127.0.0.1 -c "SELECT current_user, current_database();"
-```
 
-Write data on the primary:
-
-```bash
 kubectl -n demo2-cnpg exec demo-pg-1 -- env PGPASSWORD=demo-password \
   psql -U appuser -d appdb -h 127.0.0.1 -c \
   "CREATE TABLE IF NOT EXISTS orders (id serial PRIMARY KEY, item text);"
@@ -281,39 +200,27 @@ kubectl -n demo2-cnpg exec demo-pg-1 -- env PGPASSWORD=demo-password \
   psql -U appuser -d appdb -h 127.0.0.1 -c "SELECT * FROM orders;"
 ```
 
-### 3.4 Prove replicas have the same data
+**Expected:** Two rows inserted on the primary.
 
-Pick a non-primary pod (replace `demo-pg-2` if needed):
+### Step B.3 — Prove replicas share the same data
 
 ```bash
 kubectl -n demo2-cnpg exec demo-pg-2 -- env PGPASSWORD=demo-password \
   psql -U appuser -d appdb -h 127.0.0.1 -c "SELECT * FROM orders;"
 ```
 
-**Pass:** Same rows on the replica — **shared database**, unlike Demo 1.
+**Expected:** Same rows on the replica — unlike Demo 1, this is one shared database.
 
-### 3.5 Failover demo (optional, ~2 min)
-
-Find the primary:
+### Step B.4 — Failover (kill the primary)
 
 ```bash
 PRIMARY=$(kubectl -n demo2-cnpg get cluster demo-pg -o jsonpath='{.status.currentPrimary}')
 echo "Primary is: $PRIMARY"
-```
-
-Kill the primary pod:
-
-```bash
 kubectl -n demo2-cnpg delete pod "$PRIMARY"
-```
-
-Watch CNPG elect a new primary:
-
-```bash
 kubectl -n demo2-cnpg get cluster demo-pg -w
 ```
 
-After the cluster is `Ready` again:
+Wait until status is `Ready` again (Ctrl+C), then:
 
 ```bash
 kubectl -n demo2-cnpg get cluster demo-pg -o jsonpath='New primary: {.status.currentPrimary}{"\n"}'
@@ -321,67 +228,76 @@ kubectl -n demo2-cnpg exec demo-pg-1 -- env PGPASSWORD=demo-password \
   psql -U appuser -d appdb -h 127.0.0.1 -c "SELECT * FROM orders;"
 ```
 
-**Pass:** New primary elected automatically; data still readable.
+**Expected:** New primary elected automatically; data still readable.
+
+### Step B.5 — Backups
+
+```bash
+kubectl -n demo2-cnpg get backup,scheduledbackup
+```
+
+Trigger a manual backup:
+
+```bash
+kubectl apply -f demo2-cnpg-postgres/k8s/backup-on-demand.yaml
+kubectl -n demo2-cnpg get backup demo-pg-manual -w
+```
+
+**Expected:** Backup status becomes `completed`.
+
+### Step B.6 — Connection pooling
+
+Connect via PgBouncer pooler instead of direct primary service:
+
+```bash
+kubectl -n demo2-cnpg run psql-pool --rm -it --restart=Never \
+  --image=postgres:16 --env PGPASSWORD=demo-password -- \
+  psql -h demo-pg-pooler-rw -U appuser -d appdb -c "SELECT * FROM orders;"
+```
+
+**Expected:** Same data, routed through `demo-pg-pooler-rw`.
+
+| Service | Use when |
+|---------|----------|
+| `demo-pg-rw` | Direct connection to primary |
+| `demo-pg-pooler-rw` | Pooled connections (transaction mode) |
+| `demo-pg-ro` | Read-only queries to replicas |
 
 ---
 
-## Step 4 — Side-by-side comparison (presenter script)
+## Part C — Compare both demos
 
-| | Demo 1: StatefulSet | Demo 2: CNPG CRD |
-|--|---------------------|------------------|
+Run this and fill in what you observe:
+
+```bash
+echo "=== Demo 1: StatefulSet ==="
+kubectl -n demo1-statefulset get pods -o custom-columns=NAME:.metadata.name,STATUS:.status.phase
+kubectl -n demo1-statefulset get pvc --no-headers | wc -l | xargs echo "PVC count:"
+
+echo "=== Demo 2: CNPG ==="
+kubectl -n demo2-cnpg get pods -o custom-columns=NAME:.metadata.name,STATUS:.status.phase
+kubectl -n demo2-cnpg get cluster demo-pg -o jsonpath='Primary: {.status.currentPrimary}{"\n"}'
+```
+
+| | Demo 1: StatefulSet | Demo 2: CNPG |
+|--|---------------------|--------------|
 | **You write** | StatefulSet + headless Service + Secret | One `Cluster` CR |
 | **Pod names** | `postgres-0`, `postgres-1`, … | `demo-pg-1`, `demo-pg-2`, … |
-| **Storage** | 1 PVC per pod, isolated data | 1 PVC per pod, **replicated** data |
-| **Replication** | Manual (not configured) | Automatic streaming replication |
-| **Failover** | Manual | Operator handles it |
-| **Connect** | `postgres-0.postgres...` (specific pod) | `demo-pg-rw` (always primary) |
-| **Good for** | Learning StatefulSet behavior | Running Postgres in production |
-
-**One-liner for the audience:**
-
-> StatefulSet gives every pod a name and a disk. CNPG gives you a **database cluster** — it uses StatefulSets internally, but the CRD hides replication, failover, and upgrades.
+| **Data** | Isolated per pod | Replicated across pods |
+| **Failover** | Manual | Automatic |
+| **Backups / pooling** | Not included | MinIO backups + PgBouncer pooler |
+| **Good for** | Learning StatefulSet behavior | Production Postgres on K8s |
 
 ---
 
-## Architecture
-
-### Demo 1
-
-```text
-Headless Service "postgres" (ClusterIP: None)
-        │
-        ├── postgres-0  ── PVC data-postgres-0  ── own Postgres DB
-        ├── postgres-1  ── PVC data-postgres-1  ── own Postgres DB
-        └── postgres-2  ── PVC data-postgres-2  ── own Postgres DB
-```
-
-### Demo 2
-
-```text
-Cluster CR "demo-pg"
-        │
-        ▼
-CNPG Operator
-        │
-        ├── demo-pg-1 (primary)  ── replicates to ──► demo-pg-2, demo-pg-3
-        │
-        ├── Service demo-pg-rw  → primary only
-        ├── Service demo-pg-ro  → replicas only
-        └── Service demo-pg-r   → any instance
-```
-
----
-
-## Cleanup
+## Reset & cleanup
 
 ```bash
-kind delete cluster --name statefulsets-demo
-```
-
-Redeploy anytime:
-
-```bash
+# Redeploy from scratch
 bash deploy.sh
+
+# Delete cluster
+kind delete cluster --name statefulsets-demo
 ```
 
 ---
@@ -390,31 +306,25 @@ bash deploy.sh
 
 | Problem | Fix |
 |---------|-----|
-| Demo 1 pod stuck `Pending` | Check PVC: `kubectl -n demo1-statefulset get pvc,pv` |
-| Demo 1 only postgres-0 starts | Wait — StatefulSet starts ordinals sequentially |
-| CNPG install fails | Need internet; retry `bash demo2-cnpg-postgres/deploy.sh` |
-| Cluster not `Ready` after 5 min | `kubectl -n demo2-cnpg describe cluster demo-pg` |
-| `psql` auth fails | Demo 1 password: `demo-password` (user `postgres`). Demo 2 app user: `appuser` / `demo-password` |
+| Demo 1 pod stuck Pending | `kubectl -n demo1-statefulset get pvc,pv` |
+| Only postgres-0 starts | Wait — StatefulSet starts ordinals in order |
+| CNPG cluster not Ready | `kubectl -n demo2-cnpg describe cluster demo-pg` |
+| Backup stuck | `kubectl -n demo2-cnpg get pods -l app=minio` — MinIO must be Running |
 | Wrong context | `kubectl config use-context kind-statefulsets-demo` |
+| Demo 1 password | user `postgres`, password `demo-password` |
+| Demo 2 app user | user `appuser`, password `demo-password` |
 
 ---
 
-## Quick reference
+## File reference
 
-```bash
-# Full setup
-cd Kubernetes-world/statefulsets-demo
-bash deploy.sh
-
-# Demo 1
-kubectl -n demo1-statefulset get pods -l app=postgres -w
-kubectl -n demo1-statefulset get svc postgres
-kubectl -n demo1-statefulset exec postgres-0 -- psql -U postgres -c "SELECT * FROM demo;"
-kubectl -n demo1-statefulset delete pod postgres-0
-
-# Demo 2
-kubectl -n demo2-cnpg get cluster demo-pg
-kubectl -n demo2-cnpg get pods,svc
-kubectl -n demo2-cnpg get cluster demo-pg -o jsonpath='{.status.currentPrimary}{"\n"}'
-kubectl -n demo2-cnpg exec demo-pg-1 -- env PGPASSWORD=demo-password psql -U appuser -d appdb -h 127.0.0.1 -c "SELECT * FROM orders;"
+```text
+statefulsets-demo/
+├── EXERCISE.md                         ← this guide
+├── deploy.sh                           ← deploy both demos
+├── demo1-postgres-statefulset/k8s/     ← StatefulSet + headless Service
+└── demo2-cnpg-postgres/k8s/            ← CNPG Cluster, backup, pooler
+    ├── cluster.yaml
+    ├── backup.yaml / backup-schedule.yaml
+    └── pooler.yaml
 ```
