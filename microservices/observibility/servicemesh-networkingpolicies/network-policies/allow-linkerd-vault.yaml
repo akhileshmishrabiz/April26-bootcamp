@@ -1,0 +1,98 @@
+# Linkerd identity + control-plane traffic for meshed pods.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-linkerd-control-plane
+  namespace: ecommerce
+  labels:
+    app.kubernetes.io/part-of: ecommerce-network-policy
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: linkerd
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8086
+        - protocol: TCP
+          port: 8090
+        - protocol: TCP
+          port: 8443
+        - protocol: TCP
+          port: 9443
+---
+# CNPG pods need DNS + operator reconciliation traffic.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-cnpg-postgres-egress
+  namespace: ecommerce
+  labels:
+    app.kubernetes.io/part-of: ecommerce-network-policy
+spec:
+  podSelector:
+    matchExpressions:
+      - key: cnpg.io/cluster
+        operator: Exists
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+    # CNPG instance manager must reach the Kubernetes API for cluster reconciliation.
+    # Kind: ClusterIP 10.96.0.1:443 DNATs to control-plane 172.18.0.2:6443.
+    - to:
+        - ipBlock:
+            cidr: 10.96.0.1/32
+      ports:
+        - protocol: TCP
+          port: 443
+    - to:
+        - ipBlock:
+            cidr: 172.18.0.2/32
+      ports:
+        - protocol: TCP
+          port: 6443
+---
+# Mailpit UI NodePort (8025) and SMTP from notification-service.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-mailpit-ingress
+  namespace: ecommerce
+  labels:
+    app.kubernetes.io/part-of: ecommerce-network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: mailpit
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: notification-service
+      ports:
+        - protocol: TCP
+          port: 1025
+    - ports:
+        - protocol: TCP
+          port: 8025

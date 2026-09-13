@@ -1,0 +1,47 @@
+# Linkerd Viz metrics-api ingress: dashboard (web) RPC + external Prometheus scrape.
+# When a pod is selected by an ingress NetworkPolicy, all other ingress is denied —
+# web → metrics-api:8085 must be explicit or the Viz dashboard shows RPC errors.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scrape
+  namespace: linkerd-viz
+  labels:
+    app.kubernetes.io/part-of: ecommerce-network-policy
+spec:
+  podSelector:
+    matchLabels:
+      component: metrics-api
+  policyTypes:
+    - Ingress
+  ingress:
+    # Viz web dashboard gRPC/HTTP to metrics-api (service map, golden metrics).
+    - from:
+        - podSelector:
+            matchLabels:
+              component: web
+      ports:
+        - protocol: TCP
+          port: 8085
+    # External Prometheus (monitoring ns) scrapes admin metrics on :9995 (skip-inbound-ports).
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 9995
+    # Legacy/alternate scrape path on the main API port.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 8085

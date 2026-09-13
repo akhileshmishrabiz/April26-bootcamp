@@ -1,0 +1,204 @@
+# MeshTLSAuthentication — allowed callers grouped per Server target.
+# Each resource lists ServiceAccount identityRefs (OR within the group).
+# AuthorizationPolicy references exactly ONE MeshTLSAuthentication (Linkerd constraint).
+#
+# ServiceAccount → workload mapping: see ../README.md
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: MeshTLSAuthentication
+metadata:
+  name: product-service-callers
+  namespace: ecommerce
+spec:
+  identityRefs:
+    - kind: ServiceAccount
+      name: api-gateway
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: cart-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: order-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: user-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: payment-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: notification-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: prometheus
+      namespace: monitoring
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: MeshTLSAuthentication
+metadata:
+  name: user-service-callers
+  namespace: ecommerce
+spec:
+  identityRefs:
+    - kind: ServiceAccount
+      name: api-gateway
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: product-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: cart-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: order-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: payment-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: notification-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: prometheus
+      namespace: monitoring
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: MeshTLSAuthentication
+metadata:
+  name: cart-service-callers
+  namespace: ecommerce
+spec:
+  identityRefs:
+    - kind: ServiceAccount
+      name: api-gateway
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: product-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: user-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: order-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: payment-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: notification-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: prometheus
+      namespace: monitoring
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: MeshTLSAuthentication
+metadata:
+  name: order-service-callers
+  namespace: ecommerce
+spec:
+  identityRefs:
+    - kind: ServiceAccount
+      name: api-gateway
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: product-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: cart-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: user-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: payment-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: notification-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: prometheus
+      namespace: monitoring
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: MeshTLSAuthentication
+metadata:
+  name: payment-service-callers
+  namespace: ecommerce
+spec:
+  identityRefs:
+    - kind: ServiceAccount
+      name: api-gateway
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: order-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: product-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: cart-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: user-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: notification-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: prometheus
+      namespace: monitoring
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: MeshTLSAuthentication
+metadata:
+  name: notification-service-callers
+  namespace: ecommerce
+spec:
+  identityRefs:
+    - kind: ServiceAccount
+      name: api-gateway
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: product-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: cart-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: order-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: payment-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: user-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: prometheus
+      namespace: monitoring
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: MeshTLSAuthentication
+metadata:
+  name: rabbitmq-amqp-callers
+  namespace: ecommerce
+spec:
+  identityRefs:
+    - kind: ServiceAccount
+      name: order-service
+      namespace: ecommerce
+    - kind: ServiceAccount
+      name: notification-service
+      namespace: ecommerce
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: MeshTLSAuthentication
+metadata:
+  name: mailpit-smtp-callers
+  namespace: ecommerce
+spec:
+  identityRefs:
+    - kind: ServiceAccount
+      name: notification-service
+      namespace: ecommerce

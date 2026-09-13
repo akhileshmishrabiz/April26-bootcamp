@@ -1,0 +1,115 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "tempo", "uid": "tempo" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "targets": [{
+        "queryType": "traceqlSearch",
+        "refId": "A",
+        "limit": 20,
+        "tableType": "traces",
+        "filters": [
+          { "id": "service-name", "tag": "service.name", "operator": "=~", "value": ["$service"], "valueType": "string" }
+        ]
+      }],
+      "title": "Trace Search",
+      "type": "traces"
+    },
+    {
+      "datasource": { "type": "tempo", "uid": "tempo" },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 8 },
+      "id": 2,
+      "targets": [{
+        "queryType": "traceql",
+        "query": "{ resource.service.name =~ \"$service\" && duration > $min_duration }",
+        "refId": "A",
+        "tableType": "traces",
+        "limit": 20
+      }],
+      "title": "Slow Traces (TraceQL)",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 20 },
+      "id": 3,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "showCommonLabels": true,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [{
+        "expr": "{namespace=\"ecommerce\", app=~\"$service\"} | json | level=~\"(?i)$log_level\"",
+        "refId": "A"
+      }],
+      "title": "Logs for Selected Service",
+      "type": "logs"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["tracing", "tempo", "logs"],
+  "templating": {
+    "list": [
+      {
+        "allValue": ".*",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "includeAll": true,
+        "label": "Service",
+        "multi": true,
+        "name": "service",
+        "options": [
+          { "selected": true, "text": "All", "value": "$__all" },
+          { "selected": false, "text": "product-service", "value": "product-service" },
+          { "selected": false, "text": "order-service", "value": "order-service" },
+          { "selected": false, "text": "user-service", "value": "user-service" },
+          { "selected": false, "text": "cart-service", "value": "cart-service" },
+          { "selected": false, "text": "payment-service", "value": "payment-service" },
+          { "selected": false, "text": "notification-service", "value": "notification-service" }
+        ],
+        "query": "product-service,order-service,user-service,cart-service,payment-service,notification-service",
+        "type": "custom"
+      },
+      {
+        "current": { "selected": true, "text": ".*", "value": ".*" },
+        "label": "Log Level",
+        "name": "log_level",
+        "options": [
+          { "selected": true, "text": "All", "value": ".*" },
+          { "selected": false, "text": "error|warn|fatal", "value": "error|warn|fatal" },
+          { "selected": false, "text": "info", "value": "info" }
+        ],
+        "query": ".*,error|warn|fatal,info",
+        "type": "custom"
+      },
+      {
+        "current": { "selected": false, "text": "100ms", "value": "100ms" },
+        "label": "Min Duration",
+        "name": "min_duration",
+        "options": [
+          { "selected": true, "text": "100ms", "value": "100ms" },
+          { "selected": false, "text": "500ms", "value": "500ms" },
+          { "selected": false, "text": "1s", "value": "1s" }
+        ],
+        "query": "100ms,500ms,1s",
+        "type": "custom"
+      }
+    ]
+  },
+  "time": { "from": "now-30m", "to": "now" },
+  "title": "Tracing & Correlated Logs",
+  "uid": "tracing-logs",
+  "version": 1
+}

@@ -1,0 +1,19 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: {{ include "observability.namespace" . }}
+  labels:
+    app: grafana
+    {{- include "observability.labels" . | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    app: grafana
+  ports:
+    - name: http
+      port: {{ .Values.grafana.port }}
+      targetPort: {{ .Values.grafana.port }}
+      nodePort: {{ .Values.grafana.nodePort }}
+{{- end }}

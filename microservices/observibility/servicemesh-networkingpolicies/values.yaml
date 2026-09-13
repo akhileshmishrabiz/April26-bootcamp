@@ -1,0 +1,61 @@
+# Linkerd control-plane Helm values for Kind (ecommerce-vault).
+# Used by deploy.sh with: helm upgrade/install linkerd-control-plane linkerd/linkerd-control-plane
+
+# Identity certs are injected at install time via --set-file (see deploy.sh).
+
+enablePodAntiAffinity: false
+
+# Kind dev cluster — keep proxies lightweight.
+proxy:
+  resources:
+    cpu:
+      request: 25m
+      limit: 250m
+    memory:
+      request: 32Mi
+      limit: 128Mi
+  logLevel: warn
+
+proxyInit:
+  resources:
+    cpu:
+      request: 10m
+      limit: 100m
+    memory:
+      request: 16Mi
+      limit: 64Mi
+
+controllerResources:
+  cpu:
+    request: 50m
+    limit: 250m
+  memory:
+    request: 64Mi
+    limit: 256Mi
+
+destinationResources:
+  cpu:
+    request: 50m
+    limit: 250m
+  memory:
+    request: 64Mi
+    limit: 256Mi
+
+identityResources:
+  cpu:
+    request: 50m
+    limit: 250m
+  memory:
+    request: 64Mi
+    limit: 256Mi
+
+# Skip outbound telemetry in local dev.
+disableHeartBeat: true
+
+# Use Linkerd CNI plugin (required when Cilium is the cluster CNI)
+cniEnabled: true
+
+# Allow kubelet probes and host-network NodePort paths on non-meshed ports.
+# Meshed app traffic uses the data-plane proxy automatically.
+podMonitor:
+  enabled: false

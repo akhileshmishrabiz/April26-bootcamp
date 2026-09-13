@@ -1,0 +1,48 @@
+# Linkerd Viz extension values for Kind dev cluster.
+
+dashboard:
+  resources:
+    cpu:
+      request: 25m
+      limit: 250m
+    memory:
+      request: 64Mi
+      limit: 256Mi
+  # Kind host access via kind-config.yaml extraPortMappings (8084 -> 30884)
+  service:
+    type: NodePort
+    nodePort: 30884
+
+# Linkerd Viz metrics-api admin port exposed for external Prometheus (job: linkerd-viz).
+metricsAPI:
+  resources:
+    cpu:
+      request: 25m
+      limit: 250m
+    memory:
+      request: 64Mi
+      limit: 256Mi
+  podAnnotations:
+    config.linkerd.io/skip-inbound-ports: "9995"
+
+tap:
+  resources:
+    cpu:
+      request: 25m
+      limit: 250m
+    memory:
+      request: 64Mi
+      limit: 256Mi
+
+tapInjector:
+  resources:
+    cpu:
+      request: 25m
+      limit: 250m
+    memory:
+      request: 64Mi
+      limit: 256Mi
+
+# metrics-api queries Linkerd Viz's bundled Prometheus (request_total, golden metrics).
+# External monitoring Prometheus only scrapes metrics-api :9995 — it does not carry proxy stats.
+# prometheusUrl: "http://prometheus.monitoring.svc.cluster.local:9090"

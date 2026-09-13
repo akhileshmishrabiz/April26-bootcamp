@@ -1,0 +1,262 @@
+# ServiceProfiles — outbound retry and timeout policies for ecommerce HTTP services.
+# Linkerd 2.14: retries require ServiceProfile (HTTPRoute retries not yet available).
+# Applied on the client (outbound) side when calling each destination Service.
+#
+# Defaults:
+#   - request timeout (incl. retries): 30s
+#   - retry budget: 20% of original load + 10 retries/s, 10s TTL
+#   - retryable failures: HTTP 502, 503, 504 (plus connection errors when isRetryable)
+#
+# metadata.name MUST match the destination Service FQDN.
+---
+apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: product-service.ecommerce.svc.cluster.local
+  namespace: ecommerce
+spec:
+  retryBudget:
+    retryRatio: 0.2
+    minRetriesPerSecond: 10
+    ttl: 10s
+  routes:
+    - name: GET HEAD
+      condition:
+        any:
+          - method: GET
+          - method: HEAD
+      isRetryable: true
+      timeout: 30s
+      responseClasses:
+        - condition:
+            status:
+              min: 502
+              max: 504
+          isFailure: true
+    - name: DEFAULT
+      condition:
+        pathRegex: /.*
+      isRetryable: true
+      timeout: 30s
+      responseClasses:
+        - condition:
+            status:
+              min: 502
+              max: 504
+          isFailure: true
+---
+apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: user-service.ecommerce.svc.cluster.local
+  namespace: ecommerce
+spec:
+  retryBudget:
+    retryRatio: 0.2
+    minRetriesPerSecond: 10
+    ttl: 10s
+  routes:
+    - name: GET HEAD
+      condition:
+        any:
+          - method: GET
+          - method: HEAD
+      isRetryable: true
+      timeout: 30s
+      responseClasses:
+        - condition:
+            status:
+              min: 502
+              max: 504
+          isFailure: true
+    - name: DEFAULT
+      condition:
+        pathRegex: /.*
+      isRetryable: true
+      timeout: 30s
+      responseClasses:
+        - condition:
+            status:
+              min: 502
+              max: 504
+          isFailure: true
+---
+apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: cart-service.ecommerce.svc.cluster.local
+  namespace: ecommerce
+spec:
+  retryBudget:
+    retryRatio: 0.2
+    minRetriesPerSecond: 10
+    ttl: 10s
+  routes:
+    - name: GET HEAD
+      condition:
+        any:
+          - method: GET
+          - method: HEAD
+      isRetryable: true
+      timeout: 30s
+      responseClasses:
+        - condition:
+            status:
+              min: 502
+              max: 504
+          isFailure: true
+    - name: DEFAULT
+      condition:
+        pathRegex: /.*
+      isRetryable: true
+      timeout: 30s
+      responseClasses:
+        - condition:
+            status:
+              min: 502
+              max: 504
+          isFailure: true
+---
+apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: order-service.ecommerce.svc.cluster.local
+  namespace: ecommerce
+spec:
+  retryBudget:
+    retryRatio: 0.2
+    minRetriesPerSecond: 10
+    ttl: 10s
+  routes:
+    - name: GET HEAD
+      condition:
+        any:
+          - method: GET
+          - method: HEAD
+      isRetryable: true
+      timeout: 30s
+      responseClasses:
+        - condition:
+            status:
+              min: 502
+              max: 504
+          isFailure: true
+    - name: DEFAULT
+      condition:
+        pathRegex: /.*
+      isRetryable: true
+      timeout: 30s
+      responseClasses:
+        - condition:
+            status:
+              min: 502
+              max: 504
+          isFailure: true
+---
+apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: payment-service.ecommerce.svc.cluster.local
+  namespace: ecommerce
+spec:
+  retryBudget:
+    retryRatio: 0.2
+    minRetriesPerSecond: 10
+    ttl: 10s
+  routes:
+    - name: GET HEAD
+      condition:
+        any:
+          - method: GET
+          - method: HEAD
+      isRetryable: true
+      timeout: 30s
+      responseClasses:
+        - condition:
+            status:
+              min: 502
+              max: 504
+          isFailure: true
+    - name: DEFAULT
+      condition:
+        pathRegex: /.*
+      isRetryable: true
+      timeout: 30s
+      responseClasses:
+        - condition:
+            status:
+              min: 502
+              max: 504
+          isFailure: true
+---
+apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: notification-service.ecommerce.svc.cluster.local
+  namespace: ecommerce
+spec:
+  retryBudget:
+    retryRatio: 0.2
+    minRetriesPerSecond: 10
+    ttl: 10s
+  routes:
+    - name: GET HEAD
+      condition:
+        any:
+          - method: GET
+          - method: HEAD
+      isRetryable: true
+      timeout: 30s
+      responseClasses:
+        - condition:
+            status:
+              min: 502
+              max: 504
+          isFailure: true
+    - name: DEFAULT
+      condition:
+        pathRegex: /.*
+      isRetryable: true
+      timeout: 30s
+      responseClasses:
+        - condition:
+            status:
+              min: 502
+              max: 504
+          isFailure: true
+---
+apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: api-gateway.ecommerce.svc.cluster.local
+  namespace: ecommerce
+spec:
+  retryBudget:
+    retryRatio: 0.2
+    minRetriesPerSecond: 10
+    ttl: 10s
+  routes:
+    - name: GET HEAD
+      condition:
+        any:
+          - method: GET
+          - method: HEAD
+      isRetryable: true
+      timeout: 30s
+      responseClasses:
+        - condition:
+            status:
+              min: 502
+              max: 504
+          isFailure: true
+    - name: DEFAULT
+      condition:
+        pathRegex: /.*
+      isRetryable: true
+      timeout: 30s
+      responseClasses:
+        - condition:
+            status:
+              min: 502
+              max: 504
+          isFailure: true

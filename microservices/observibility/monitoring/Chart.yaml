@@ -1,0 +1,12 @@
+apiVersion: v2
+name: observability
+description: Prometheus, Grafana, Loki, and Promtail for Kind microservices monitoring
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - prometheus
+  - grafana
+  - loki
+  - monitoring
+  - observability

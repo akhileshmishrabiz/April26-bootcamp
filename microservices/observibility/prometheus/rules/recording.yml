@@ -1,0 +1,27 @@
+groups:
+  - name: unified_http
+    interval: 30s
+    rules:
+      - record: service:http_requests:rate5m
+        expr: |
+          sum by (service) (
+            rate(http_requests_total[5m])
+            or rate(http_request_duration_seconds_count[5m])
+            or rate(flask_http_request_total[5m])
+          )
+
+      - record: service:http_errors:rate5m
+        expr: |
+          sum by (service) (
+            rate(http_requests_total{status=~"5.."}[5m])
+            or rate(http_requests_total{status_code=~"5.."}[5m])
+            or rate(flask_http_request_total{status=~"5.."}[5m])
+          )
+
+      - record: service:http_4xx:rate5m
+        expr: |
+          sum by (service) (
+            rate(http_requests_total{status=~"4.."}[5m])
+            or rate(http_requests_total{status_code=~"4.."}[5m])
+            or rate(flask_http_request_total{status=~"4.."}[5m])
+          )

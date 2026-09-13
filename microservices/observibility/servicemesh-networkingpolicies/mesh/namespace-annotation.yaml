@@ -1,0 +1,9 @@
+# Enable Linkerd sidecar injection for new and restarted pods in ecommerce.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ecommerce
+  labels:
+    linkerd.io/inject: enabled
+  annotations:
+    linkerd.io/inject: enabled

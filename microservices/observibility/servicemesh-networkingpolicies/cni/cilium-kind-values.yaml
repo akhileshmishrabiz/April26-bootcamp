@@ -1,0 +1,51 @@
+# Cilium Helm values tuned for Kind (ecommerce-vault cluster).
+# Requires kind-config.yaml:
+#   networking:
+#     disableDefaultCNI: true
+#     podSubnet: "192.168.0.0/16"
+#
+# Installed by install-cilium.sh via:
+#   helm install cilium cilium/cilium -f cilium-kind-values.yaml
+
+ipam:
+  mode: kubernetes
+
+# Kind ships kube-proxy — do not replace it
+kubeProxyReplacement: false
+
+operator:
+  replicas: 1
+
+# NetworkPolicy enforcement + flow visibility for blocked traffic
+policyEnforcementMode: default
+
+# Allow Linkerd CNI to chain on top of Cilium (do NOT set chainingMode — Cilium is primary)
+cni:
+  exclusive: false
+
+# Keep ClusterIP visible to Linkerd proxies
+socketLB:
+  hostNamespaceOnly: true
+
+hubble:
+  enabled: true
+  metrics:
+    enabled:
+      - dns
+      - drop
+      - tcp
+      - flow
+      - icmp
+      - http
+  relay:
+    enabled: true
+  ui:
+    enabled: true
+    service:
+      type: NodePort
+      nodePort: 31200
+
+# Single-node Kind cluster
+k8sClientRateLimit:
+  qps: 50
+  burst: 100

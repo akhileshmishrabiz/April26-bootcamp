@@ -1,0 +1,100 @@
+# Linkerd Server resources — HTTP microservices (8001-8006) plus data-plane TCP ports.
+# AuthorizationPolicy in authorization-policies.strict.yaml ties callers to ServiceAccounts.
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: product-service-http
+  namespace: ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: product-service
+  port: 8001
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: user-service-http
+  namespace: ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: user-service
+  port: 8002
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: cart-service-http
+  namespace: ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: cart-service
+  port: 8003
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: order-service-http
+  namespace: ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: order-service
+  port: 8004
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: payment-service-http
+  namespace: ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: payment-service
+  port: 8005
+  proxyProtocol: HTTP/1
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: notification-service-http
+  namespace: ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: notification-service
+  port: 8006
+  proxyProtocol: HTTP/1
+---
+# RabbitMQ AMQP — order-service publishes, notification-service consumes.
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: rabbitmq-amqp
+  namespace: ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: rabbitmq
+  port: 5672
+  proxyProtocol: unknown
+---
+# Mailpit SMTP — notification-service sends email.
+apiVersion: policy.linkerd.io/v1beta1
+kind: Server
+metadata:
+  name: mailpit-smtp
+  namespace: ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: mailpit
+  port: 1025
+  proxyProtocol: unknown

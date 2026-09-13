@@ -1,0 +1,82 @@
+# Prometheus (monitoring ns) scrapes pod metrics annotations and infra exporters.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scrape
+  namespace: ecommerce
+  labels:
+    app.kubernetes.io/part-of: ecommerce-network-policy
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 8001
+        - protocol: TCP
+          port: 8002
+        - protocol: TCP
+          port: 8003
+        - protocol: TCP
+          port: 8004
+        - protocol: TCP
+          port: 8005
+        - protocol: TCP
+          port: 8006
+        - protocol: TCP
+          port: 9121
+        - protocol: TCP
+          port: 15692
+    # Linkerd Viz Prometheus scrapes proxy admin metrics (:4191) for golden metrics / service map.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: linkerd-viz
+          podSelector:
+            matchLabels:
+              component: prometheus
+      ports:
+        - protocol: TCP
+          port: 4191
+---
+# OpenTelemetry export to the collector deployed in monitoring.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-otel-collector-egress
+  namespace: ecommerce
+  labels:
+    app.kubernetes.io/part-of: ecommerce-network-policy
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - product-service
+          - user-service
+          - cart-service
+          - order-service
+          - payment-service
+          - notification-service
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app: otel-collector
+      ports:
+        - protocol: TCP
+          port: 4318

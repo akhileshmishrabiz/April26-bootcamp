@@ -1,0 +1,98 @@
+global:
+  namespace: monitoring
+  imagePullPolicy: IfNotPresent
+
+prometheus:
+  enabled: true
+  image: prom/prometheus:v2.51.2
+  port: 9090
+  nodePort: 30090
+  retention: 7d
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+grafana:
+  enabled: true
+  image: grafana/grafana:10.4.2
+  port: 3000
+  nodePort: 30030
+  adminUser: admin
+  adminPassword: admin
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+loki:
+  enabled: true
+  image: grafana/loki:2.9.6
+  port: 3100
+  nodePort: 30100
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+promtail:
+  enabled: true
+  image: grafana/promtail:2.9.6
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# Namespaces whose pod logs Promtail should collect
+logNamespaces:
+  - ecommerce
+  - monitoring
+  - vault
+  - cnpg-system
+
+# App namespace for Prometheus pod/service discovery
+appNamespace: ecommerce
+
+# Linkerd Viz metrics-api scrape target (enable after: observibility/linkerd/deploy.sh)
+linkerdViz:
+  enabled: false
+  namespace: linkerd-viz
+  service: metrics-api
+  port: 9995
+
+tempo:
+  enabled: true
+  image: grafana/tempo:2.4.1
+  port: 3200
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+otelCollector:
+  enabled: true
+  image: otel/opentelemetry-collector-contrib:0.96.0
+  grpcPort: 4317
+  httpPort: 4318
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi

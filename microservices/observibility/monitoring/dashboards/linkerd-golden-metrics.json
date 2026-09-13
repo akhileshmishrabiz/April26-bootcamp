@@ -1,0 +1,292 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Requires Linkerd Viz metrics-api scrape (job: linkerd-viz). Install via observibility/linkerd/deploy.sh",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [{ "options": { "0": { "color": "red", "text": "Down" }, "1": { "color": "green", "text": "Up" } }, "type": "value" }],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [{
+        "expr": "up{job=\"linkerd-viz\"}",
+        "legendFormat": "linkerd-viz metrics-api",
+        "refId": "A"
+      }],
+      "title": "Linkerd Metrics API",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 4 },
+      "id": 100,
+      "panels": [],
+      "title": "Traffic",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 5 },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "targets": [{
+        "expr": "sum(rate(route_response_total{namespace=\"$namespace\", direction=\"inbound\", deployment=~\"$deployment\"}[5m]))",
+        "legendFormat": "Total",
+        "refId": "A"
+      }],
+      "title": "Total Inbound Request Rate",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 20, "lineWidth": 2, "showPoints": "never", "stacking": { "group": "A", "mode": "normal" } },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 18, "x": 6, "y": 5 },
+      "id": 3,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true, "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi" } },
+      "targets": [{
+        "expr": "sum(rate(route_response_total{namespace=\"$namespace\", direction=\"inbound\", deployment=~\"$deployment\"}[5m])) by (deployment)",
+        "legendFormat": "{{deployment}}",
+        "refId": "A"
+      }],
+      "title": "Inbound Request Rate by Deployment",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 },
+      "id": 101,
+      "panels": [],
+      "title": "Success Rate",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never" },
+          "max": 1,
+          "min": 0,
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "id": 4,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi" } },
+      "targets": [{
+        "expr": "sum(rate(route_response_total{namespace=\"$namespace\", direction=\"inbound\", classification=\"success\", deployment=~\"$deployment\"}[5m])) by (deployment) / sum(rate(route_response_total{namespace=\"$namespace\", direction=\"inbound\", deployment=~\"$deployment\"}[5m])) by (deployment)",
+        "legendFormat": "{{deployment}}",
+        "refId": "A"
+      }],
+      "title": "Success Rate by Deployment",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never" },
+          "max": 1,
+          "min": 0,
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "id": 5,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi" } },
+      "targets": [{
+        "expr": "sum(rate(route_response_total{namespace=\"$namespace\", direction=\"inbound\", classification=\"failure\", deployment=~\"$deployment\"}[5m])) by (deployment) / sum(rate(route_response_total{namespace=\"$namespace\", direction=\"inbound\", deployment=~\"$deployment\"}[5m])) by (deployment)",
+        "legendFormat": "{{deployment}}",
+        "refId": "A"
+      }],
+      "title": "Failure Rate by Deployment",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
+      "id": 102,
+      "panels": [],
+      "title": "Latency",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never" },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 23 },
+      "id": 6,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", direction=\"inbound\", deployment=~\"$deployment\"}[5m])) by (le, deployment))",
+          "legendFormat": "{{deployment}} p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", direction=\"inbound\", deployment=~\"$deployment\"}[5m])) by (le, deployment))",
+          "legendFormat": "{{deployment}} p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{namespace=\"$namespace\", direction=\"inbound\", deployment=~\"$deployment\"}[5m])) by (le, deployment))",
+          "legendFormat": "{{deployment}} p99",
+          "refId": "C"
+        }
+      ],
+      "title": "Inbound Latency Percentiles (p50 / p95 / p99)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 1, "showPoints": "never" },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 23 },
+      "id": 7,
+      "options": { "legend": { "displayMode": "table", "placement": "right", "showLegend": true }, "tooltip": { "mode": "multi" } },
+      "targets": [{
+        "expr": "histogram_quantile(0.95, sum(rate(route_response_latency_ms_bucket{namespace=\"$namespace\", direction=\"inbound\", deployment=~\"$deployment\"}[5m])) by (le, deployment, rt_route))",
+        "legendFormat": "{{deployment}} {{rt_route}}",
+        "refId": "A"
+      }],
+      "title": "p95 Latency by Route",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 },
+      "id": 103,
+      "panels": [],
+      "title": "Outbound (client-side)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2, "showPoints": "never" },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "id": 8,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi" } },
+      "targets": [{
+        "expr": "sum(rate(route_response_total{namespace=\"$namespace\", direction=\"outbound\", deployment=~\"$deployment\"}[5m])) by (deployment, dst_deployment)",
+        "legendFormat": "{{deployment}} → {{dst_deployment}}",
+        "refId": "A"
+      }],
+      "title": "Outbound Request Rate (service mesh)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never" },
+          "max": 1,
+          "min": 0,
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+      "id": 9,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi" } },
+      "targets": [{
+        "expr": "sum(rate(route_response_total{namespace=\"$namespace\", direction=\"outbound\", classification=\"success\", deployment=~\"$deployment\"}[5m])) by (deployment, dst_deployment) / sum(rate(route_response_total{namespace=\"$namespace\", direction=\"outbound\", deployment=~\"$deployment\"}[5m])) by (deployment, dst_deployment)",
+        "legendFormat": "{{deployment}} → {{dst_deployment}}",
+        "refId": "A"
+      }],
+      "title": "Outbound Success Rate",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["linkerd", "golden-metrics", "service-mesh", "sre"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "ecommerce", "value": "ecommerce" },
+        "hide": 2,
+        "label": "Namespace",
+        "name": "namespace",
+        "options": [{ "selected": true, "text": "ecommerce", "value": "ecommerce" }],
+        "query": "ecommerce",
+        "type": "constant"
+      },
+      {
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "definition": "label_values(route_response_total{namespace=\"ecommerce\", direction=\"inbound\"}, deployment)",
+        "includeAll": true,
+        "label": "Deployment",
+        "multi": true,
+        "name": "deployment",
+        "query": {
+          "query": "label_values(route_response_total{namespace=\"ecommerce\", direction=\"inbound\"}, deployment)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-30m", "to": "now" },
+  "title": "Linkerd Golden Metrics",
+  "uid": "linkerd-golden-metrics",
+  "version": 1
+}

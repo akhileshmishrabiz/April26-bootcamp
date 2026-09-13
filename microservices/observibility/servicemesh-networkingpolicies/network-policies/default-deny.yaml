@@ -1,0 +1,14 @@
+# Baseline deny-all for ecommerce namespace.
+# Pair with allow-* policies below. Order of apply does not matter — policies are additive.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: ecommerce
+  labels:
+    app.kubernetes.io/part-of: ecommerce-network-policy
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress

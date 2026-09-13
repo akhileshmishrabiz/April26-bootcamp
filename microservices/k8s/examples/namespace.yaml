@@ -1,0 +1,5 @@
+# Reference namespace — use k8s/deploy/namespace.yaml for the actual stack.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ecommerce

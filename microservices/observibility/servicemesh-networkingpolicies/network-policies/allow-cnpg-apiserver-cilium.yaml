@@ -1,0 +1,17 @@
+# Cilium entity policy — K8s NetworkPolicy ipBlock does not cover host/kube-apiserver on Kind.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-cnpg-apiserver-egress
+  namespace: ecommerce
+  labels:
+    app.kubernetes.io/part-of: ecommerce-network-policy
+spec:
+  endpointSelector:
+    matchExpressions:
+      - key: cnpg.io/cluster
+        operator: Exists
+  egress:
+    - toEntities:
+        - kube-apiserver
+        - host

@@ -1,0 +1,23 @@
+{{- if .Values.tempo.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: tempo
+  namespace: {{ include "observability.namespace" . }}
+  labels:
+    app: tempo
+    {{- include "observability.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: tempo
+  ports:
+    - name: http
+      port: {{ .Values.tempo.port }}
+      targetPort: {{ .Values.tempo.port }}
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+{{- end }}

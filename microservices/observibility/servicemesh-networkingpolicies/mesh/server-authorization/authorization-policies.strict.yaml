@@ -1,0 +1,122 @@
+# Strict AuthorizationPolicy — one MeshTLSAuthentication ref per policy (Linkerd requirement).
+# Each MeshTLSAuthentication lists allowed caller ServiceAccounts (see meshed-auth.yaml).
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: product-service-authorized
+  namespace: ecommerce
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: product-service-http
+  requiredAuthenticationRefs:
+    - name: product-service-callers
+      kind: MeshTLSAuthentication
+      group: policy.linkerd.io
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: user-service-authorized
+  namespace: ecommerce
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: user-service-http
+  requiredAuthenticationRefs:
+    - name: user-service-callers
+      kind: MeshTLSAuthentication
+      group: policy.linkerd.io
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: cart-service-authorized
+  namespace: ecommerce
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: cart-service-http
+  requiredAuthenticationRefs:
+    - name: cart-service-callers
+      kind: MeshTLSAuthentication
+      group: policy.linkerd.io
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: order-service-authorized
+  namespace: ecommerce
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: order-service-http
+  requiredAuthenticationRefs:
+    - name: order-service-callers
+      kind: MeshTLSAuthentication
+      group: policy.linkerd.io
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: payment-service-authorized
+  namespace: ecommerce
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: payment-service-http
+  requiredAuthenticationRefs:
+    - name: payment-service-callers
+      kind: MeshTLSAuthentication
+      group: policy.linkerd.io
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: notification-service-authorized
+  namespace: ecommerce
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: notification-service-http
+  requiredAuthenticationRefs:
+    - name: notification-service-callers
+      kind: MeshTLSAuthentication
+      group: policy.linkerd.io
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: rabbitmq-amqp-authorized
+  namespace: ecommerce
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: rabbitmq-amqp
+  requiredAuthenticationRefs:
+    - name: rabbitmq-amqp-callers
+      kind: MeshTLSAuthentication
+      group: policy.linkerd.io
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: mailpit-smtp-authorized
+  namespace: ecommerce
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: Server
+    name: mailpit-smtp
+  requiredAuthenticationRefs:
+    - name: mailpit-smtp-callers
+      kind: MeshTLSAuthentication
+      group: policy.linkerd.io

@@ -1,0 +1,88 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: {{ include "observability.namespace" . }}
+  labels:
+    app: grafana
+    {{- include "observability.labels" . | nindent 4 }}
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        uid: prometheus
+        access: proxy
+        url: http://prometheus.{{ include "observability.namespace" . }}.svc.cluster.local:{{ .Values.prometheus.port }}
+        isDefault: true
+        editable: true
+        jsonData:
+          timeInterval: 15s
+          queryTimeout: 60s
+      - name: Loki
+        type: loki
+        uid: loki
+        access: proxy
+        url: http://loki.{{ include "observability.namespace" . }}.svc.cluster.local:{{ .Values.loki.port }}
+        editable: true
+        jsonData:
+          maxLines: 1000
+      {{- if .Values.tempo.enabled }}
+      - name: Tempo
+        type: tempo
+        uid: tempo
+        access: proxy
+        url: http://tempo.{{ include "observability.namespace" . }}.svc.cluster.local:{{ .Values.tempo.port }}
+        editable: true
+        jsonData:
+          tracesToLogs:
+            datasourceUid: loki
+            filterByTraceID: true
+            mapTagNamesEnabled: true
+            tags: [app, pod, namespace]
+          tracesToMetrics:
+            datasourceUid: prometheus
+          serviceMap:
+            datasourceUid: prometheus
+          nodeGraph:
+            enabled: true
+      {{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-provider
+  namespace: {{ include "observability.namespace" . }}
+  labels:
+    app: grafana
+    {{- include "observability.labels" . | nindent 4 }}
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: ecommerce
+        orgId: 1
+        folder: E-Commerce
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 30
+        allowUiUpdates: true
+        options:
+          path: /var/lib/grafana/dashboards
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: {{ include "observability.namespace" . }}
+  labels:
+    app: grafana
+    {{- include "observability.labels" . | nindent 4 }}
+data:
+{{- range $path, $_ := .Files.Glob "dashboards/*.json" }}
+  {{ base $path }}: |
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}
+{{- end }}

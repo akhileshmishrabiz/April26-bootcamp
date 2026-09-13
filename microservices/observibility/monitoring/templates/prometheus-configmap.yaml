@@ -1,0 +1,86 @@
+{{- if .Values.prometheus.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: {{ include "observability.namespace" . }}
+  labels:
+    app: prometheus
+    {{- include "observability.labels" . | nindent 4 }}
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: {{ .Values.global.scrape_interval | default "15s" }}
+      evaluation_interval: {{ .Values.global.evaluation_interval | default "15s" }}
+      external_labels:
+        cluster: ecommerce-vault
+        environment: development
+
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets: []
+
+    rule_files:
+      - /etc/prometheus/rules/*.yml
+
+    scrape_configs:
+      - job_name: prometheus
+        static_configs:
+          - targets: ['localhost:9090']
+
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - {{ .Values.appNamespace }}
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: replace
+            target_label: service
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: replace
+            target_label: job
+
+      {{- if .Values.linkerdViz.enabled }}
+      - job_name: linkerd-viz
+        honor_labels: true
+        scrape_interval: 30s
+        static_configs:
+          - targets:
+              - {{ .Values.linkerdViz.service }}.{{ .Values.linkerdViz.namespace }}.svc.cluster.local:{{ .Values.linkerdViz.port }}
+      {{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: {{ include "observability.namespace" . }}
+  labels:
+    app: prometheus
+    {{- include "observability.labels" . | nindent 4 }}
+data:
+  alerts.yml: |
+{{ .Files.Get "rules/alerts.yml" | indent 4 }}
+  recording.yml: |
+{{ .Files.Get "rules/recording.yml" | indent 4 }}
+{{- end }}

@@ -1,0 +1,41 @@
+# CNPG Postgres pods should not be meshed — TCP + startup probes break through the proxy.
+# Patches each Cluster's podTemplateMetadata to opt out of namespace-level injection.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: products
+  namespace: ecommerce
+spec:
+  inheritedMetadata:
+    annotations:
+      linkerd.io/inject: disabled
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: users
+  namespace: ecommerce
+spec:
+  inheritedMetadata:
+    annotations:
+      linkerd.io/inject: disabled
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: orders
+  namespace: ecommerce
+spec:
+  inheritedMetadata:
+    annotations:
+      linkerd.io/inject: disabled
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: payments
+  namespace: ecommerce
+spec:
+  inheritedMetadata:
+    annotations:
+      linkerd.io/inject: disabled

@@ -1,0 +1,28 @@
+# Kind-specific Calico overlay for ecommerce-vault.
+#
+# Applied AFTER the upstream Calico v3.27.3 manifest (patched by install-cni.sh).
+# Requires kind-config.yaml with:
+#   networking:
+#     disableDefaultCNI: true
+#     podSubnet: "192.168.0.0/16"
+#
+# Kind tuning (also applied via sed in install-cni.sh on calico-node DaemonSet):
+#   CALICO_IPV4POOL_CIDR=192.168.0.0/16  — must match kind podSubnet
+#   CALICO_IPV4POOL_IPIP=Never            — IPIP breaks on Kind/Docker
+#   CALICO_IPV4POOL_VXLAN=Always          — VXLAN works reliably in Kind
+#
+# NetworkPolicy enforcement:
+#   kindnet (Kind default) does NOT enforce NetworkPolicies — rules are accepted
+#   but traffic is not filtered. Calico (or Cilium) is required for real enforcement.
+#
+---
+apiVersion: crd.projectcalico.org/v1
+kind: IPPool
+metadata:
+  name: default-ipv4-ippool
+spec:
+  cidr: 192.168.0.0/16
+  ipipMode: Never
+  vxlanMode: Always
+  natOutgoing: true
+  nodeSelector: all()

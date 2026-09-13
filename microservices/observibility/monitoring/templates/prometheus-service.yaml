@@ -1,0 +1,19 @@
+{{- if .Values.prometheus.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: {{ include "observability.namespace" . }}
+  labels:
+    app: prometheus
+    {{- include "observability.labels" . | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    app: prometheus
+  ports:
+    - name: http
+      port: {{ .Values.prometheus.port }}
+      targetPort: {{ .Values.prometheus.port }}
+      nodePort: {{ .Values.prometheus.nodePort }}
+{{- end }}

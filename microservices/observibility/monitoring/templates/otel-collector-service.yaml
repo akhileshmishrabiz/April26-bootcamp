@@ -1,0 +1,20 @@
+{{- if .Values.otelCollector.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: {{ include "observability.namespace" . }}
+  labels:
+    app: otel-collector
+    {{- include "observability.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: otel-collector
+  ports:
+    - name: otlp-grpc
+      port: {{ .Values.otelCollector.grpcPort }}
+      targetPort: {{ .Values.otelCollector.grpcPort }}
+    - name: otlp-http
+      port: {{ .Values.otelCollector.httpPort }}
+      targetPort: {{ .Values.otelCollector.httpPort }}
+{{- end }}

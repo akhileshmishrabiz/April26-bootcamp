@@ -1,0 +1,19 @@
+{{- if .Values.loki.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: loki
+  namespace: {{ include "observability.namespace" . }}
+  labels:
+    app: loki
+    {{- include "observability.labels" . | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    app: loki
+  ports:
+    - name: http
+      port: {{ .Values.loki.port }}
+      targetPort: {{ .Values.loki.port }}
+      nodePort: {{ .Values.loki.nodePort }}
+{{- end }}

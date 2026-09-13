@@ -1,0 +1,23 @@
+# Redis uses plain TCP — skip Linkerd protocol detection on port 6379.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: ecommerce
+spec:
+  template:
+    metadata:
+      annotations:
+        config.linkerd.io/skip-inbound-ports: "6379"
+        config.linkerd.io/skip-outbound-ports: "6379"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cart-service
+  namespace: ecommerce
+spec:
+  template:
+    metadata:
+      annotations:
+        config.linkerd.io/skip-outbound-ports: "6379"
