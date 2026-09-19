@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-app
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: payments-app
+  template:
+    metadata:
+      labels:
+        app: payments-app
+    spec:
+      tolerations:
+        - key: "dedicated"
+          operator: "Equal"
+          value: "payments"
+          effect: "NoSchedule"
+      containers:
+        - name: payments
+          image: nginx:latest
+          ports:
+            - containerPort: 80

@@ -1,0 +1,38 @@
+# kubectl label nodes scheduling-demo-worker3 hype=true
+# node affinity
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-app
+spec:
+  replicas: 8
+  selector:
+    matchLabels:
+      app: payments-app
+  template:
+    metadata:
+      labels:
+        app: payments-app
+    spec:
+      tolerations:
+        - key: "dedicated"
+          operator: "Equal"
+          value: "payments"
+          effect: "NoSchedule"
+
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: hype
+                    operator: In
+                    values:
+                      - "true"
+
+      containers:
+        - name: payments
+          image: nginx:latest
+          ports:
+            - containerPort: 80

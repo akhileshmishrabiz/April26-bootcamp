@@ -1,0 +1,384 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: scheduling-demo
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-config
+  namespace: scheduling-demo
+data:
+  default.conf: |
+    server {
+      listen 80;
+
+      location = /health {
+        access_log off;
+        return 200 "gateway: ok\n";
+      }
+
+      location /catalog {
+        proxy_pass http://catalog;
+      }
+
+      location /orders {
+        proxy_pass http://orders;
+      }
+
+      location /payments {
+        proxy_pass http://payments;
+      }
+    }
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: scheduling-demo
+spec:
+  selector:
+    app: gateway
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog
+  namespace: scheduling-demo
+spec:
+  selector:
+    app: catalog
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orders
+  namespace: scheduling-demo
+spec:
+  selector:
+    app: orders
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payments
+  namespace: scheduling-demo
+spec:
+  selector:
+    app: payments
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+
+---
+# Gateway runs on nodes labelled demo-workload=apps.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: scheduling-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+        tier: frontend
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: demo-workload
+                    operator: In
+                    values:
+                      - apps
+
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - name: http
+              containerPort: 80
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+
+      volumes:
+        - name: config
+          configMap:
+            name: gateway-config
+
+---
+# Catalog replicas prefer to run on different nodes.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog
+  namespace: scheduling-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: catalog
+
+  template:
+    metadata:
+      labels:
+        app: catalog
+        tier: backend
+
+    spec:
+      affinity:
+
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: demo-workload
+                    operator: In
+                    values:
+                      - apps
+
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: catalog
+                topologyKey: kubernetes.io/hostname
+
+      containers:
+        - name: catalog
+          image: hashicorp/http-echo:1.0
+          args:
+            - -listen=:5678
+            - '-text={"service":"catalog","status":"ok"}'
+
+          ports:
+            - name: http
+              containerPort: 5678
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+
+---
+# Orders MUST run on the same node as Catalog.
+# Orders replicas MUST run on different nodes.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders
+  namespace: scheduling-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: orders
+
+  template:
+    metadata:
+      labels:
+        app: orders
+        tier: backend
+
+    spec:
+      affinity:
+
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: demo-workload
+                    operator: In
+                    values:
+                      - apps
+
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: catalog
+              topologyKey: kubernetes.io/hostname
+
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: orders
+              topologyKey: kubernetes.io/hostname
+
+      containers:
+        - name: orders
+          image: hashicorp/http-echo:1.0
+          args:
+            - -listen=:5678
+            - '-text={"service":"orders","status":"ok"}'
+
+          ports:
+            - name: http
+              containerPort: 5678
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+
+---
+# Payments MUST run on the same node as Orders.
+# Payments replicas MUST run on different nodes.
+#
+# Expected:
+#
+# worker-1:
+#   catalog-1
+#   orders-1
+#   payments-1
+#
+# worker-2:
+#   catalog-2
+#   orders-2
+#   payments-2
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments
+  namespace: scheduling-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: payments
+
+  template:
+    metadata:
+      labels:
+        app: payments
+        tier: backend
+
+    spec:
+      affinity:
+
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: demo-workload
+                    operator: In
+                    values:
+                      - apps
+
+        # Payment MUST be on the same node as Orders.
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: orders
+              topologyKey: kubernetes.io/hostname
+
+        # Payment replicas MUST be on different nodes.
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: payments
+              topologyKey: kubernetes.io/hostname
+
+      containers:
+        - name: payments
+          image: hashicorp/http-echo:1.0
+          args:
+            - -listen=:5678
+            - '-text={"service":"payments","status":"ok"}'
+
+          ports:
+            - name: http
+              containerPort: 5678
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+
+---
+# Generates visible service-to-service traffic.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traffic-generator
+  namespace: scheduling-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: traffic-generator
+
+  template:
+    metadata:
+      labels:
+        app: traffic-generator
+        tier: client
+
+    spec:
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: gateway
+              topologyKey: kubernetes.io/hostname
+
+      containers:
+        - name: traffic-generator
+          image: curlimages/curl:8.10.1
+
+          command:
+            - /bin/sh
+            - -c
+
+          args:
+            - |
+              while true; do
+                echo "gateway -> catalog: $(curl -fsS http://gateway/catalog)"
+                echo "gateway -> orders:  $(curl -fsS http://gateway/orders)"
+                echo "gateway -> payments: $(curl -fsS http://gateway/payments)"
+                echo "direct -> catalog:  $(curl -fsS http://catalog)"
+                sleep 5
+              done
