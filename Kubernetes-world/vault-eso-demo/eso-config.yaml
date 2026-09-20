@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: eso-vault-auth
+  namespace: demo
+---
+apiVersion: external-secrets.io/v1
+kind: SecretStore
+metadata:
+  name: vault
+  namespace: demo
+spec:
+  provider:
+    vault:
+      server: http://vault.vault.svc:8200
+      path: secret
+      version: v2
+      auth:
+        kubernetes:
+          mountPath: kubernetes
+          role: eso-demo
+          serviceAccountRef:
+            name: eso-vault-auth
+            audiences:
+              - vault
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: demo-credentials
+  namespace: demo
+spec:
+  refreshInterval: 15s
+  secretStoreRef:
+    name: vault
+    kind: SecretStore
+  target:
+    name: demo-credentials
+    creationPolicy: Owner
+  data:
+    - secretKey: username
+      remoteRef:
+        key: demo
+        property: username
+    - secretKey: password
+      remoteRef:
+        key: demo
+        property: password
