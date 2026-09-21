@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bootcamp Follow-Along Labs</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --background: #f6f8fa;
+      --surface: #ffffff;
+      --text: #1f2328;
+      --muted: #59636e;
+      --border: #d1d9e0;
+      --accent: #0969da;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --background: #0d1117;
+        --surface: #161b22;
+        --text: #f0f6fc;
+        --muted: #9198a1;
+        --border: #3d444d;
+        --accent: #58a6ff;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--text);
+      font: 16px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(960px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 64px 0;
+    }
+
+    header {
+      margin-bottom: 40px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2rem, 6vw, 3.25rem);
+      letter-spacing: -0.04em;
+    }
+
+    header p {
+      max-width: 680px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.1rem;
+    }
+
+    h2 {
+      margin: 36px 0 16px;
+      font-size: 1.4rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      display: block;
+      padding: 20px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+      color: var(--text);
+      text-decoration: none;
+      transition: border-color 120ms ease, transform 120ms ease;
+    }
+
+    .card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .card strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--accent);
+      font-size: 1.05rem;
+    }
+
+    .card span {
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Bootcamp Follow-Along Labs</h1>
+      <p>Open a lesson below and follow the exercises during class. No downloads are required.</p>
+    </header>
+
+    <h2>Kubernetes with kind</h2>
+    <div class="grid">
+      <a class="card" href="kind-class1-hands-on-lab.html">
+        <strong>Class 1</strong>
+        <span>Kubernetes fundamentals and your first kind cluster</span>
+      </a>
+      <a class="card" href="kind-class2-hands-on-lab.html">
+        <strong>Class 2</strong>
+        <span>Multi-node clusters, Secrets and rolling updates</span>
+      </a>
+      <a class="card" href="k8s-networking-tools-reference.html">
+        <strong>Networking reference</strong>
+        <span>Linux namespaces, CNI and Kubernetes local tooling</span>
+      </a>
+    </div>
+
+    <h2>AWS EKS</h2>
+    <div class="grid">
+      <a class="card" href="eks-class3-hands-on-lab.html">
+        <strong>Class 3</strong>
+        <span>EKS architecture, node options and Service types</span>
+      </a>
+      <a class="card" href="eks-class4-terraform-infra-lab.html">
+        <strong>Class 4 · Part 1</strong>
+        <span>Build the EKS infrastructure with Terraform</span>
+      </a>
+      <a class="card" href="eks-class4-part2-oidc-k8s-lab.html">
+        <strong>Class 4 · Part 2</strong>
+        <span>OIDC, ECR pipeline and Kubernetes deployment</span>
+      </a>
+      <a class="card" href="eks-class4-part3-ingress-alb-lab.html">
+        <strong>Class 4 · Part 3</strong>
+        <span>Ingress, ALB and the database migration job</span>
+      </a>
+      <a class="card" href="eks-class4-part4-cicd-pipeline-gitops-intro-lab.html">
+        <strong>Class 4 · Part 4</strong>
+        <span>Infrastructure pipelines, approval gates and GitOps</span>
+      </a>
+      <a class="card" href="eks-class4-part5-argocd-gitops-lab.html">
+        <strong>Class 4 · Part 5</strong>
+        <span>Argo CD and GitOps in practice</span>
+      </a>
+    </div>
+  </main>
+</body>
+</html>
