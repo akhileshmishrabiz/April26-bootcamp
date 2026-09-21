@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EKS via Terraform, Properly: Class 4 — Part 3 (Ingress, ALB &amp; the DB Migration Job)</title>
+<style>
+  :root{
+    --ink:#1b2027; --sub:#4b5563; --bg:#fbfaf7; --panel:#ffffff; --line:#e4e1d8;
+    --accent:#2e6f6a; --accent2:#b8562f; --accent3:#3a5ba0;
+    --mono-bg:#12161c; --mono-ink:#d7e0e8; --mono-accent:#7fd0c4; --code-inline-bg:#eef0eb;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:"Iowan Old Style","Palatino Linotype",Georgia,"Noto Serif",serif; line-height:1.65; font-size:17px;}
+  .wrap{max-width:960px; margin:0 auto; padding:0 32px 120px;}
+  header.hero{padding:70px 32px 50px; border-bottom:1px solid var(--line); background: linear-gradient(180deg, rgba(46,111,106,0.06), rgba(46,111,106,0) 60%);}
+  header.hero .eyebrow{font-family:"JetBrains Mono","SF Mono",Consolas,monospace; letter-spacing:.14em; text-transform:uppercase; font-size:12.5px; color:var(--accent); margin-bottom:14px; display:flex; gap:10px; align-items:center;}
+  header.hero .eyebrow::before{content:"//"; color:var(--accent2);}
+  h1.title{font-size:clamp(30px,4.2vw,46px); line-height:1.12; margin:0 0 14px; max-width:820px; letter-spacing:-0.01em;}
+  .subtitle{color:var(--sub); font-size:18px; max-width:700px; margin:0 0 26px;}
+  .meta-row{display:flex; gap:22px; flex-wrap:wrap; font-family:"JetBrains Mono",monospace; font-size:12.5px; color:var(--sub);}
+  .meta-row span b{color:var(--ink);}
+  nav.toc{margin:36px auto 0; max-width:960px; padding:22px 32px 26px; border:1px solid var(--line); border-radius:10px; background:var(--panel);}
+  nav.toc h2{font-family:"JetBrains Mono",monospace; font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 14px;}
+  nav.toc ol{columns:2; column-gap:36px; margin:0; padding-left:20px;}
+  nav.toc li{break-inside:avoid; margin-bottom:8px; font-size:15px;}
+  nav.toc a{color:var(--ink); text-decoration:none; border-bottom:1px dotted var(--line);}
+  nav.toc a:hover{color:var(--accent); border-color:var(--accent);}
+  @media (max-width:640px){nav.toc ol{columns:1;}}
+  section{padding-top:56px;}
+  section > .kicker{font-family:"JetBrains Mono",monospace; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent2); margin-bottom:8px;}
+  h2{font-size:30px; margin:0 0 6px; letter-spacing:-0.01em; scroll-margin-top:20px;}
+  h2 .num{color:var(--accent); font-family:"JetBrains Mono",monospace; font-size:19px; margin-right:10px;}
+  h3{font-size:21px; margin:34px 0 10px; scroll-margin-top:20px; color:#20262c;}
+  h4{font-size:16.5px; margin:22px 0 8px; color:#20262c; font-family:"JetBrains Mono",monospace; letter-spacing:.02em;}
+  p{margin:0 0 15px;}
+  ul,ol{margin:0 0 16px; padding-left:22px;}
+  li{margin-bottom:6px;}
+  strong{color:#10161c;}
+  .lede{font-size:18.5px; color:#2b323a;}
+  code, .code-inline{font-family:"JetBrains Mono","SF Mono",Consolas,monospace; font-size:0.86em; background:var(--code-inline-bg); padding:1px 6px; border-radius:4px; color:#3a2f1f;}
+  pre{background:var(--mono-bg); color:var(--mono-ink); padding:18px 20px; border-radius:10px; overflow-x:auto; font-family:"JetBrains Mono","SF Mono",Consolas,monospace; font-size:13.5px; line-height:1.55; margin:16px 0 22px;}
+  pre code{background:none; padding:0; color:inherit; font-size:1em;}
+  pre .c{color:#7f8b98;} pre .k{color:var(--mono-accent);} pre .s{color:#e2b872;} pre .out{color:#9aa3ad;} pre .bad{color:#e58b8b;}
+  .callout{border-left:3px solid var(--accent); background:#eef3f2; padding:14px 18px; border-radius:0 8px 8px 0; margin:18px 0; font-size:15.5px;}
+  .callout.warn{border-left-color:var(--accent2); background:#f7ece5;}
+  .callout.myth{border-left-color:#8a3f8a; background:#f3ecf3;}
+  .callout.fix{border-left-color:#3a5ba0; background:#e9eef7;}
+  .callout.bug{border-left-color:#c0392b; background:#fbe9e7;}
+  .callout b{display:block; font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px;}
+  .callout.warn b{color:var(--accent2);} .callout.myth b{color:#8a3f8a;} .callout.fix b{color:#3a5ba0;} .callout.bug b{color:#c0392b;}
+  .callout:not(.warn):not(.myth):not(.fix):not(.bug) b{color:var(--accent);}
+  table{width:100%; border-collapse:collapse; margin:18px 0 26px; font-size:15px;}
+  th{text-align:left; font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--sub); border-bottom:2px solid var(--ink); padding:8px 12px;}
+  td{border-bottom:1px solid var(--line); padding:10px 12px; vertical-align:top;}
+  tr:hover td{background:#f5f3ee;}
+  td code{white-space:nowrap;}
+  hr.div{border:none; border-top:1px solid var(--line); margin:56px 0;}
+  .backtotop{position:fixed; right:24px; bottom:24px; background:var(--ink); color:#fff; width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; text-decoration:none; font-size:18px; opacity:.85; box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  .backtotop:hover{opacity:1;}
+  .step-list{counter-reset:step; list-style:none; padding-left:0;}
+  .step-list li{counter-increment:step; padding-left:38px; position:relative; margin-bottom:16px;}
+  .step-list li::before{content:counter(step); position:absolute; left:0; top:0; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; font-family:"JetBrains Mono",monospace; font-size:13px; display:flex; align-items:center; justify-content:center;}
+  .exercise{border:1.5px solid var(--accent); border-radius:12px; padding:22px 26px; margin:28px 0; background:#fcfdfc;}
+  .exercise .ex-label{font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:#fff; background:var(--accent); display:inline-block; padding:4px 10px; border-radius:5px; margin-bottom:10px;}
+  .exercise h3{margin-top:0;}
+  .goal{font-size:14.5px; color:var(--sub); font-style:italic; margin-top:-4px; margin-bottom:16px;}
+  .yourturn{border:1.5px dashed var(--accent2); border-radius:12px; padding:20px 24px; margin:22px 0; background:#fffaf6;}
+  .yourturn .yt-label{font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:#fff; background:var(--accent2); display:inline-block; padding:4px 10px; border-radius:5px; margin-bottom:10px;}
+  .checklist{list-style:none; padding-left:0;}
+  .checklist li{padding-left:30px; position:relative; margin-bottom:10px;}
+  .checklist li::before{content:"☐"; position:absolute; left:0; top:0; color:var(--accent); font-size:17px;}
+  .glossary dt{font-family:"JetBrains Mono",monospace; font-weight:700; color:var(--ink); margin-top:14px;}
+  .glossary dd{margin:2px 0 0; color:var(--sub);}
+  footer{padding:60px 32px 40px; text-align:center; color:var(--sub); font-size:13px; font-family:"JetBrains Mono",monospace;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap" style="padding:0;">
+    <div class="eyebrow">devops bootcamp — hands-on lab · follow-along series</div>
+    <h1 class="title">EKS via Terraform, Properly: Class 4 — Part 3 (Ingress, ALB &amp; the DB Migration Job)</h1>
+    <p class="subtitle">Part 2 got the app's pods talking to each other and to RDS. Part 3 opens the cluster to the outside world — Ingress, the AWS Load Balancer Controller, subnet auto-discovery — and closes the one gap Part 2 deliberately left open: how the database actually gets its schema and seed data without every backend pod racing to create it.</p>
+    <div class="meta-row">
+      <span>Instructor: <b>Akhilesh Mishra</b></span>
+      <span>Builds on: <b>app-infra/</b> from Part 2 (Deployments, Services, ConfigMaps, Secrets must already be applied)</span>
+      <span>Class date: <b>Aug 23, 2026</b></span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#howto">0 · How we're going to work through this</a></li>
+    <li><a href="#ex1">Exercise 1 — Why three Service types aren't enough</a></li>
+    <li><a href="#ex2">Exercise 2 — Ingress is a rule, not a resource that runs</a></li>
+    <li><a href="#ex3">Exercise 3 — Ingress Controller vs. Load Balancer Controller (the pair, not the same thing)</a></li>
+    <li><a href="#ex4">Exercise 4 — ALB vs. NLB: where does routing/TLS actually happen?</a></li>
+    <li><a href="#ex5">Exercise 5 — Trusting the Load Balancer Controller: OIDC, again</a></li>
+    <li><a href="#ex6">Exercise 6 — Installing the controller with Helm, from Terraform</a></li>
+    <li><a href="#ex7">Exercise 7 — Subnet tagging: how auto-discovery actually finds anything</a></li>
+    <li><a href="#ex8">Exercise 8 — Writing the Ingress resource in Terraform</a></li>
+    <li><a href="#ex9">Exercise 9 — Why backend pods must never auto-create the schema</a></li>
+    <li><a href="#ex10">Exercise 10 — The migration Job: same image, different command</a></li>
+    <li><a href="#clinic">Live Debugging Clinic — every bug the class actually hit</a></li>
+    <li><a href="#nextup">What's next (HTTPS / ACM / Route 53 preview)</a></li>
+    <li><a href="#glossary">Glossary</a></li>
+  </ol>
+</nav>
+
+<section id="howto">
+  <div class="kicker">Before you begin</div>
+  <h2><span class="num">00</span>How we're going to work through this</h2>
+  <p class="lede">Same format as Parts 1 and 2: concept, then skeleton, then a <span class="code-inline">Your turn</span> box telling you exactly what to write. This session was heavier on live troubleshooting than new syntax — several of the "exercises" below are really postmortems of bugs the class hit in real time. Treat the <strong>Live Debugging Clinic</strong> section as equally important to the concept sections; your instructor's own framing was that the debugging process matters more for interviews than the fix itself.</p>
+  <div class="callout">
+    <b>What's genuinely new here vs. Part 2</b>
+    Part 2 was entirely internal to the cluster — Services, ConfigMaps, Secrets, pod-to-pod DNS. Nothing had a path in from outside. Part 3 adds the first external entry point (Ingress + ALB) and the first Kubernetes object whose whole purpose is to run once and die (a <code>Job</code>) rather than stay running like a Deployment.
+  </div>
+  <div class="callout fix">
+    <b>Update — verified against the coach's actual reference code</b>
+    This version replaces the reconstructed Terraform snippets from the first draft with the coach's real code, pulled from a fresh <code>Archive.zip</code>. Two scope notes up front: (1) the coach's repo is <strong>3–4 classes ahead</strong> of this transcript — it already has ArgoCD, TLS/ACM/Route 53, and a fully-ported Terraform Ingress. Anything from those areas is deliberately excluded below and left in the "What's next" preview, so this document stays scoped to what Part 3 actually covered. (2) The AWS Load Balancer Controller and its IAM/OIDC wiring live in the coach's repo as a <strong>separate Terraform module</strong> (<code>k8s-services/</code>, sibling to <code>eks-core-infra/</code>) — not inside the per-app <code>app-infra/</code> module you've been building. That's a real, deliberate boundary worth adopting — see the callout in Exercise 6.
+  </div>
+</section>
+
+<section id="ex1">
+  <div class="kicker">Exercise 1</div>
+  <h2><span class="num">01</span>Why three Service types aren't enough</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: be able to explain why a growing app doesn't just keep using <code>LoadBalancer</code>-type Services as it adds more entry points.</p>
+    <p>Quick recap of the three Service types, since the class opened by re-grounding here:</p>
+    <ol class="step-list">
+      <li><strong>ClusterIP</strong> — private, internal-only. This is what <code>backend-service</code> and <code>frontend-service</code> already use from Part 2; nothing outside the cluster can reach them directly.</li>
+      <li><strong>NodePort</strong> — opens a static port on every node's own IP. Flagged explicitly as something to avoid in production: it exposes a raw port on infrastructure you don't want directly internet-facing, and it doesn't give you TLS, path routing, or centralized certificate management.</li>
+      <li><strong>LoadBalancer</strong> — provisions one real cloud load balancer (NLB by default on AWS) per Service. Works, but doesn't scale as an architecture: one load balancer per service means one bill per service, one certificate to manage per service, and manual routing logic duplicated everywhere instead of centralized.</li>
+    </ol>
+    <p>The app currently has two Services that need external traffic (frontend for users, and potentially backend for direct API testing) but conceptually could have dozens as it grows. Paying for and manually wiring a separate `LoadBalancer` per Service doesn't scale — that's the gap Ingress exists to close.</p>
+  </div>
+</section>
+
+<section id="ex2">
+  <div class="kicker">Exercise 2</div>
+  <h2><span class="num">02</span>Ingress is a rule, not a resource that runs</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: stop thinking of Ingress as "a thing" and start thinking of it as "a set of instructions."</p>
+    <p>This is the single most important reframing from this session, and it's easy to get backwards. An <code>Ingress</code> object is <strong>not</strong> a running process, a pod, or a physical resource — it's a declarative rule that says "route traffic matching this host/path to that Service, on that port," conceptually similar to an NGINX routing config file. Writing an <code>Ingress</code> manifest and applying it does <strong>nothing by itself</strong> unless something is watching for it and knows how to act on it.</p>
+  </div>
+  <div class="callout myth">
+    <b>Don't mix these up</b>
+    Applying a bare <code>kubernetes_ingress_v1</code> resource with no controller running in the cluster will succeed at <code>terraform apply</code> — the API object gets created and stored — but nothing will actually happen. No load balancer appears, no traffic gets routed. The rule exists; nobody is enforcing it yet. That "enforcer" is the subject of Exercise 3.
+  </div>
+</section>
+
+<section id="ex3">
+  <div class="kicker">Exercise 3</div>
+  <h2><span class="num">03</span>Ingress Controller vs. Load Balancer Controller (the pair, not the same thing)</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: correctly answer "what's the difference between an Ingress Controller and the AWS Load Balancer Controller?" — a question that came up live and genuinely confused people.</p>
+    <table>
+      <tr><th>Ingress Controller</th><th>AWS Load Balancer Controller (LBC)</th></tr>
+      <tr><td>Enforces the <em>routing rule itself</em> — path-based routing, host-based routing, TLS termination — options include NGINX Ingress Controller, Traefik, Kong, Istio.</td><td>Bridges Kubernetes and AWS — makes the actual AWS API calls to provision an ALB or NLB, attach target groups, configure security groups, and register pod IPs as targets.</td></tr>
+      <tr><td>Can do all the routing/TLS work <em>inside</em> the cluster, needing only a plain NLB to let traffic in at all.</td><td>Can do the routing/TLS work <em>at the AWS layer</em> instead, via ALB's own listener rules — reducing what needs to live inside the cluster.</td></tr>
+    </table>
+    <p>Both are needed together when you choose the "let AWS do the routing" path (which this class did): the <code>Ingress</code> object plus its annotations is interpreted by the <strong>AWS Load Balancer Controller</strong>, which then creates and configures a real ALB on your behalf. One crucial clarification your instructor gave when someone asked if these controllers "live on the control plane": <strong>no</strong> — the EKS control plane (API server, scheduler, etcd) is fully managed and hidden by AWS; every controller, add-on, and workload — including the LBC itself — runs as an ordinary pod on your worker nodes, same as your app.</p>
+  </div>
+  <div class="callout warn">
+    <b>Why pods like <code>kube-proxy</code>/<code>aws-node</code> show "Pending" with zero nodes</b>
+    A side question that came up: why do certain system pods (CoreDNS, <code>kube-proxy</code>, the VPC CNI's <code>aws-node</code>) sit in <code>Pending</code> when a cluster has no worker nodes yet? Because <code>kube-proxy</code> and <code>aws-node</code> are deployed as <strong>DaemonSets</strong> — one copy is required per node, so with zero nodes there's nowhere to schedule them. This is the same reasoning as Part 1's node-group discussion, just showing up from a different angle.
+  </div>
+</section>
+
+<section id="ex4">
+  <div class="kicker">Exercise 4</div>
+  <h2><span class="num">04</span>ALB vs. NLB: where does routing/TLS actually happen?</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: pick the right load balancer type for a reason you can defend in an interview, not by default.</p>
+    <ul>
+      <li><strong>Application Load Balancer (ALB)</strong> — operates at Layer 7 (HTTP/HTTPS). Required when you need content-based or path-based routing (e.g. route by URL path, device type, geography, or subscription tier), and it's the natural place to terminate TLS/HTTPS at the application level.</li>
+      <li><strong>Network Load Balancer (NLB)</strong> — operates at Layer 4 (TCP/UDP). No awareness of HTTP paths or hosts; just forwards connections. The right choice when an in-cluster Ingress Controller (NGINX, etc.) is already doing all the L7 routing and TLS work — the NLB's only job is getting traffic to the cluster at all.</li>
+    </ul>
+    <p>This class chose the <strong>ALB path</strong>: let AWS's own load balancer handle routing and (eventually) TLS termination, via the AWS Load Balancer Controller acting on annotations in the Terraform-defined <code>Ingress</code> resource, rather than running a separate in-cluster Ingress Controller like NGINX.</p>
+  </div>
+</section>
+
+<section id="ex5">
+  <div class="kicker">Exercise 5</div>
+  <h2><span class="num">05</span>Trusting the Load Balancer Controller: OIDC, again</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: recognize this as the exact same trust pattern from Part 2's GitHub Actions OIDC setup, just with a different federated identity — and know where the OIDC provider itself actually comes from.</p>
+    <p>The LBC needs to call AWS APIs (create ALBs, tag security groups, register targets) — but it's running as an ordinary pod inside the cluster, so it needs a way to prove its identity to AWS the same way GitHub Actions did in Part 2. The mechanism is the same shape: a trust relationship between a <strong>Kubernetes Service Account</strong> and an <strong>IAM Role</strong>, established via the EKS cluster's own OIDC endpoint — this is <strong>IRSA</strong>, IAM Roles for Service Accounts.</p>
+    <p>One detail worth being precise about, confirmed from the coach's actual code: if your <code>eks-core-infra/</code> uses the official <code>terraform-aws-modules/eks/aws</code> module (yours does, per Part 1), <strong>the IAM OIDC provider already exists</strong> — that module registers it automatically as part of creating the cluster. You do not create a second one here; you reference the existing one via a data source:</p>
+    <pre><code><span class="c"># k8s-services/aws-load-balancer-controller.tf</span>
+data "aws_iam_openid_connect_provider" "eks" {
+  url = data.aws_eks_cluster.cluster.identity[0].oidc[0].issuer
+}
+
+resource "aws_iam_role" "aws_load_balancer_controller" {
+  name = <span class="s">"aws-load-balancer-controller-${var.cluster_name}"</span>
+
+  assume_role_policy = jsonencode({
+    Version = <span class="s">"2012-10-17"</span>
+    Statement = [{
+      Effect    = <span class="s">"Allow"</span>
+      Principal = { Federated = data.aws_iam_openid_connect_provider.eks.arn }
+      Action    = <span class="s">"sts:AssumeRoleWithWebIdentity"</span>
+      Condition = {
+        StringEquals = {
+          <span class="s">"${replace(data.aws_iam_openid_connect_provider.eks.url, "https://", "")}:sub"</span> = <span class="s">"system:serviceaccount:kube-system:${var.awsloadbalancercontroller_sa}"</span>
+          <span class="s">"${replace(data.aws_iam_openid_connect_provider.eks.url, "https://", "")}:aud"</span> = <span class="s">"sts.amazonaws.com"</span>
+        }
+      }
+    }]
+  })
+}</code></pre>
+    <p>That <code>replace(..., "https://", "")</code> pattern is worth understanding, not just copying: the OIDC issuer URL comes back as a full <code>https://oidc.eks.&lt;region&gt;.amazonaws.com/id/&lt;id&gt;</code> string, but IAM's trust-policy condition keys need the <strong>bare hostname+path</strong>, without the scheme, as the condition key name itself. Stripping the scheme is a required transformation, not a style choice.</p>
+    <p>The IAM policy attached to that role is AWS's own official, published document for this controller (search "AWS Load Balancer Controller IAM policy" on AWS's GitHub and pin a version rather than hand-writing ~20 statements yourself) — scoping the LBC to exactly what it needs: describe/tag subnets and security groups, create/modify load balancers and target groups, register/deregister targets. Nothing broader.</p>
+  </div>
+  <div class="callout myth">
+    <b>Don't mix these up (same warning as Part 2, worth repeating)</b>
+    An IAM role and a Kubernetes service account are still two different, unrelated-looking things that happen to get linked by IRSA. GitHub's OIDC role (Part 2) and the LBC's OIDC role (this exercise) are two separate roles trusting the <em>same</em> cluster's OIDC provider for two completely different purposes — don't conflate them into "the OIDC role." And now a third nuance: the OIDC <strong>provider</strong> itself is one shared resource per cluster (created once, by the EKS module) — it's the <strong>roles</strong> that multiply per consumer, not the provider.
+  </div>
+  <div class="yourturn">
+    <span class="yt-label">Your turn</span>
+    <p>Check your own <code>eks-core-infra/</code> — since you used the official EKS module in Part 1, confirm the OIDC provider exists (<code>aws_iam_openid_connect_provider</code> shows up in that module's created resources, or check the AWS Console under IAM → Identity providers). Then, in a dedicated module (see the callout in Exercise 6 for why this shouldn't live in <code>app-infra/</code>), write the IAM role + policy above, referencing the existing provider via the data source. Note the role ARN — the Helm release in Exercise 6 needs it.</p>
+  </div>
+</section>
+
+<section id="ex6">
+  <div class="kicker">Exercise 6</div>
+  <h2><span class="num">06</span>Installing the controller with Helm, from Terraform</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: understand Helm's role here (package manager, not magic), why <code>helm_release</code> in Terraform beats a manual <code>helm install</code>, and where this code should actually live.</p>
+    <p>Helm was introduced with the analogy your instructor used directly: it's <code>apt</code>/<code>yum</code> for Kubernetes — a way to install pre-packaged, versioned, third-party software (like the AWS Load Balancer Controller) without hand-writing every Deployment, ServiceAccount, RBAC role, and CRD it needs. Terraform has a native <code>helm</code> provider so the install itself stays inside the same apply/plan/state workflow as everything else.</p>
+    <pre><code><span class="c"># k8s-services/providers.tf</span>
+data "aws_eks_cluster" "cluster" {
+  name = var.cluster_name
+}
+data "aws_eks_cluster_auth" "cluster" {
+  name = var.cluster_name
+}
+data "aws_vpc" "main" {
+  filter {
+    name   = <span class="s">"tag:Name"</span>
+    values = [var.vpc_name]
+  }
+}
+
+provider "helm" {
+  kubernetes = {
+    host                   = data.aws_eks_cluster.cluster.endpoint
+    cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
+    token                  = data.aws_eks_cluster_auth.cluster.token
+  }
+}
+
+<span class="c"># k8s-services/aws-load-balancer-controller.tf</span>
+resource "helm_release" "aws_load_balancer_controller" {
+  name       = <span class="s">"aws-load-balancer-controller"</span>
+  repository = <span class="s">"https://aws.github.io/eks-charts"</span>
+  chart      = <span class="s">"aws-load-balancer-controller"</span>
+  namespace  = <span class="s">"kube-system"</span>
+  version    = <span class="s">"1.11.0"</span>   <span class="c"># pin a real version — don't float on "latest"</span>
+
+  set = [
+    { name = <span class="s">"clusterName"</span>,                                                   value = var.cluster_name },
+    { name = <span class="s">"region"</span>,                                                        value = var.region },
+    { name = <span class="s">"vpcId"</span>,                                                         value = data.aws_vpc.main.id },
+    { name = <span class="s">"serviceAccount.create"</span>,                                          value = <span class="s">"true"</span> },
+    { name = <span class="s">"serviceAccount.name"</span>,                                            value = <span class="s">"aws-load-balancer-controller"</span> },
+    { name = <span class="s">"serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"</span>,     value = aws_iam_role.aws_load_balancer_controller.arn },
+  ]
+
+  depends_on = [aws_iam_role_policy_attachment.aws_load_balancer_controller]
+}</code></pre>
+    <p>Two config values matter and are easy to skip: the chart needs the <strong>VPC ID</strong> and <strong>cluster name</strong> to know where to look for subnets and how to tag the resources it creates.</p>
+  </div>
+  <div class="callout fix">
+    <b>Real structural decision worth adopting: this is its own Terraform module</b>
+    In the coach's repo, this entire Helm/IAM/OIDC setup lives in a standalone module — <code>k8s-services/</code> — sitting alongside <code>eks-core-infra/</code>, <strong>separate</strong> from the per-application <code>app-infra/</code> module you've been writing in Parts 2–3. The reasoning fits the "different lifecycle → different state file" principle from Part 1: the Load Balancer Controller is cluster-level infrastructure (installed once, shared by every app deployed to the cluster), not something tied to any one application's release cycle. If you tore down <code>app-infra/</code> tonight to rebuild the quiz app fresh, you would <em>not</em> want to also destroy and recreate the Load Balancer Controller — a separate state file makes that impossible to accidentally couple.
+  </div>
+  <div class="callout warn">
+    <b>Syntax note if you're on a recent Helm provider version</b>
+    The coach's code uses <code>set = [ { name = ..., value = ... }, ... ]</code> — a single attribute holding a list of objects. Older Helm provider versions (v2.x) use a different, repeated-block form instead: <code>set { name = "..." value = "..." }</code>, once per value. Both exist in the wild depending on which provider version a given piece of code (or blog post) was written against — check <code>required_providers</code> in your <code>versions.tf</code> before copying either shape verbatim, since mixing the two forms won't validate.
+  </div>
+  <div class="yourturn">
+    <span class="yt-label">Your turn</span>
+    <p>Create a <code>k8s-services/</code> module (new directory, new state key in your S3 backend — same "different lifecycle" pattern as <code>aws-github-oidc/</code>). Add the <code>helm</code> provider, the data sources, and the <code>helm_release</code> resource from Exercise 5+6 combined. Apply it and confirm with <code>kubectl get pods -n kube-system</code> that a controller pod comes up healthy before moving to the Ingress resource — an unhealthy controller pod means the Ingress in Exercise 8 will sit there doing nothing, and it's much easier to debug the controller in isolation first.</p>
+  </div>
+</section>
+
+<section id="ex7">
+  <div class="kicker">Exercise 7</div>
+  <h2><span class="num">07</span>Subnet tagging: how auto-discovery actually finds anything</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: know exactly what tags the LBC looks for before you hit the bug the class hit live (covered in full in the Debugging Clinic).</p>
+    <p>The LBC doesn't just "know" which subnets to put an ALB into — it discovers them by <strong>tag</strong>, the same discovery-by-tag pattern <code>rds.tf</code> already used in Part 2 to find the VPC and private subnets. Confirmed from the coach's actual VPC module call — this is set once, at the networking layer, for <em>both</em> public and private subnets:</p>
+    <pre><code><span class="c"># eks-core-infra/network.tf</span>
+module "vpc" {
+  source  = <span class="s">"terraform-aws-modules/vpc/aws"</span>
+  version = <span class="s">"6.6.1"</span>
+  <span class="c"># ...name, cidr, azs, private_subnets, public_subnets...</span>
+
+  public_subnet_tags = {
+    <span class="s">"kubernetes.io/cluster/${var.eks_cluster_name}"</span> = <span class="s">"shared"</span>
+    <span class="s">"kubernetes.io/role/elb"</span>                        = <span class="s">"1"</span>
+  }
+
+  private_subnet_tags = {
+    <span class="s">"kubernetes.io/cluster/${var.eks_cluster_name}"</span> = <span class="s">"shared"</span>
+    <span class="s">"kubernetes.io/role/internal-elb"</span>               = <span class="s">"1"</span>
+  }
+}</code></pre>
+    <p>Note the private subnets get a <em>different</em> role tag (<code>internal-elb</code>, not <code>elb</code>) — relevant if you ever provision an internal-facing ALB (e.g. for an admin panel not meant to be public) rather than the internet-facing one this class builds. Two things have to be true simultaneously for public discovery to work: <strong>at least two subnets</strong> in different Availability Zones need both tags, and the <code>${var.eks_cluster_name}</code> interpolation has to resolve to the <strong>exact same string</strong> the EKS module itself used as the cluster's real name — not a second, independently-typed copy of the name that can drift. That drift is exactly what broke during the live session (see the Clinic) — the fix was making both places reference the same variable instead of two separately-typed literals.</p>
+  </div>
+  <div class="yourturn">
+    <span class="yt-label">Your turn</span>
+    <p>In your own networking module, confirm both tag sets exist and that <code>${var.eks_cluster_name}</code> (or whatever you named that variable) is the exact same variable your <code>module "eks"</code> block uses for its own <code>name</code> argument — not a separately hardcoded string that happens to currently match.</p>
+  </div>
+</section>
+
+<section id="ex8">
+  <div class="kicker">Exercise 8</div>
+  <h2><span class="num">08</span>Writing the Ingress resource in Terraform</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: write an <code>Ingress</code> that the LBC can actually act on, using annotations as its instruction set — and use the current API convention, not a deprecated one.</p>
+    <p>Annotations are how you hand the LBC AWS-specific configuration that the plain Kubernetes <code>Ingress</code> spec has no vocabulary for — internal vs. internet-facing, target type, health check path all show up here, not in the spec's native fields. At <em>this</em> stage of the class — before TLS/ACM/Route 53, which the coach's repo has since added a few classes further ahead — the coach's actual annotation set was intentionally minimal:</p>
+    <pre><code><span class="c"># the coach's plain-manifest draft at this stage of the class (applied via kubectl, not yet Terraform):</span>
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: devopsdozo-ingress
+  namespace: devopsdozo
+  annotations:
+    alb.ingress.kubernetes.io/scheme: <span class="s">"internet-facing"</span>
+    alb.ingress.kubernetes.io/target-type: <span class="s">"ip"</span>
+    alb.ingress.kubernetes.io/healthcheck-path: <span class="s">"/"</span>
+spec:
+  ingressClassName: alb
+  rules:
+  - http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: backend-service
+            port:
+              number: 8080
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-service
+            port:
+              number: 80</code></pre>
+    <p>Two things worth noting precisely from this real snippet: it uses <code>spec.ingressClassName: alb</code> — the current, correct way to bind an Ingress to a controller — rather than the older <code>kubernetes.io/ingress.class</code> annotation, which is deprecated in current Kubernetes versions even though you'll still see it in a lot of older tutorials. And there's no <code>healthcheck-port</code> annotation at all here — it defaults to <code>traffic-port</code> (whatever port the Service itself forwards to), which is exactly what caused the health-check bug covered in the Clinic below.</p>
+    <p>Per your instructor's own stated decision mid-session (to move Ingress definition into Terraform specifically to later automate ACM certificate mapping and Route 53 DNS), here's that same shape ported into your <code>app-infra/</code>-style Terraform, matching your own resource-naming conventions from Parts 1–2:</p>
+    <pre><code>resource "kubernetes_ingress_v1" "app_ingress" {
+  metadata {
+    name      = <span class="s">"devopsquiz-ingress"</span>
+    namespace = kubernetes_namespace_v1.k8_namespace.metadata[0].name
+    annotations = {
+      <span class="s">"alb.ingress.kubernetes.io/scheme"</span>          = <span class="s">"internet-facing"</span>
+      <span class="s">"alb.ingress.kubernetes.io/target-type"</span>     = <span class="s">"ip"</span>
+      <span class="s">"alb.ingress.kubernetes.io/healthcheck-path"</span> = <span class="s">"/health"</span>
+    }
+  }
+
+  spec {
+    ingress_class_name = <span class="s">"alb"</span>
+
+    rule {
+      http {
+        path {
+          path      = <span class="s">"/api"</span>
+          path_type = <span class="s">"Prefix"</span>
+          backend {
+            service {
+              name = kubernetes_service_v1.backend_svc.metadata[0].name
+              port { number = kubernetes_service_v1.backend_svc.spec[0].port[0].port }
+            }
+          }
+        }
+        path {
+          path      = <span class="s">"/"</span>
+          path_type = <span class="s">"Prefix"</span>
+          backend {
+            service {
+              name = kubernetes_service_v1.frontend_svc.metadata[0].name
+              port { number = kubernetes_service_v1.frontend_svc.spec[0].port[0].port }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  depends_on = [helm_release.aws_load_balancer_controller]
+}</code></pre>
+    <p><code>target-type = "ip"</code> matters specifically for EKS: it tells the ALB to register pod IPs directly as targets (works with the VPC CNI's pod-level networking), instead of the older <code>instance</code> mode which registers whole worker nodes and relies on <code>NodePort</code> under the hood. The explicit <code>depends_on</code> on the Helm release isn't cosmetic — without it, Terraform has no inherent way to know the Ingress resource requires the controller to already be running and watching, since nothing in the Ingress spec's own attributes references the Helm release.</p>
+  </div>
+  <div class="callout warn">
+    <b>Set your health check path deliberately, don't leave it at <code>"/"</code></b>
+    The coach's snapshot above uses <code>"/"</code> as the health check path — functionally fine only if that path actually returns a 200 on both services being fronted, which for a typical React frontend is usually true (it serves the app shell) but is a coincidence, not a design choice. Your own backend and frontend both already expose a real <code>/health</code> endpoint (Part 2, Exercise 9) — point the annotation at that explicitly rather than relying on <code>/</code> happening to work.
+  </div>
+  <div class="yourturn">
+    <span class="yt-label">Your turn</span>
+    <p>Write this resource against your own service/port names from Part 2. Apply, then <code>kubectl get ingress -n devopsquiz-app</code> and watch for an <code>ADDRESS</code> field to populate — that's the ALB's DNS name once the controller has finished provisioning it. If it stays blank, that's Exercise 7's subnet tagging or Exercise 5's IAM permissions — check the controller's own pod logs (<code>kubectl logs -n kube-system deploy/aws-load-balancer-controller</code>) before assuming the Ingress spec itself is wrong.</p>
+  </div>
+</section>
+
+<section id="ex9">
+  <div class="kicker">Exercise 9</div>
+  <h2><span class="num">09</span>Why backend pods must never auto-create the schema</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: be able to explain, unprompted, why "just let the app create its own tables on startup" is a real production anti-pattern — this is a strong interview signal question.</p>
+    <p>With a single pod, having the backend app auto-create its own database schema/tables on first boot seems harmless — one process, one startup, one schema creation, done. The problem appears the moment you scale beyond one replica (which Part 2's Deployments already do — <code>replicas = 2</code>): every pod that starts runs the same startup logic simultaneously. Multiple pods racing to create the same tables at the same time against the same database is a recipe for <strong>request bombardment</strong> at minimum, and genuine <strong>data corruption</strong> in the worse case — the same endpoint/row being written from multiple sources at once.</p>
+    <p>The production pattern, stated plainly in class: <strong>migrations are a separate lifecycle concern from the running application</strong>, handled by its own step, not bundled into the application container's normal startup path.</p>
+  </div>
+  <div class="callout fix">
+    <b>This connects directly to a decision already made in Part 2</b>
+    Your own Part 2 handoff notes flagged this exact distinction before this class even covered it explicitly: "migrations are a separate lifecycle concern (Job/initContainer pattern), not part of Deployment container spec." This class is the formal teaching behind that instinct — good sign that the earlier reasoning was already correct.
+  </div>
+</section>
+
+<section id="ex10">
+  <div class="kicker">Exercise 10</div>
+  <h2><span class="num">10</span>The migration Job: same image, different command</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: understand exactly how a Kubernetes <code>Job</code> reuses an existing image while making it do something completely different than what its Dockerfile normally starts — and where this fits relative to Terraform.</p>
+    <p>A <code>Job</code> is Kubernetes' object for "run this to completion once, then stop" — as opposed to a <code>Deployment</code>, which is built around "keep this running forever, restart if it dies." Rather than building a whole separate image just for migrations, the class reused the backend's own image (which already bundles a <code>migrate.sh</code> script) and overrode its default startup behavior using the same underlying idea as Docker's own <code>ENTRYPOINT</code>/<code>CMD</code> override mechanism — Kubernetes' <code>command</code> field on the container spec does exactly this at the pod level. This is the coach's actual Job manifest, applied directly via <code>kubectl</code>:</p>
+    <pre><code>apiVersion: batch/v1
+kind: Job
+metadata:
+  name: backend-job
+  namespace: devopsdozo
+  labels:
+    app: backend
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: backend
+          image: &lt;account-id&gt;.dkr.ecr.&lt;region&gt;.amazonaws.com/augk8s26-backend:&lt;git-sha&gt;
+          command: [<span class="s">"/bin/sh"</span>, <span class="s">"-c"</span>, <span class="s">"./migrate.sh"</span>]
+          resources:
+            requests:
+              memory: <span class="s">"256Mi"</span>
+              cpu: <span class="s">"250m"</span>
+            limits:
+              memory: <span class="s">"512Mi"</span>
+              cpu: <span class="s">"500m"</span>
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef: { name: backend-secret, key: DB_LINK }
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef: { name: backend-secret, key: SECRET_KEY }
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef: { name: backend-secret, key: DB_USERNAME }
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: backend-secret, key: DB_PASSWORD }
+            <span class="c"># ...plus DB_HOST, DB_PORT, DB_NAME, ALLOWED_ORIGINS, APP_VERSION from the ConfigMap, same pattern with configMapKeyRef</span></code></pre>
+    <p>Two design points worth internalizing, both raised implicitly through what actually broke live (see the Clinic): the Job needs the <strong>exact same environment</strong> as the backend Deployment, because <code>migrate.sh</code> needs to reach the same database with the same credentials. And <code>restartPolicy: Never</code> (not the pod-spec default of <code>Always</code>) is required for Jobs — a migration that fails should surface as a failed Job for a human to investigate, not silently restart forever.</p>
+  </div>
+  <div class="callout fix">
+    <b>Plain YAML here, not Terraform — and it's consistent with a boundary you already learned</b>
+    Notice this is a raw manifest, <code>kubectl apply</code>'d directly — not a <code>kubernetes_job_v1</code> Terraform resource, even though the rest of this app's Kubernetes objects (Services, ConfigMaps, Secrets, the Ingress in Exercise 8) are Terraform-managed. This lines up exactly with the Terraform-vs-YAML boundary from Part 2's Q&amp;A: <strong>dynamic infra state → Terraform</strong> (things that reference other Terraform-managed resources and don't change per-deploy), <strong>fast-moving deploy state → plain YAML</strong> (things whose defining characteristic — here, the image tag — changes on every real deploy). A migration Job's image tag needs to track whatever was just built, exactly like a Deployment's image tag does — so it falls on the YAML side of that line for the same reason.</p>
+  </div>
+  <div class="callout warn">
+    <b>Style difference worth noticing, not a bug: <code>env</code> vs. <code>envFrom</code></b>
+    The coach lists every variable individually via <code>env: - name: X valueFrom: secretKeyRef: ...</code>. Your own <code>app-infra</code> code (Part 2) consistently uses the terser <code>envFrom</code> (whole ConfigMap/Secret injected at once) instead. Both are functionally equivalent here since the Job needs every key from both objects anyway — <code>envFrom</code> is simply less to type when you want the whole object. The individual form only earns its keep when a container needs <em>some</em> keys from a ConfigMap/Secret but not all of them, or needs to rename a key on the way in (e.g. injecting a Secret's <code>DB_LINK</code> as <code>DATABASE_URL</code>, which is in fact exactly what the coach's snippet above does — worth spotting that rename, since it's doing real work, not just re-listing the same name).</p>
+  </div>
+  <div class="callout warn">
+    <b>Notice the image tag is a real commit SHA here — connect this back to your own Part 2 review</b>
+    The coach's Job hardcodes an actual git-SHA-tagged image (<code>...backend:&lt;git-sha&gt;</code>), not <code>:latest</code>. This is a live confirmation of exactly the ECR immutability + commit-SHA tagging conversation you and I had reviewing Part 2's <code>app-infra</code> code — by this point in the coach's own timeline, that piece has already been solved on their end. Worth keeping as a concrete forward-looking target for when your own pipeline work catches up to it.</p>
+  </div>
+  <div class="callout warn">
+    <b>What this Job does <em>not</em> solve yet</b>
+    Running this Job as a one-off <code>kubectl apply</code> works for this class, but running it safely as part of a real CI/CD pipeline — so it runs automatically on every real deploy, exactly once, before the new backend version starts serving traffic — was explicitly called out as a "critical requirement for future CI/CD pipeline deployments," not solved in this session. Worth flagging honestly if it comes up in an interview: this is a real open design question (Job triggered by pipeline step vs. Helm hook vs. init container with a locking mechanism), not a finished pattern yet.
+  </div>
+  <div class="yourturn">
+    <span class="yt-label">Your turn</span>
+    <p>Write this Job as a plain YAML manifest against your own backend image/Secret/ConfigMap names — <code>envFrom</code> is fine here, no need to switch to individual <code>env</code> entries unless you want the practice. Apply via <code>kubectl</code>, <code>kubectl logs job/&lt;name&gt; -n devopsquiz-app</code> to confirm the migration actually ran (tables/seed data created), then hit your backend's real data endpoint (e.g. <code>/api/topics</code>) via port-forward to confirm data comes back before moving on.</p>
+  </div>
+</section>
+
+<section id="clinic">
+  <div class="kicker">Live Debugging Clinic</div>
+  <h2>Every bug the class actually hit</h2>
+  <p class="lede">This session was unusually bug-heavy, and every one of them is a realistic production scenario, not a bootcamp contrivance. Walking through <em>how</em> each was diagnosed matters more than the one-line fix.</p>
+
+  <div class="callout bug">
+    <b>Bug 1 — Service <code>targetPort</code> pointed at the wrong container port</b>
+    Symptom: health checks failing, app unreachable, even though the Service and Deployment both looked individually correct. Root cause: the frontend container's actual listening port (from its own Dockerfile) didn't match the <code>target_port</code> the Service was forwarding to — a mismatch between what the container exposes and what the Service assumes it exposes. Diagnosed by going straight to the Dockerfile to check the real port rather than trusting the Kubernetes manifest's assumption. <strong>Lesson:</strong> the Service's <code>port</code>/<code>target_port</code> pair is only ever correct if it's been verified against the container's actual listening port, not copied from another service's config.
+  </div>
+
+  <div class="callout bug">
+    <b>Bug 2 — <code>ALLOWED_ORIGINS</code> set to a static endpoint instead of a real, live reference</b>
+    Symptom: frontend couldn't reach backend even after the port fix. Root cause: the backend's CORS-adjacent origin config was pointing at a hardcoded, static value rather than something that actually tracked the frontend Service. The coach's real fix, confirmed from the current code — <code>ALLOWED_ORIGINS = "http://${kubernetes_service.frontend_service.spec[0].cluster_ip}:${kubernetes_service.frontend_service.spec[0].port[0].port}"</code> — derives the value directly from the frontend Service's own Terraform attributes (its ClusterIP and port) instead of typing either one in by hand. Worth noting for your own version: a Service's ClusterIP is stable for the Service's lifetime, so referencing it directly works, but referencing the Service's <strong>DNS name</strong> (<code>&lt;svc&gt;.&lt;ns&gt;.svc.cluster.local</code>, the pattern you already used correctly for <code>BACKEND_URL</code> in Part 2) is generally the more idiomatic choice — it reads clearly to a future maintainer and doesn't silently break if the Service were ever recreated with a new ClusterIP. Either fixes this bug; the DNS form is the better habit. Also worth remembering: ConfigMap changes don't retroactively update already-running pods — a restart (or a mechanism to trigger one) is required to pick up the corrected value.
+  </div>
+
+  <div class="callout bug">
+    <b>Bug 3 — Backend couldn't find the database because the connection env var name was wrong</b>
+    Symptom: backend logs showed it falling back to a default/incorrect database name instead of connecting to the real RDS instance. Diagnosed via a genuinely instructive process: <strong>port-forward the backend Service locally, curl its real API endpoint, read the actual error</strong>, then <code>nslookup</code> the database hostname to confirm whether DNS resolution itself was the problem or whether the app simply never received the right environment variable name. The real root cause: the application code was looking for a specific env var name (its own <code>DATABASE_URL</code>-style variable) that didn't match what was actually being injected via the Secret. <strong>Lesson, and it's the single most reusable one from this whole session:</strong> when a connection fails, don't guess — reproduce the failure with a direct tool (port-forward + curl, then <code>nslookup</code>/<code>dig</code>) to isolate whether it's DNS, networking, credentials, or a mismatched variable name, in that order.
+  </div>
+
+  <div class="callout bug">
+    <b>Bug 4 — ALB subnet discovery failing due to a cluster-name mismatch in subnet tags</b>
+    Symptom: the Ingress resource applied cleanly, but the LBC couldn't find any subnets to provision the ALB into — the <code>ADDRESS</code> field on <code>kubectl get ingress</code> stayed empty. Diagnosed by going directly into the AWS Console to inspect the actual tags on the public subnets, confirming the required tags existed at all, then discovering the specific tag value (the cluster name) didn't exactly match what the LBC was querying for. Root cause traced back to the Terraform code generating that tag value — a naming/reference mismatch, not a missing tag. Fixed by correcting the reference so both places (the cluster's real name and the subnet tag) derive from the same source of truth instead of two independently-typed strings.
+  </div>
+
+  <div class="callout fix">
+    <b>Meta-lesson across all four</b>
+    Every single bug this session was a <strong>mismatch between two things that were each individually valid but disagreed with each other</strong> — a port here vs. a port there, a hostname here vs. a hostname there, a name here vs. a tag there. None required exotic debugging tools; all four were solved by directly inspecting the actual running state (Dockerfile, pod logs, AWS Console tags, DNS resolution) rather than re-reading the Terraform/YAML and hoping. That instinct — verify the live state, don't just re-read the code — is exactly what a senior debugging question in an interview is probing for.
+  </div>
+</section>
+
+<hr class="div">
+
+<section id="nextup">
+  <div class="kicker">Looking ahead</div>
+  <h2>What's next (HTTPS / ACM / Route 53 preview)</h2>
+  <p>The instructor got the ALB working end-to-end over plain HTTP by the end of this session, and named the immediate next steps explicitly. This isn't speculative — the coach's reference repo (several classes ahead of this transcript) already has this fully built, so here's exactly what it looks like once done, purely as a preview of where you're headed. <strong>None of this is a "your turn" yet</strong> — it depends on a real registered domain and comes after HTTPS is explicitly taught:</p>
+  <ul>
+    <li><strong>A real domain</strong>, looked up via <code>data "aws_route53_zone"</code> — the class's own domain already existed as a Route 53 hosted zone.</li>
+    <li><strong>An ACM certificate</strong> (<code>aws_acm_certificate</code>, <code>validation_method = "DNS"</code>) requested for the app's subdomain, validated automatically by writing the DNS validation record Route 53 needs (<code>aws_route53_record.cert_validation</code>) and waiting on it via <code>aws_acm_certificate_validation</code> — all three resources chained together so <code>terraform apply</code> handles the whole issuance/validation dance without anyone manually clicking "validate" in the ACM console.</li>
+    <li><strong>Wiring the certificate into the Ingress</strong> via <code>alb.ingress.kubernetes.io/certificate-arn</code>, plus <code>alb.ingress.kubernetes.io/listen-ports = '[{"HTTP": 80}, {"HTTPS": 443}]'</code> and <code>alb.ingress.kubernetes.io/ssl-redirect = "443"</code> — at that point the ALB terminates TLS itself and automatically redirects any plain HTTP hit to HTTPS.</li>
+    <li><strong>Pointing the domain at the ALB</strong> — a data source (<code>data "aws_lb"</code>, found by the tag the Ingress annotations assign it) feeds the ALB's own DNS name into an <code>aws_route53_record</code> alias record, completing the chain from human-readable domain all the way to the ALB.</li>
+  </ul>
+  <div class="callout warn">
+    <b>Known open item carried into whichever class covers this</b>
+    The health check on the ALB target group was still misconfigured at the very end of this session (defaulting to <code>traffic-port</code> with a <code>"/"</code> path rather than an explicit, verified path/port) — flagged live but not yet fixed in code. If your own <code>Ingress</code> resource's health-check annotations don't match your actual container's listening port and a real health endpoint, expect the same symptom (targets registered but marked unhealthy) until this is corrected.
+  </div>
+</section>
+
+<hr class="div">
+
+<section id="glossary">
+  <div class="kicker">Reference</div>
+  <h2>Glossary</h2>
+  <dl class="glossary">
+    <dt>Ingress</dt><dd>A Kubernetes API object declaring routing rules (host/path → Service) — a rule, not a running process or physical resource.</dd>
+    <dt>Ingress Controller</dt><dd>Software that watches <code>Ingress</code> objects and enforces their rules — e.g. NGINX Ingress Controller, Traefik, Kong, Istio.</dd>
+    <dt>AWS Load Balancer Controller (LBC)</dt><dd>A pod running in-cluster that translates <code>Ingress</code>/annotations into real AWS API calls — provisioning ALBs/NLBs, target groups, and security groups.</dd>
+    <dt>ALB (Application Load Balancer)</dt><dd>Layer 7 AWS load balancer — content/path-based routing, HTTPS/TLS termination at the application layer.</dd>
+    <dt>NLB (Network Load Balancer)</dt><dd>Layer 4 AWS load balancer — raw TCP/UDP forwarding, no awareness of HTTP paths or hosts.</dd>
+    <dt>IRSA (IAM Roles for Service Accounts)</dt><dd>The OIDC-based mechanism linking a Kubernetes ServiceAccount to an IAM Role, letting an in-cluster pod call AWS APIs without static credentials.</dd>
+    <dt>Subnet auto-discovery (LBC)</dt><dd>The LBC's mechanism for finding which subnets to place a load balancer into, based on <code>kubernetes.io/role/elb</code> and <code>kubernetes.io/cluster/&lt;name&gt;</code> tags.</dd>
+    <dt>Helm</dt><dd>A package manager for Kubernetes — installs pre-packaged, versioned charts (Deployments, RBAC, CRDs bundled together) instead of hand-writing every manifest.</dd>
+    <dt><code>helm_release</code></dt><dd>Terraform's <code>helm</code> provider resource for installing/managing a Helm chart as part of the same plan/apply/state workflow as everything else.</dd>
+    <dt>Kubernetes Job</dt><dd>An object for "run to completion once, then stop" workloads — as opposed to a Deployment's "keep running forever" model. Used here for one-off database migrations.</dd>
+    <dt><code>command</code> (container spec)</dt><dd>Kubernetes' field for overriding a container image's default startup command — the pod-spec equivalent of overriding Docker's <code>ENTRYPOINT</code>/<code>CMD</code>.</dd>
+    <dt>Database migration</dt><dd>The process of creating/updating a database's schema and seed data — deliberately run as a separate, single-shot step rather than automatically on every application pod's startup.</dd>
+    <dt>ACM (AWS Certificate Manager)</dt><dd>AWS's service for issuing and managing TLS certificates, tied to a domain name — a prerequisite for HTTPS on an ALB.</dd>
+    <dt>Route 53</dt><dd>AWS's DNS service — used to map a real domain name to the ALB's own generated DNS hostname.</dd>
+  </dl>
+</section>
+
+</div>
+
+<a href="#" class="backtotop">↑</a>
+
+<footer>
+  Follow-along series · DevOps Bootcamp April 2026 · Class 4, Part 3 — generated from class notes and transcript (Aug 23, 2026)
+</footer>
+
+</body>
+</html>

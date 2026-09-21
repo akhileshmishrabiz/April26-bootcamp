@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Linux Namespaces, CNI &amp; Kubernetes Local Tooling — Deep Reference</title>
+<style>
+  :root{
+    --ink:#1b2027;
+    --sub:#4b5563;
+    --bg:#fbfaf7;
+    --panel:#ffffff;
+    --line:#e4e1d8;
+    --accent:#2e6f6a;      /* deep teal, engineering-schematic feel */
+    --accent2:#b8562f;     /* rust/terracotta for warnings & host boxes */
+    --accent3:#3a5ba0;     /* blue for k8s / control-plane elements */
+    --mono-bg:#12161c;
+    --mono-ink:#d7e0e8;
+    --mono-accent:#7fd0c4;
+    --ns-fill:#eef3f2;
+    --ns-fill2:#f3ede6;
+    --code-inline-bg:#eef0eb;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Georgia,"Noto Serif",serif;
+    line-height:1.65; font-size:17px;
+  }
+  .wrap{max-width:960px; margin:0 auto; padding:0 32px 120px;}
+  header.hero{
+    padding:70px 32px 50px; text-align:left; border-bottom:1px solid var(--line);
+    background:
+      linear-gradient(180deg, rgba(46,111,106,0.06), rgba(46,111,106,0) 60%);
+  }
+  header.hero .eyebrow{
+    font-family:"JetBrains Mono","SF Mono",Consolas,monospace;
+    letter-spacing:.14em; text-transform:uppercase; font-size:12.5px;
+    color:var(--accent); margin-bottom:14px; display:flex; gap:10px; align-items:center;
+  }
+  header.hero .eyebrow::before{content:"//"; color:var(--accent2);}
+  h1.title{
+    font-size:clamp(30px,4.2vw,46px); line-height:1.12; margin:0 0 14px; max-width:820px;
+    letter-spacing:-0.01em;
+  }
+  .subtitle{color:var(--sub); font-size:18px; max-width:680px; margin:0 0 26px;}
+  .meta-row{display:flex; gap:22px; flex-wrap:wrap; font-family:"JetBrains Mono",monospace; font-size:12.5px; color:var(--sub);}
+  .meta-row span b{color:var(--ink);}
+
+  nav.toc{
+    margin:36px auto 0; max-width:960px; padding:22px 32px 26px;
+    border:1px solid var(--line); border-radius:10px; background:var(--panel);
+  }
+  nav.toc h2{
+    font-family:"JetBrains Mono",monospace; font-size:12.5px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--accent); margin:0 0 14px;
+  }
+  nav.toc ol{columns:2; column-gap:36px; margin:0; padding-left:20px;}
+  nav.toc li{break-inside:avoid; margin-bottom:8px; font-size:15px;}
+  nav.toc a{color:var(--ink); text-decoration:none; border-bottom:1px dotted var(--line);}
+  nav.toc a:hover{color:var(--accent); border-color:var(--accent);}
+  @media (max-width:640px){nav.toc ol{columns:1;}}
+
+  section{padding-top:56px;}
+  section > .kicker{
+    font-family:"JetBrains Mono",monospace; font-size:12px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--accent2); margin-bottom:8px;
+  }
+  h2{font-size:30px; margin:0 0 6px; letter-spacing:-0.01em; scroll-margin-top:20px;}
+  h2 .num{color:var(--accent); font-family:"JetBrains Mono",monospace; font-size:19px; margin-right:10px;}
+  h3{font-size:21px; margin:34px 0 10px; scroll-margin-top:20px; color:#20262c;}
+  h4{font-size:16.5px; margin:22px 0 8px; color:#20262c; font-family:"JetBrains Mono",monospace; letter-spacing:.02em;}
+  p{margin:0 0 15px;}
+  ul,ol{margin:0 0 16px; padding-left:22px;}
+  li{margin-bottom:6px;}
+  strong{color:#10161c;}
+  .lede{font-size:18.5px; color:#2b323a;}
+
+  code, .code-inline{
+    font-family:"JetBrains Mono","SF Mono",Consolas,monospace; font-size:0.86em;
+    background:var(--code-inline-bg); padding:1px 6px; border-radius:4px; color:#3a2f1f;
+  }
+  pre{
+    background:var(--mono-bg); color:var(--mono-ink); padding:18px 20px; border-radius:10px;
+    overflow-x:auto; font-family:"JetBrains Mono","SF Mono",Consolas,monospace; font-size:13.5px;
+    line-height:1.55; margin:16px 0 22px;
+  }
+  pre code{background:none; padding:0; color:inherit; font-size:1em;}
+  pre .c{color:#7f8b98;} /* comment */
+  pre .k{color:var(--mono-accent);} /* keyword/command */
+  pre .s{color:#e2b872;} /* string/value */
+
+  .callout{
+    border-left:3px solid var(--accent); background:#eef3f2; padding:14px 18px;
+    border-radius:0 8px 8px 0; margin:18px 0; font-size:15.5px;
+  }
+  .callout.warn{border-left-color:var(--accent2); background:#f7ece5;}
+  .callout.myth{border-left-color:#8a3f8a; background:#f3ecf3;}
+  .callout b{display:block; font-family:"JetBrains Mono",monospace; font-size:11.5px;
+    letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px;}
+  .callout.warn b{color:var(--accent2);}
+  .callout.myth b{color:#8a3f8a;}
+  .callout:not(.warn):not(.myth) b{color:var(--accent);}
+
+  figure{margin:22px 0 30px; padding:18px; background:var(--panel); border:1px solid var(--line); border-radius:12px;}
+  figure svg{width:100%; height:auto; display:block;}
+  figcaption{font-size:13px; color:var(--sub); margin-top:12px; text-align:center; font-family:"JetBrains Mono",monospace;}
+
+  table{width:100%; border-collapse:collapse; margin:18px 0 26px; font-size:15px;}
+  th{
+    text-align:left; font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--sub); border-bottom:2px solid var(--ink); padding:8px 12px;
+  }
+  td{border-bottom:1px solid var(--line); padding:10px 12px; vertical-align:top;}
+  tr:hover td{background:#f5f3ee;}
+  td code{white-space:nowrap;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+  .card{border:1px solid var(--line); border-radius:10px; padding:16px 18px; background:var(--panel);}
+  .card h4{margin-top:0;}
+
+  hr.div{border:none; border-top:1px solid var(--line); margin:56px 0;}
+
+  .backtotop{position:fixed; right:24px; bottom:24px; background:var(--ink); color:#fff; width:42px; height:42px;
+    border-radius:50%; display:flex; align-items:center; justify-content:center; text-decoration:none; font-size:18px;
+    opacity:.85; box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  .backtotop:hover{opacity:1;}
+
+  .step-list{counter-reset:step; list-style:none; padding-left:0;}
+  .step-list li{counter-increment:step; padding-left:38px; position:relative; margin-bottom:14px;}
+  .step-list li::before{
+    content:counter(step); position:absolute; left:0; top:0; width:26px; height:26px; border-radius:50%;
+    background:var(--accent); color:#fff; font-family:"JetBrains Mono",monospace; font-size:13px;
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  .glossary dt{font-family:"JetBrains Mono",monospace; font-weight:700; color:var(--ink); margin-top:14px;}
+  .glossary dd{margin:2px 0 0; color:var(--sub);}
+
+  footer{padding:60px 32px 40px; text-align:center; color:var(--sub); font-size:13px; font-family:"JetBrains Mono",monospace;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap" style="padding:0;">
+    <div class="eyebrow">devops bootcamp — supplementary reference</div>
+    <h1 class="title">Linux &amp; Docker Namespaces, CNI Internals, and the Local Kubernetes Toolchain</h1>
+    <p class="subtitle">A self-contained deep-dive into how container isolation and networking actually work under the hood, plus practical, no-gaps usage guides for <b>kind</b>, <b>kubectl</b>, and <b>Freelens</b>.</p>
+    <div class="meta-row">
+      <span>Companion to: <b>DevOps Bootcamp — Kubernetes Module, Week 1</b></span>
+      <span>Level: <b>Foundations → Under-the-hood</b></span>
+      <span>Prereqs: <b>basic Docker, basic Kubernetes objects</b></span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#part1">Linux Namespaces — the isolation primitive</a></li>
+    <li><a href="#netns">Network namespaces in detail</a></li>
+    <li><a href="#veth-bridge">veth pairs &amp; Linux bridges</a></li>
+    <li><a href="#docker-networking">How Docker uses namespaces</a></li>
+    <li><a href="#part2">CNI — the Container Network Interface</a></li>
+    <li><a href="#cni-flow">How CNI is actually invoked</a></li>
+    <li><a href="#cni-plugins">CNI plugin types &amp; the ecosystem</a></li>
+    <li><a href="#pod-networking">Putting it together: Pod networking end-to-end</a></li>
+    <li><a href="#part3">kind — Kubernetes IN Docker</a></li>
+    <li><a href="#kind-install">Installing &amp; using kind</a></li>
+    <li><a href="#part4">kubectl — the Kubernetes CLI</a></li>
+    <li><a href="#part5">Freelens — a visual Kubernetes IDE</a></li>
+    <li><a href="#glossary">Glossary</a></li>
+  </ol>
+</nav>
+
+<section id="part1">
+  <div class="kicker">Part 1 · Foundations</div>
+  <h2><span class="num">01</span>Linux Namespaces — the isolation primitive</h2>
+  <p class="lede">Every container — whether it's a raw Docker container or a Kubernetes pod — is, at the kernel level, just a normal Linux process. There is no special "container" object in the Linux kernel. What makes a process feel like an isolated little machine is a kernel feature called <strong>namespaces</strong>, combined with a resource-limiting feature called <strong>cgroups</strong>.</p>
+
+  <p>A namespace wraps a global system resource in an abstraction that makes it appear to the processes within the namespace that they have their own isolated instance of that resource. Two processes in different namespaces can both think they are "process ID 1", both think they own <code>eth0</code>, both think they have their own <code>/</code> root filesystem — while actually sharing one physical machine and one kernel.</p>
+
+  <div class="callout">
+    <b>Key mental model</b>
+    Namespaces don't create new resources. They create <em>restricted views</em> of existing global kernel resources. A container's "own network stack" is really just the host's networking subsystem, sliced and hidden so the container can only see its own slice.
+  </div>
+
+  <h3>The eight namespace types</h3>
+  <p>As of a modern Linux kernel (5.6+), there are eight namespace types. Kubernetes and Docker use most of these for every pod/container they create.</p>
+
+  <table>
+    <tr><th>Namespace</th><th>Kernel flag</th><th>Isolates</th><th>Used by containers to…</th></tr>
+    <tr><td><code>PID</code></td><td><code>CLONE_NEWPID</code></td><td>Process IDs</td><td>Let every container think its main process is PID 1, with its own independent process tree.</td></tr>
+    <tr><td><code>NET</code></td><td><code>CLONE_NEWNET</code></td><td>Network devices, IP addresses, routing tables, port numbers, iptables rules</td><td>Give each container its own <code>eth0</code>, its own IP, and its own routing table — this is the one this document spends the most time on.</td></tr>
+    <tr><td><code>MNT</code></td><td><code>CLONE_NEWNS</code></td><td>Filesystem mount points</td><td>Give each container its own root filesystem view (this is what makes a container's <code>/</code> look like a fresh OS image).</td></tr>
+    <tr><td><code>UTS</code></td><td><code>CLONE_NEWUTS</code></td><td>Hostname &amp; NIS domain name</td><td>Let each container set its own <code>hostname</code> without affecting the host or other containers.</td></tr>
+    <tr><td><code>IPC</code></td><td><code>CLONE_NEWIPC</code></td><td>System V IPC, POSIX message queues</td><td>Prevent containers from being able to signal or share memory queues with unrelated processes.</td></tr>
+    <tr><td><code>USER</code></td><td><code>CLONE_NEWUSER</code></td><td>User &amp; group ID mappings</td><td>Let a process be "root" (UID 0) inside the container while mapping to an unprivileged UID on the host — a major security boundary.</td></tr>
+    <tr><td><code>CGROUP</code></td><td><code>CLONE_NEWCGROUP</code></td><td>Cgroup root directory view</td><td>Hide the host's full cgroup hierarchy so a container only sees its own slice of it.</td></tr>
+    <tr><td><code>TIME</code></td><td><code>CLONE_NEWTIME</code></td><td>Boot &amp; monotonic clocks</td><td>Allow a container to have an offset system clock (used mainly for checkpoint/restore, rarely in everyday use).</td></tr>
+  </table>
+
+  <p>You can inspect a running process's namespaces directly on any Linux host:</p>
+  <pre><code><span class="c"># list the namespace symlinks for PID 1234</span>
+<span class="k">ls</span> -la /proc/1234/ns/
+<span class="c"># typical output:</span>
+<span class="s">cgroup -> 'cgroup:[4026531835]'
+ipc    -> 'ipc:[4026532210]'
+mnt    -> 'mnt:[4026532208]'
+net    -> 'net:[4026532213]'
+pid    -> 'pid:[4026532211]'
+time   -> 'time:[4026531834]'
+user   -> 'user:[4026531837]'
+uts    -> 'uts:[4026532209]'</span>
+
+<span class="c"># the number in brackets is the namespace's inode ID.
+# two processes that show the SAME number for a given
+# namespace type are literally sharing that namespace.</span></code></pre>
+
+  <p>Docker (and the Kubernetes container runtime under it) creates most of these namespaces fresh for every container. Kubernetes, notably, shares the <code>NET</code> and <code>IPC</code> namespaces across <em>all containers in the same pod</em> — which is precisely why containers in one pod can reach each other over <code>localhost</code>. More on this in the CNI section.</p>
+</section>
+
+<section id="netns">
+  <h2><span class="num">02</span>Network namespaces in detail</h2>
+  <p>The network namespace (<code>netns</code>) is the one that matters most for everything you'll do with Kubernetes. Each network namespace gets its own, completely independent:</p>
+  <ul>
+    <li>Set of network interfaces (a fresh namespace starts with <em>only</em> a loopback interface, <code>lo</code>, and it's down by default)</li>
+    <li>IPv4/IPv6 routing table</li>
+    <li>Firewall / netfilter (iptables / nftables) rule set</li>
+    <li>Socket / port number space — so two namespaces can each bind port 80 independently, with zero conflict</li>
+    <li><code>/proc/net</code> and <code>/sys/class/net</code> view</li>
+  </ul>
+
+  <p>You can play with network namespaces directly using the <code>ip netns</code> tool — this is exactly the primitive Docker and the CNI plugins build on top of:</p>
+
+  <pre><code><span class="c"># create two isolated network namespaces</span>
+<span class="k">sudo ip netns add</span> ns1
+<span class="k">sudo ip netns add</span> ns2
+
+<span class="c"># list them</span>
+<span class="k">ip netns list</span>
+
+<span class="c"># run a command *inside* a namespace</span>
+<span class="k">sudo ip netns exec</span> ns1 ip addr show
+
+<span class="c"># a brand-new namespace only has 'lo', and it's DOWN:</span>
+<span class="s">1: lo: &lt;LOOPBACK&gt; mtu 65536 qdisc noop state DOWN</span></code></pre>
+
+  <p>A namespace with nothing but a loopback interface can't talk to anything — not even the host. To connect it to the outside world, you need a <strong>veth pair</strong>, covered next.</p>
+
+  <figure>
+    <svg viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0" y="0" width="900" height="360" fill="none"/>
+      <!-- host box -->
+      <rect x="20" y="20" width="860" height="320" rx="12" fill="#faf8f3" stroke="#b8562f" stroke-width="1.5" stroke-dasharray="5,4"/>
+      <text x="40" y="46" font-family="JetBrains Mono, monospace" font-size="13" fill="#b8562f" font-weight="700">HOST — default (root) network namespace</text>
+
+      <!-- ns1 box -->
+      <rect x="60" y="150" width="230" height="150" rx="10" fill="#eef3f2" stroke="#2e6f6a" stroke-width="1.5"/>
+      <text x="80" y="175" font-family="JetBrains Mono, monospace" font-size="12.5" fill="#2e6f6a" font-weight="700">netns: ns1</text>
+      <rect x="90" y="195" width="170" height="34" rx="6" fill="#ffffff" stroke="#2e6f6a"/>
+      <text x="175" y="217" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12.5" fill="#1b2027">lo (127.0.0.1)</text>
+      <rect x="90" y="240" width="170" height="34" rx="6" fill="#ffffff" stroke="#2e6f6a"/>
+      <text x="175" y="262" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12.5" fill="#1b2027">veth-ns1 (192.168.10.1)</text>
+
+      <!-- ns2 box -->
+      <rect x="610" y="150" width="230" height="150" rx="10" fill="#eef3f2" stroke="#2e6f6a" stroke-width="1.5"/>
+      <text x="630" y="175" font-family="JetBrains Mono, monospace" font-size="12.5" fill="#2e6f6a" font-weight="700">netns: ns2</text>
+      <rect x="660" y="195" width="170" height="34" rx="6" fill="#ffffff" stroke="#2e6f6a"/>
+      <text x="745" y="217" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12.5" fill="#1b2027">lo (127.0.0.1)</text>
+      <rect x="660" y="240" width="170" height="34" rx="6" fill="#ffffff" stroke="#2e6f6a"/>
+      <text x="745" y="262" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12.5" fill="#1b2027">veth-ns2 (192.168.10.2)</text>
+
+      <!-- veth cable straight (2-namespace direct case) -->
+      <line x1="260" y1="257" x2="660" y2="257" stroke="#3a5ba0" stroke-width="3"/>
+      <text x="450" y="245" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12" fill="#3a5ba0">veth pair — packets in one end appear instantly on the other</text>
+      <circle cx="260" cy="257" r="4" fill="#3a5ba0"/>
+      <circle cx="660" cy="257" r="4" fill="#3a5ba0"/>
+
+      <text x="450" y="90" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12.5" fill="#4b5563">Simplest case: two namespaces joined directly by one veth pair (no bridge)</text>
+      <text x="450" y="112" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11.5" fill="#4b5563">ip link add veth-ns1 type veth peer name veth-ns2 → move each end into its namespace → assign IPs → bring up</text>
+    </svg>
+    <figcaption>FIG. 1 — Two isolated network namespaces connected point-to-point by a single veth pair.</figcaption>
+  </figure>
+</section>
+
+<section id="veth-bridge">
+  <h2><span class="num">03</span>veth pairs &amp; Linux bridges</h2>
+
+  <h3>veth: the virtual patch cable</h3>
+  <p>A <strong>veth (virtual Ethernet) device</strong> is always created in an interconnected pair. Think of it as a virtual Ethernet cable with a plug at each end — anything sent in one end comes out the other instantly. One end typically stays in the host's root namespace; the other end is moved into the container's/pod's namespace.</p>
+  <pre><code><span class="k">ip link add</span> veth0 <span class="k">type veth peer name</span> veth1
+<span class="c"># veth0 and veth1 are now a linked pair, both currently in the host namespace</span>
+
+<span class="k">ip link set</span> veth1 <span class="k">netns</span> ns1
+<span class="c"># veth1 has been "teleported" into ns1 — from inside ns1 it now just looks like a normal NIC</span></code></pre>
+
+  <p>Point-to-point veth pairs work for connecting exactly two namespaces. But a real host runs <em>dozens</em> of containers. For that you need a switch — which on Linux is a <strong>bridge</strong>.</p>
+
+  <h3>The bridge: a virtual Layer-2 switch</h3>
+  <p>A Linux bridge (<code>brctl</code>/<code>ip link add type bridge</code>) is a software switch living in the kernel. Instead of wiring veth pairs directly between namespaces, one end of every container's veth pair is plugged into the bridge instead. The bridge then forwards Ethernet frames between all attached interfaces based on MAC address, exactly like a physical switch.</p>
+
+  <p>This is precisely how Docker's default bridge network (<code>docker0</code>) works, and it's the same pattern <code>kind</code>, <code>kubeadm</code>-based clusters, and many CNI plugins use inside a node.</p>
+
+  <figure>
+    <svg viewBox="0 0 900 430" xmlns="http://www.w3.org/2000/svg">
+      <rect x="20" y="20" width="860" height="390" rx="12" fill="#faf8f3" stroke="#b8562f" stroke-width="1.5" stroke-dasharray="5,4"/>
+      <text x="40" y="46" font-family="JetBrains Mono, monospace" font-size="13" fill="#b8562f" font-weight="700">HOST (node) — root network namespace</text>
+
+      <!-- bridge -->
+      <rect x="330" y="70" width="240" height="56" rx="8" fill="#fff" stroke="#3a5ba0" stroke-width="2"/>
+      <text x="450" y="94" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#3a5ba0" font-weight="700">bridge: docker0 / cni0</text>
+      <text x="450" y="112" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#4b5563">172.17.0.1/16 — acts as gateway</text>
+
+      <!-- three container namespaces -->
+      <g>
+        <rect x="60" y="200" width="200" height="130" rx="10" fill="#eef3f2" stroke="#2e6f6a" stroke-width="1.5"/>
+        <text x="80" y="224" font-family="JetBrains Mono, monospace" font-size="12" fill="#2e6f6a" font-weight="700">container A</text>
+        <rect x="80" y="240" width="160" height="30" rx="6" fill="#fff" stroke="#2e6f6a"/>
+        <text x="160" y="260" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11.5">eth0 172.17.0.2</text>
+        <rect x="80" y="278" width="160" height="24" rx="5" fill="#fff" stroke="#2e6f6a" stroke-dasharray="2,2"/>
+        <text x="160" y="294" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">netns: container-A</text>
+      </g>
+      <g>
+        <rect x="350" y="200" width="200" height="130" rx="10" fill="#eef3f2" stroke="#2e6f6a" stroke-width="1.5"/>
+        <text x="370" y="224" font-family="JetBrains Mono, monospace" font-size="12" fill="#2e6f6a" font-weight="700">container B</text>
+        <rect x="370" y="240" width="160" height="30" rx="6" fill="#fff" stroke="#2e6f6a"/>
+        <text x="450" y="260" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11.5">eth0 172.17.0.3</text>
+        <rect x="370" y="278" width="160" height="24" rx="5" fill="#fff" stroke="#2e6f6a" stroke-dasharray="2,2"/>
+        <text x="450" y="294" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">netns: container-B</text>
+      </g>
+      <g>
+        <rect x="640" y="200" width="200" height="130" rx="10" fill="#eef3f2" stroke="#2e6f6a" stroke-width="1.5"/>
+        <text x="660" y="224" font-family="JetBrains Mono, monospace" font-size="12" fill="#2e6f6a" font-weight="700">container C</text>
+        <rect x="660" y="240" width="160" height="30" rx="6" fill="#fff" stroke="#2e6f6a"/>
+        <text x="740" y="260" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11.5">eth0 172.17.0.4</text>
+        <rect x="660" y="278" width="160" height="24" rx="5" fill="#fff" stroke="#2e6f6a" stroke-dasharray="2,2"/>
+        <text x="740" y="294" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">netns: container-C</text>
+      </g>
+
+      <!-- veth lines to bridge -->
+      <line x1="160" y1="200" x2="380" y2="126" stroke="#3a5ba0" stroke-width="2.5"/>
+      <line x1="450" y1="200" x2="450" y2="126" stroke="#3a5ba0" stroke-width="2.5"/>
+      <line x1="740" y1="200" x2="520" y2="126" stroke="#3a5ba0" stroke-width="2.5"/>
+      <text x="130" y="175" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#3a5ba0">veth (host end)</text>
+      <text x="565" y="175" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#3a5ba0">veth (host end)</text>
+
+      <!-- router/NAT out to real NIC -->
+      <rect x="380" y="20" width="140" height="0" fill="none"/>
+      <path d="M450 70 L450 40" stroke="#b8562f" stroke-width="2.5" marker-end="url(#arrow)"/>
+      <text x="590" y="46" font-family="JetBrains Mono, monospace" font-size="11" fill="#b8562f">iptables MASQUERADE (SNAT) →</text>
+      <text x="590" y="60" font-family="JetBrains Mono, monospace" font-size="11" fill="#b8562f">host's real NIC (eth0) → internet</text>
+
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" fill="#b8562f"/>
+        </marker>
+      </defs>
+    </svg>
+    <figcaption>FIG. 2 — Three containers, each in its own network namespace, joined to a shared Linux bridge via veth pairs. The bridge acts as their default gateway; traffic leaving the host is NATed.</figcaption>
+  </figure>
+
+  <h3>How traffic actually flows</h3>
+  <ul class="step-list">
+    <li><strong>Same bridge (container ↔ container):</strong> Frames go straight through the bridge, switched by MAC address — like a physical LAN switch. No NAT, no iptables routing needed.</li>
+    <li><strong>Container → outside world:</strong> The packet leaves via the container's veth, hits the bridge, gets routed by the host's IP routing table (since the destination isn't on the bridge's subnet), and exits via the host's real NIC. An <code>iptables</code> rule of type <code>MASQUERADE</code> rewrites the source IP from the container's private IP to the host's real IP — this is Source NAT (SNAT).</li>
+    <li><strong>Outside → container (published ports):</strong> Handled by a DNAT (<code>-p</code> / port-publish) rule in iptables that rewrites the destination from <code>host_ip:hostPort</code> to <code>container_ip:containerPort</code> before the routing decision.</li>
+  </ul>
+
+  <div class="callout">
+    <b>Why this matters for Kubernetes later</b>
+    Everything you'll learn about <code>iptables</code>/<code>nftables</code> rules being managed by <code>kube-proxy</code>, and Services having a "virtual" ClusterIP that isn't attached to any interface, is built directly on top of these same primitives — namespaces, veths, bridges, and netfilter rules. Kubernetes doesn't invent new plumbing; it automates the exact commands shown above, per pod, per node, at scale.
+  </div>
+</section>
+
+<section id="docker-networking">
+  <h2><span class="num">04</span>How Docker uses namespaces — hands-on</h2>
+  <p>You can verify all of this yourself on any machine with Docker installed. This mirrors exactly what was shown live in class.</p>
+
+  <pre><code><span class="c"># see the runtime process backing every running container</span>
+<span class="k">ps</span> -ef | grep containerd
+<span class="c"># containerd-shim-runc-v2 is the thin process babysitting each container</span>
+
+<span class="c"># list docker's virtual networks</span>
+<span class="k">docker network ls</span>
+<span class="s">NETWORK ID     NAME      DRIVER    SCOPE
+c1a2b3c4d5e6   bridge    bridge    local
+...</span>
+
+<span class="c"># inspect the default bridge network — note the Subnet and Gateway</span>
+<span class="k">docker network inspect</span> bridge
+
+<span class="c"># get a running container's assigned IP directly</span>
+<span class="k">docker inspect</span> &lt;container_name&gt; --format <span class="s">'{{.NetworkSettings.IPAddress}}'</span>
+
+<span class="c"># SHOW the actual network namespace of a running container</span>
+<span class="k">docker inspect</span> &lt;container_name&gt; --format <span class="s">'{{.State.Pid}}'</span>
+<span class="k">sudo nsenter</span> -t &lt;PID&gt; -n ip addr
+<span class="c"># nsenter drops you INTO that container's network namespace using its PID —
+# this is how kubectl exec / debugging tools ultimately work under the hood.</span></code></pre>
+
+  <table>
+    <tr><th>Docker driver</th><th>What it does</th></tr>
+    <tr><td><code>bridge</code></td><td>Default. Creates/uses a Linux bridge (<code>docker0</code> or a user-defined one); containers get veth pairs into it, private subnet, NAT to reach outside.</td></tr>
+    <tr><td><code>host</code></td><td>No new network namespace at all — the container shares the host's network namespace directly. Fast, but zero network isolation.</td></tr>
+    <tr><td><code>none</code></td><td>Container gets its own namespace but no interfaces beyond loopback — fully network-isolated.</td></tr>
+    <tr><td><code>overlay</code></td><td>Used in Docker Swarm — encapsulates traffic (VXLAN) so containers on different physical hosts can appear to be on one flat network. Conceptually the ancestor of Kubernetes overlay CNIs like Flannel.</td></tr>
+  </table>
+
+  <div class="callout myth">
+    <b>Common misconception</b>
+    "Kubernetes doesn't use Docker anymore, so it doesn't use containerd." In reality, Docker Engine has always used <code>containerd</code> internally as its low-level runtime — Docker just adds a lot of tooling (CLI, build, volumes, networking UX) on top. Modern Kubernetes talks to <code>containerd</code> (or CRI-O) directly through the Container Runtime Interface (CRI), skipping the Docker Engine layer entirely — but the underlying namespace/cgroup mechanics are identical either way.
+  </div>
+</section>
+
+<hr class="div">
+
+<section id="part2">
+  <div class="kicker">Part 2 · Networking contract</div>
+  <h2><span class="num">05</span>CNI — the Container Network Interface</h2>
+  <p class="lede">CNI is <strong>not</strong> a piece of software you install. It is a specification — a contract — published by the Cloud Native Computing Foundation, that defines how a container runtime should talk to network plugins in order to wire up a container's network namespace. Kubernetes doesn't implement networking itself; it delegates that job entirely to whichever CNI plugin you install.</p>
+
+  <p>The CNI project bundles three things:</p>
+  <ul>
+    <li><strong>A specification</strong> — the exact JSON config format and the exact executable-invocation contract plugins must follow.</li>
+    <li><strong>Reference/example plugins</strong> — simple building-block plugins (<code>bridge</code>, <code>host-local</code>, <code>loopback</code>, <code>portmap</code>) maintained by the CNI project itself, usable standalone or chained together.</li>
+    <li><strong>Libraries</strong> (mainly in Go) that make it easy to build new plugins that follow the spec correctly.</li>
+  </ul>
+
+  <div class="callout">
+    <b>The core idea in one sentence</b>
+    A CNI plugin is just an executable binary that the container runtime runs and hands a JSON blob to on stdin — the binary's job is to configure networking inside a given network namespace, and hand back a JSON result on stdout.
+  </div>
+
+  <h3>The CNI verbs</h3>
+  <table>
+    <tr><th>Command</th><th>Called when…</th><th>Plugin must…</th></tr>
+    <tr><td><code>ADD</code></td><td>A new pod sandbox is created</td><td>Allocate an IP (via IPAM), create the interface inside the namespace, set up routes, return the assigned IP/routes as JSON.</td></tr>
+    <tr><td><code>DEL</code></td><td>A pod is being torn down</td><td>Release the IP address, remove interfaces/veth ends, clean up any iptables/route entries.</td></tr>
+    <tr><td><code>CHECK</code></td><td>Periodically, to verify health</td><td>Confirm the pod's networking still matches what was configured; if not, the runtime may tear down and re-create it.</td></tr>
+    <tr><td><code>VERSION</code></td><td>Runtime wants plugin capabilities</td><td>Return which CNI spec versions the plugin supports.</td></tr>
+    <tr><td><code>GC</code></td><td>Garbage collection pass</td><td>Clean up any stale resources left behind by crashed operations.</td></tr>
+  </table>
+</section>
+
+<section id="cni-flow">
+  <h2><span class="num">06</span>How CNI is actually invoked — step by step</h2>
+
+  <p>Here is the literal sequence of events from "scheduler assigns a pod to a node" to "pod has an IP and can send packets":</p>
+
+  <ol class="step-list">
+    <li><strong>Scheduling.</strong> The scheduler picks a node; the API server records this in etcd. <code>kubelet</code> on that node is watching the API server and notices a new pod assigned to it.</li>
+    <li><strong>kubelet asks the runtime to create a "pod sandbox".</strong> This request goes over the <strong>CRI</strong> (Container Runtime Interface) to <code>containerd</code> (or CRI-O). The "sandbox" is essentially an empty pause/infra container whose only job is to own the shared Linux namespaces for the pod.</li>
+    <li><strong>The runtime creates a fresh network namespace</strong> for the sandbox (kernel call: <code>unshare(CLONE_NEWNET)</code>), before any application container starts.</li>
+    <li><strong>The runtime reads CNI config</strong> from <code>/etc/cni/net.d/*.conf(list)</code> on the node, and finds the CNI plugin binary in <code>/opt/cni/bin/</code>.</li>
+    <li><strong>The runtime executes the CNI plugin binary directly</strong> (it is not a daemon/service — just a short-lived executable) with environment variables and a JSON config on stdin:
+      <pre><code><span class="k">CNI_COMMAND</span>=ADD
+<span class="k">CNI_CONTAINERID</span>=&lt;sandbox id&gt;
+<span class="k">CNI_NETNS</span>=/var/run/netns/&lt;id&gt;
+<span class="k">CNI_IFNAME</span>=eth0
+<span class="k">CNI_PATH</span>=/opt/cni/bin
+/opt/cni/bin/&lt;plugin&gt; &lt; /etc/cni/net.d/10-plugin.conf</code></pre>
+    </li>
+    <li><strong>The plugin does the actual work:</strong> creates a veth pair, moves one end into the pod's namespace as <code>eth0</code>, plugs the other end into the node's bridge (or configures whatever networking model the plugin uses — overlay, BGP route, cloud ENI, etc.), and calls its <strong>IPAM</strong> sub-plugin to allocate an IP from the configured pool.</li>
+    <li><strong>Plugin returns a JSON result</strong> on stdout containing the assigned IP address, routes, and DNS info.</li>
+    <li><strong>kubelet records the pod IP</strong> and reports pod status back through the API server, which is why <code>kubectl get pod -o wide</code> shows an IP.</li>
+    <li><strong>Application containers are started</strong> inside the sandbox's namespaces — <em>after</em> networking exists, not before.</li>
+  </ol>
+
+  <figure>
+    <svg viewBox="0 0 940 460" xmlns="http://www.w3.org/2000/svg">
+      <text x="470" y="28" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#1b2027" font-weight="700">CNI ADD sequence — creating network for a new pod</text>
+
+      <!-- lanes -->
+      <g font-family="JetBrains Mono, monospace" font-size="11.5" fill="#1b2027">
+        <text x="70"  y="60" text-anchor="middle" font-weight="700">kubelet</text>
+        <text x="270" y="60" text-anchor="middle" font-weight="700">containerd (CRI)</text>
+        <text x="500" y="60" text-anchor="middle" font-weight="700">CNI plugin (exe)</text>
+        <text x="730" y="60" text-anchor="middle" font-weight="700">IPAM plugin</text>
+        <text x="900" y="60" text-anchor="middle" font-weight="700">Pod netns</text>
+      </g>
+      <!-- lifelines -->
+      <line x1="70" y1="70" x2="70" y2="440" stroke="#c9c4b6"/>
+      <line x1="270" y1="70" x2="270" y2="440" stroke="#c9c4b6"/>
+      <line x1="500" y1="70" x2="500" y2="440" stroke="#c9c4b6"/>
+      <line x1="730" y1="70" x2="730" y2="440" stroke="#c9c4b6"/>
+      <line x1="900" y1="70" x2="900" y2="440" stroke="#c9c4b6"/>
+
+      <!-- messages -->
+      <g font-family="JetBrains Mono, monospace" font-size="10.8" fill="#2e6f6a">
+        <line x1="70" y1="90" x2="270" y2="90" stroke="#2e6f6a" stroke-width="1.6" marker-end="url(#a2)"/>
+        <text x="80" y="84">1. RunPodSandbox()</text>
+
+        <line x1="270" y1="120" x2="270" y2="150" stroke="#3a5ba0" stroke-width="1.6" marker-end="url(#a2)"/>
+        <text x="280" y="112" fill="#3a5ba0">2. unshare(CLONE_NEWNET)</text>
+        <text x="280" y="140" fill="#3a5ba0">   → new empty netns created</text>
+
+        <line x1="270" y1="180" x2="500" y2="180" stroke="#2e6f6a" stroke-width="1.6" marker-end="url(#a2)"/>
+        <text x="280" y="174">3. exec plugin, ADD, JSON on stdin</text>
+
+        <line x1="500" y1="210" x2="900" y2="210" stroke="#b8562f" stroke-width="1.6" marker-end="url(#a2)"/>
+        <text x="510" y="204" fill="#b8562f">4. create veth pair, move one end into netns as eth0</text>
+
+        <line x1="500" y1="250" x2="730" y2="250" stroke="#2e6f6a" stroke-width="1.6" marker-end="url(#a2)"/>
+        <text x="510" y="244">5. delegate: allocate IP</text>
+
+        <line x1="730" y1="280" x2="500" y2="280" stroke="#2e6f6a" stroke-width="1.6" stroke-dasharray="4,3" marker-end="url(#a2)"/>
+        <text x="540" y="274">6. IP + subnet returned</text>
+
+        <line x1="500" y1="310" x2="900" y2="310" stroke="#b8562f" stroke-width="1.6" marker-end="url(#a2)"/>
+        <text x="510" y="304" fill="#b8562f">7. assign IP to eth0, add routes, bring interface up</text>
+
+        <line x1="500" y1="350" x2="270" y2="350" stroke="#2e6f6a" stroke-width="1.6" stroke-dasharray="4,3" marker-end="url(#a2)"/>
+        <text x="290" y="344">8. JSON result: {ip, routes, dns}</text>
+
+        <line x1="270" y1="380" x2="70" y2="380" stroke="#2e6f6a" stroke-width="1.6" stroke-dasharray="4,3" marker-end="url(#a2)"/>
+        <text x="90" y="374">9. sandbox ready, pod IP reported</text>
+
+        <line x1="70" y1="410" x2="270" y2="410" stroke="#8a3f8a" stroke-width="1.6" marker-end="url(#a2)"/>
+        <text x="90" y="404" fill="#8a3f8a">10. start app container(s) inside same netns</text>
+      </g>
+
+      <defs>
+        <marker id="a2" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" fill="#2e6f6a"/>
+        </marker>
+      </defs>
+    </svg>
+    <figcaption>FIG. 3 — The full CNI ADD sequence, from scheduling to a network-ready pod, before any application container is even started.</figcaption>
+  </figure>
+
+  <div class="callout myth">
+    <b>Common misconception (from class discussion)</b>
+    "kube-proxy is what lets pods talk to each other." It is not. <strong>The CNI plugin</strong> is what gives pods their IP addresses and pod-to-pod/node-to-node reachability. <strong>kube-proxy</strong> has a narrower job: it programs iptables/nftables/IPVS rules so that traffic sent to a <em>Service</em>'s virtual ClusterIP gets redirected to one of the real pod IPs behind it. Some CNIs (Cilium, Calico in certain modes) can now implement kube-proxy's job themselves via eBPF, which is why newer clusters can sometimes run <em>without</em> kube-proxy at all.
+  </div>
+</section>
+
+<section id="cni-plugins">
+  <h2><span class="num">07</span>CNI plugin types &amp; the ecosystem</h2>
+
+  <h3>Reference / chainable plugins (the CNI project's own building blocks)</h3>
+  <table>
+    <tr><th>Plugin</th><th>Type</th><th>Role</th></tr>
+    <tr><td><code>bridge</code></td><td>Main (interface)</td><td>Creates a Linux bridge on the node and a veth pair per pod, exactly as diagrammed in Fig. 2.</td></tr>
+    <tr><td><code>host-local</code></td><td>IPAM</td><td>Allocates IPs from a locally-configured CIDR range, tracked in files on disk — the simplest possible IPAM.</td></tr>
+    <tr><td><code>loopback</code></td><td>Main</td><td>Brings up the <code>lo</code> interface inside the namespace.</td></tr>
+    <tr><td><code>portmap</code></td><td>Meta / chained</td><td>Adds iptables DNAT rules for hostPort-style port publishing.</td></tr>
+    <tr><td><code>macvlan</code>/<code>ipvlan</code></td><td>Main</td><td>Gives a container a virtual interface that appears directly on the physical network segment, bypassing a bridge entirely.</td></tr>
+  </table>
+  <p>These reference plugins can be <strong>chained</strong> — for example <code>bridge</code> → <code>portmap</code> — where each plugin in the chain does one focused job and passes its result to the next.</p>
+
+  <h3>Full-featured production CNIs (what you actually install on a real cluster)</h3>
+  <table>
+    <tr><th>Plugin</th><th>Networking model</th><th>Notable trait</th></tr>
+    <tr><td><strong>Flannel</strong></td><td>Overlay (VXLAN by default)</td><td>Simple, widely used, minimal feature set — good for learning, not much policy support.</td></tr>
+    <tr><td><strong>Calico</strong></td><td>Direct routing via BGP (or overlay mode)</td><td>Strong <code>NetworkPolicy</code> enforcement; can run without an overlay for near-native performance.</td></tr>
+    <tr><td><strong>Cilium</strong></td><td>eBPF-based, can bypass iptables entirely</td><td>Can replace kube-proxy's function using eBPF; deep L3–L7 observability and policy (Hubble).</td></tr>
+    <tr><td><strong>AWS VPC CNI</strong></td><td>Native — pods get real VPC IPs</td><td>Default on EKS; pods are directly addressable/routable on the AWS VPC, using ENIs attached to the node.</td></tr>
+    <tr><td><strong>Azure CNI / GKE's CNI</strong></td><td>Cloud-native, VPC-routed</td><td>Same idea as AWS VPC CNI — cloud provider-specific implementations tightly integrated with their networking stack.</td></tr>
+    <tr><td><strong>kindnet</strong></td><td>Simple overlay (based on the <code>ptp</code>/bridge model + a basic controller)</td><td>The default, minimal CNI shipped with <code>kind</code>, good enough for local dev/testing, not meant for production.</td></tr>
+  </table>
+
+  <div class="callout warn">
+    <b>Without a CNI installed, a cluster is broken</b>
+    A node cannot fully join a cluster, and pods cannot get IPs, until a CNI plugin is running on every node. This is why a freshly <code>kubeadm init</code>'d cluster shows nodes stuck in <code>NotReady</code> until you apply a CNI manifest — <code>kind</code> hides this step from you by installing <code>kindnet</code> automatically on cluster creation.
+  </div>
+</section>
+
+<section id="pod-networking">
+  <h2><span class="num">08</span>Putting it together: Pod networking end-to-end</h2>
+  <p>This diagram consolidates everything above into the full picture inside one Kubernetes node — the same picture that was built up live on the whiteboard in class, but complete.</p>
+
+  <figure>
+    <svg viewBox="0 0 940 520" xmlns="http://www.w3.org/2000/svg">
+      <rect x="20" y="20" width="900" height="480" rx="14" fill="#faf8f3" stroke="#b8562f" stroke-width="1.5" stroke-dasharray="5,4"/>
+      <text x="40" y="48" font-family="JetBrains Mono, monospace" font-size="13.5" fill="#b8562f" font-weight="700">NODE (VM / EC2 / kind container)</text>
+
+      <!-- kubelet + kube-proxy -->
+      <rect x="50" y="66" width="190" height="56" rx="8" fill="#e9eef7" stroke="#3a5ba0" stroke-width="1.6"/>
+      <text x="145" y="90" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12" fill="#3a5ba0" font-weight="700">kubelet</text>
+      <text x="145" y="108" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#3a5ba0">talks to API server</text>
+
+      <rect x="700" y="66" width="190" height="56" rx="8" fill="#e9eef7" stroke="#3a5ba0" stroke-width="1.6"/>
+      <text x="795" y="90" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12" fill="#3a5ba0" font-weight="700">kube-proxy</text>
+      <text x="795" y="108" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#3a5ba0">writes iptables/ipvs rules</text>
+
+      <!-- containerd -->
+      <rect x="330" y="66" width="280" height="56" rx="8" fill="#f3ede6" stroke="#8a3f8a" stroke-width="1.6"/>
+      <text x="470" y="90" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12" fill="#8a3f8a" font-weight="700">containerd (CRI)</text>
+      <text x="470" y="108" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#8a3f8a">invokes CNI plugin binary on pod create</text>
+
+      <line x1="145" y1="122" x2="330" y2="90" stroke="#4b5563" stroke-width="1.4"/>
+      <line x1="795" y1="122" x2="610" y2="90" stroke="#4b5563" stroke-width="1.4"/>
+
+      <!-- bridge -->
+      <rect x="360" y="160" width="220" height="46" rx="8" fill="#fff" stroke="#2e6f6a" stroke-width="2"/>
+      <text x="470" y="188" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12" fill="#2e6f6a" font-weight="700">CNI bridge (e.g. cni0)</text>
+      <line x1="470" y1="122" x2="470" y2="160" stroke="#8a3f8a" stroke-width="2" marker-end="url(#a3)"/>
+
+      <!-- pods -->
+      <g>
+        <rect x="90" y="260" width="230" height="150" rx="10" fill="#eef3f2" stroke="#2e6f6a" stroke-width="1.5"/>
+        <text x="110" y="284" font-family="JetBrains Mono, monospace" font-size="12" fill="#2e6f6a" font-weight="700">Pod A — netns (shared by all containers in pod)</text>
+        <rect x="110" y="298" width="190" height="30" rx="6" fill="#fff" stroke="#2e6f6a"/>
+        <text x="205" y="318" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11">eth0 = 10.244.0.5</text>
+        <rect x="110" y="336" width="90" height="26" rx="6" fill="#e9eef7" stroke="#3a5ba0"/>
+        <text x="155" y="354" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10">app ctr</text>
+        <rect x="210" y="336" width="90" height="26" rx="6" fill="#e9eef7" stroke="#3a5ba0"/>
+        <text x="255" y="354" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10">sidecar</text>
+      </g>
+      <g>
+        <rect x="360" y="260" width="220" height="150" rx="10" fill="#eef3f2" stroke="#2e6f6a" stroke-width="1.5"/>
+        <text x="380" y="284" font-family="JetBrains Mono, monospace" font-size="12" fill="#2e6f6a" font-weight="700">Pod B — netns</text>
+        <rect x="380" y="298" width="180" height="30" rx="6" fill="#fff" stroke="#2e6f6a"/>
+        <text x="470" y="318" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11">eth0 = 10.244.0.6</text>
+        <rect x="380" y="336" width="180" height="26" rx="6" fill="#e9eef7" stroke="#3a5ba0"/>
+        <text x="470" y="354" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10">app ctr</text>
+      </g>
+      <g>
+        <rect x="620" y="260" width="230" height="150" rx="10" fill="#eef3f2" stroke="#2e6f6a" stroke-width="1.5"/>
+        <text x="640" y="284" font-family="JetBrains Mono, monospace" font-size="12" fill="#2e6f6a" font-weight="700">Pod C — netns</text>
+        <rect x="640" y="298" width="190" height="30" rx="6" fill="#fff" stroke="#2e6f6a"/>
+        <text x="735" y="318" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11">eth0 = 10.244.0.7</text>
+        <rect x="640" y="336" width="190" height="26" rx="6" fill="#e9eef7" stroke="#3a5ba0"/>
+        <text x="735" y="354" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10">app ctr</text>
+      </g>
+
+      <line x1="205" y1="260" x2="420" y2="206" stroke="#2e6f6a" stroke-width="2"/>
+      <line x1="470" y1="260" x2="470" y2="206" stroke="#2e6f6a" stroke-width="2"/>
+      <line x1="735" y1="260" x2="520" y2="206" stroke="#2e6f6a" stroke-width="2"/>
+
+      <!-- Service -->
+      <rect x="90" y="430" width="760" height="56" rx="8" fill="#f7ece5" stroke="#b8562f" stroke-width="1.8" stroke-dasharray="3,3"/>
+      <text x="470" y="454" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12" fill="#b8562f" font-weight="700">Service ClusterIP 10.96.10.20:80 — NOT a real interface, just an iptables/ipvs rule set</text>
+      <text x="470" y="472" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#b8562f">kube-proxy load-balances traffic hitting this virtual IP to whichever pod IPs match the Service's label selector</text>
+
+      <line x1="470" y1="430" x2="470" y2="410" stroke="#3a5ba0" stroke-width="1.6" stroke-dasharray="4,3" marker-end="url(#a3)"/>
+
+      <defs>
+        <marker id="a3" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" fill="#3a5ba0"/>
+        </marker>
+      </defs>
+    </svg>
+    <figcaption>FIG. 4 — Full node view: CNI gives every pod a real, routable IP on the bridge; the Service ClusterIP is a virtual address that only exists as routing/NAT rules kube-proxy maintains, redirecting to real pod IPs.</figcaption>
+  </figure>
+
+  <div class="callout">
+    <b>Why the Service IP "isn't real" — the exact mechanism</b>
+    A ClusterIP has no interface, no MAC address, nothing to <code>ping</code>. When you create a Service, its ClusterIP + port are registered as an <strong>iptables (or IPVS) DNAT rule</strong> on every node: "packets destined for 10.96.10.20:80 → rewrite destination to one of {10.244.0.5:80, 10.244.0.6:80, 10.244.0.7:80}, chosen at random." kube-proxy is the controller that watches Endpoints objects and keeps that rule set in sync as pods come and go — which is exactly the self-healing "IP changed but the Service kept working" behavior demonstrated live in class.
+  </div>
+</section>
+
+<hr class="div">
+
+<section id="part3">
+  <div class="kicker">Part 3 · Local Kubernetes</div>
+  <h2><span class="num">09</span>kind — Kubernetes IN Docker</h2>
+  <p class="lede"><strong>kind</strong> (Kubernetes IN Docker) runs an entire Kubernetes cluster using ordinary Docker containers as "nodes." It was originally built by Kubernetes SIG Testing to run Kubernetes' own conformance test suite, and has since become the standard tool for fast, disposable local clusters.</p>
+
+  <h3>The core trick</h3>
+  <p>Each "node" in a kind cluster is <em>itself</em> a Docker container, running a specially built image (<code>kindest/node</code>) that contains a full <code>containerd</code> runtime, <code>kubelet</code>, and all standard Kubernetes control-plane or worker components <em>inside</em> it. This is genuinely mind-bending: Kubernetes — a container orchestrator — has its own nodes running as containers, orchestrated by Docker underneath.</p>
+
+  <p>Because of this, kind clusters have <strong>two layers of container nesting</strong> that matters when you're troubleshooting networking (exactly the issue hit live in class trying to <code>curl</code> a pod IP from the host):</p>
+  <ul>
+    <li><strong>Layer 1:</strong> Docker containers = kind "nodes," connected to each other over a Docker bridge network on the host.</li>
+    <li><strong>Layer 2:</strong> Inside each node-container, its own <code>containerd</code> runs the actual pods (which are themselves containers, each with their own netns, wired up by <code>kindnet</code>, the default CNI).</li>
+  </ul>
+  <p>This is exactly why you couldn't reach a pod's IP directly from your laptop's shell — that IP only exists on the Docker bridge network <em>inside</em> the kind-node container, one level of isolation deeper than your host.</p>
+
+  <figure>
+    <svg viewBox="0 0 940 430" xmlns="http://www.w3.org/2000/svg">
+      <text x="470" y="26" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#1b2027" font-weight="700">kind cluster nesting — two layers of containers</text>
+
+      <rect x="20" y="46" width="900" height="360" rx="14" fill="#faf8f3" stroke="#b8562f" stroke-width="1.6" stroke-dasharray="5,4"/>
+      <text x="40" y="72" font-family="JetBrains Mono, monospace" font-size="12.5" fill="#b8562f" font-weight="700">YOUR LAPTOP — Docker Engine + "kind" bridge network (172.18.0.0/16 typical)</text>
+
+      <!-- control-plane node container -->
+      <rect x="60" y="96" width="380" height="280" rx="12" fill="#e9eef7" stroke="#3a5ba0" stroke-width="1.8"/>
+      <text x="80" y="122" font-family="JetBrains Mono, monospace" font-size="12" fill="#3a5ba0" font-weight="700">docker container: kind-control-plane</text>
+      <text x="80" y="140" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#3a5ba0">image: kindest/node   172.18.0.2</text>
+      <text x="80" y="156" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">exposes 127.0.0.1:PORT → 6443 (API server)</text>
+
+      <rect x="80" y="170" width="340" height="70" rx="8" fill="#fff" stroke="#3a5ba0"/>
+      <text x="250" y="190" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11">control-plane pods (as containers):</text>
+      <text x="250" y="208" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">kube-apiserver · etcd · scheduler · controller-mgr</text>
+      <text x="250" y="226" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">+ kubelet, containerd, kindnetd, kube-proxy (host procs)</text>
+
+      <rect x="80" y="256" width="150" height="90" rx="8" fill="#eef3f2" stroke="#2e6f6a"/>
+      <text x="155" y="278" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#2e6f6a" font-weight="700">app pod X</text>
+      <text x="155" y="296" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10">netns</text>
+      <text x="155" y="314" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10">10.244.0.4</text>
+
+      <rect x="250" y="256" width="150" height="90" rx="8" fill="#eef3f2" stroke="#2e6f6a"/>
+      <text x="325" y="278" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#2e6f6a" font-weight="700">app pod Y</text>
+      <text x="325" y="296" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10">netns</text>
+      <text x="325" y="314" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10">10.244.0.5</text>
+
+      <!-- worker node container -->
+      <rect x="500" y="96" width="380" height="280" rx="12" fill="#eef3f2" stroke="#2e6f6a" stroke-width="1.8"/>
+      <text x="520" y="122" font-family="JetBrains Mono, monospace" font-size="12" fill="#2e6f6a" font-weight="700">docker container: kind-worker</text>
+      <text x="520" y="140" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#2e6f6a">image: kindest/node   172.18.0.3</text>
+      <text x="520" y="156" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">no port exposed to host by default</text>
+
+      <rect x="520" y="170" width="340" height="46" rx="8" fill="#fff" stroke="#2e6f6a"/>
+      <text x="690" y="196" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">kubelet · containerd · kindnetd · kube-proxy (host procs)</text>
+
+      <rect x="520" y="230" width="150" height="90" rx="8" fill="#eef3f2" stroke="#2e6f6a"/>
+      <text x="595" y="252" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#2e6f6a" font-weight="700">app pod Z</text>
+      <text x="595" y="270" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10">netns</text>
+      <text x="595" y="288" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10">10.244.1.4</text>
+
+      <text x="470" y="404" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">Only kind-control-plane's API server port is published to the host — everything else is one layer deeper.</text>
+    </svg>
+    <figcaption>FIG. 5 — Two "nodes" as sibling Docker containers on the host's kind network, each internally running its own kubelet/containerd/pods.</figcaption>
+  </figure>
+
+  <h3>What kind gives you out of the box</h3>
+  <ul>
+    <li>A full, CNCF conformance-tested Kubernetes cluster in under a minute, with no VM/hypervisor overhead.</li>
+    <li>Multi-node and multi-control-plane (HA) topologies, defined declaratively in a YAML config.</li>
+    <li>Automatic installation of a default CNI (<code>kindnet</code>), so — unlike a raw <code>kubeadm</code> cluster — nodes come up <code>Ready</code> immediately.</li>
+    <li>Works identically on Linux, macOS, and Windows, wherever Docker (or Podman/nerdctl) runs.</li>
+  </ul>
+</section>
+
+<section id="kind-install">
+  <h2><span class="num">10</span>Installing &amp; using kind</h2>
+
+  <h3>Install</h3>
+  <pre><code><span class="c"># macOS (Homebrew)</span>
+<span class="k">brew install</span> kind
+
+<span class="c"># Linux (binary)</span>
+<span class="k">curl</span> -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
+<span class="k">chmod</span> +x ./kind &amp;&amp; <span class="k">sudo mv</span> ./kind /usr/local/bin/kind
+
+<span class="c"># Windows (Chocolatey)</span>
+<span class="k">choco install</span> kind
+
+<span class="c"># verify</span>
+<span class="k">kind</span> version</code></pre>
+
+  <h3>Everyday commands</h3>
+  <table>
+    <tr><th>Command</th><th>What it does</th></tr>
+    <tr><td><code>kind create cluster</code></td><td>Creates a single-node cluster named <code>kind</code> (control-plane doubles as a worker).</td></tr>
+    <tr><td><code>kind create cluster --name demo</code></td><td>Creates a cluster with a custom name — lets you run multiple kind clusters side by side.</td></tr>
+    <tr><td><code>kind create cluster --config kind-config.yaml</code></td><td>Creates a cluster (multi-node, port mappings, custom image, etc.) from a config file.</td></tr>
+    <tr><td><code>kind get clusters</code></td><td>Lists all kind clusters on this machine.</td></tr>
+    <tr><td><code>kind delete cluster --name demo</code></td><td>Tears the cluster down (stops &amp; removes all its node containers).</td></tr>
+    <tr><td><code>kind load docker-image myapp:v1</code></td><td>Pushes a locally built image straight into every kind node's containerd image store — no registry needed, the single most useful command for local dev loops.</td></tr>
+    <tr><td><code>kind export kubeconfig --name demo</code></td><td>(Re-)writes the cluster's connection info into your <code>~/.kube/config</code> so <code>kubectl</code> can reach it.</td></tr>
+    <tr><td><code>docker exec -it kind-control-plane bash</code></td><td>Shells directly into the node container — useful for the kind of low-level networking inspection done in class.</td></tr>
+  </table>
+
+  <h3>Multi-node config example</h3>
+  <p>By default, a single container plays both control-plane and worker (which is why the demo pod scheduled onto a node labeled <code>control-plane</code> — something that does <em>not</em> happen on a real cluster, where the control plane is normally tainted to repel workloads). To get a realistic topology, define nodes explicitly:</p>
+  <pre><code><span class="c"># kind-config.yaml</span>
+<span class="k">kind:</span> Cluster
+<span class="k">apiVersion:</span> kind.x-k8s.io/v1alpha4
+<span class="k">nodes:</span>
+  - role: control-plane
+  - role: worker
+  - role: worker
+  <span class="c"># add extraPortMappings under a node to expose services on localhost, e.g.:</span>
+  <span class="c">#   extraPortMappings:</span>
+  <span class="c">#   - containerPort: 30080</span>
+  <span class="c">#     hostPort: 8080</span></code></pre>
+  <pre><code><span class="k">kind create cluster</span> --config kind-config.yaml --name multinode
+<span class="k">kubectl get nodes</span>
+<span class="c"># multinode-control-plane   Ready   control-plane
+# multinode-worker          Ready   &lt;none&gt;
+# multinode-worker2         Ready   &lt;none&gt;</span></code></pre>
+
+  <div class="callout warn">
+    <b>Gotcha</b>
+    Reaching a Service or Pod IP from your <em>host</em> browser/terminal generally doesn't work directly against a kind cluster, because those IPs live on the Docker network inside the node containers. Use <code>kubectl port-forward</code>, a <code>NodePort</code> Service combined with <code>extraPortMappings</code> in the kind config, or <code>docker exec</code> into a node, exactly as shown live in the class demo.
+  </div>
+</section>
+
+<hr class="div">
+
+<section id="part4">
+  <div class="kicker">Part 4 · Command-line control</div>
+  <h2><span class="num">11</span>kubectl — the Kubernetes CLI</h2>
+  <p class="lede"><code>kubectl</code> is the client that turns your commands into authenticated HTTPS calls to the kube-apiserver. It never talks to etcd, the scheduler, or kubelets directly — everything goes through the API server, exactly like the "receptionist" analogy from class.</p>
+
+  <h3>Install</h3>
+  <pre><code><span class="c"># macOS</span>
+<span class="k">brew install</span> kubectl
+
+<span class="c"># Linux</span>
+<span class="k">curl</span> -LO <span class="s">"https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"</span>
+<span class="k">chmod</span> +x kubectl &amp;&amp; <span class="k">sudo mv</span> kubectl /usr/local/bin/
+
+<span class="c"># enable shell autocompletion (bash example)</span>
+<span class="k">echo</span> <span class="s">'source &lt;(kubectl completion bash)'</span> &gt;&gt; ~/.bashrc
+<span class="k">echo</span> <span class="s">'alias k=kubectl'</span> &gt;&gt; ~/.bashrc
+<span class="k">echo</span> <span class="s">'complete -o default -F __start_kubectl k'</span> &gt;&gt; ~/.bashrc</code></pre>
+
+  <h3>Context &amp; config</h3>
+  <p>Your <code>~/.kube/config</code> file (the "kubeconfig") stores cluster addresses, credentials, and named <strong>contexts</strong> — a context bundles "which cluster + which user + which default namespace" under one name, letting you switch between multiple clusters (e.g. kind, EKS, a friend's cluster) instantly.</p>
+  <pre><code><span class="k">kubectl config get-contexts</span>
+<span class="k">kubectl config current-context</span>
+<span class="k">kubectl config use-context</span> kind-multinode
+<span class="k">kubectl cluster-info</span></code></pre>
+
+  <h3>The four verbs you'll use constantly</h3>
+  <table>
+    <tr><th>Verb</th><th>Example</th><th>Purpose</th></tr>
+    <tr><td><code>get</code></td><td><code>kubectl get pods</code></td><td>List resources, quick status snapshot.</td></tr>
+    <tr><td><code>describe</code></td><td><code>kubectl describe pod my-pod</code></td><td>Full detail on one resource — <strong>always check the Events section first</strong> when troubleshooting.</td></tr>
+    <tr><td><code>apply</code></td><td><code>kubectl apply -f deployment.yaml</code></td><td>Declaratively create/update a resource from a YAML/JSON manifest — the standard, repeatable way to manage resources.</td></tr>
+    <tr><td><code>delete</code></td><td><code>kubectl delete deployment my-app</code></td><td>Remove a resource (and, for controllers like Deployments, everything it manages).</td></tr>
+  </table>
+
+  <h3>Full command reference (grouped)</h3>
+
+  <h4>Inspecting cluster &amp; resources</h4>
+  <pre><code><span class="k">kubectl get pods</span>                          <span class="c"># pods in the current/default namespace</span>
+<span class="k">kubectl get pods -A</span>                       <span class="c"># -A / --all-namespaces: every namespace</span>
+<span class="k">kubectl get pods -n kube-system</span>           <span class="c"># -n: a specific namespace</span>
+<span class="k">kubectl get pods -o wide</span>                  <span class="c"># extra columns: Node, IP</span>
+<span class="k">kubectl get pods -w</span>                        <span class="c"># -w/--watch: live-stream changes</span>
+<span class="k">kubectl get all</span>                            <span class="c"># pods, services, deployments, replicasets in one shot</span>
+<span class="k">kubectl get nodes</span>
+<span class="k">kubectl get namespaces</span>
+<span class="k">kubectl get deployments</span>
+<span class="k">kubectl get replicasets</span>
+<span class="k">kubectl get services</span>                       <span class="c"># or: kubectl get svc</span>
+<span class="k">kubectl get endpoints</span>                      <span class="c"># which pod IPs back each Service</span>
+<span class="k">kubectl describe pod</span> &lt;name&gt;                <span class="c"># full detail + Events (first command to run when debugging)</span>
+<span class="k">kubectl describe deployment</span> &lt;name&gt;
+<span class="k">kubectl explain pod.spec.containers</span>        <span class="c"># inline API documentation for any field</span></code></pre>
+
+  <h4>Creating &amp; changing resources</h4>
+  <pre><code><span class="k">kubectl run</span> my-pod --image=nginx           <span class="c"># quick, imperative single-pod creation (rarely used in real workflows)</span>
+<span class="k">kubectl create deployment</span> my-deploy --image=nginx --replicas=3
+<span class="k">kubectl apply -f</span> deployment.yaml           <span class="c"># declarative — the standard approach</span>
+<span class="k">kubectl apply -f</span> ./manifests/               <span class="c"># apply every file in a directory</span>
+<span class="k">kubectl delete -f</span> deployment.yaml
+<span class="k">kubectl delete pod</span> &lt;name&gt;
+<span class="k">kubectl scale deployment</span> my-deploy --replicas=5
+<span class="k">kubectl set image deployment/my-deploy</span> nginx=nginx:1.27
+<span class="k">kubectl rollout status deployment/my-deploy</span>
+<span class="k">kubectl rollout undo deployment/my-deploy</span>  <span class="c"># roll back to previous revision</span>
+<span class="k">kubectl edit deployment</span> my-deploy           <span class="c"># open the live object in $EDITOR</span></code></pre>
+
+  <h4>Debugging &amp; interacting with running pods</h4>
+  <pre><code><span class="k">kubectl logs</span> &lt;pod&gt;                          <span class="c"># stdout/stderr of the pod's (only) container</span>
+<span class="k">kubectl logs</span> &lt;pod&gt; -c &lt;container&gt;           <span class="c"># -c: pick a container in a multi-container pod</span>
+<span class="k">kubectl logs -f</span> &lt;pod&gt;                       <span class="c"># -f/--follow: stream logs live</span>
+<span class="k">kubectl exec -it</span> &lt;pod&gt; -- /bin/sh          <span class="c"># interactive shell inside a running container</span>
+<span class="k">kubectl top pod</span>                             <span class="c"># CPU/memory usage — requires metrics-server installed</span>
+<span class="k">kubectl top node</span>
+<span class="k">kubectl port-forward pod/</span>&lt;pod&gt; 8080:80      <span class="c"># tunnel localhost:8080 → pod's port 80</span>
+<span class="k">kubectl port-forward svc/</span>&lt;svc&gt; 8080:80       <span class="c"># same, but via a Service</span>
+<span class="k">kubectl cp</span> &lt;pod&gt;:/path/in/pod ./local-path  <span class="c"># copy files out of (or into) a pod</span></code></pre>
+
+  <h4>Labels, namespaces, contexts</h4>
+  <pre><code><span class="k">kubectl get pods -l</span> app=nginx               <span class="c"># -l/--selector: filter by label</span>
+<span class="k">kubectl label pod</span> &lt;pod&gt; env=staging
+<span class="k">kubectl create namespace</span> dev
+<span class="k">kubectl config set-context --current --namespace=dev</span>   <span class="c"># change your default namespace</span></code></pre>
+
+  <h3>Reading <code>kubectl describe pod</code> — the Events section</h3>
+  <p>This was called out in class as the single most important troubleshooting habit. A healthy pod's Events read like a story, in order:</p>
+  <pre><code><span class="k">Events:</span>
+  Type    Reason     Age   From               Message
+  ----    ------     ----  ----               -------
+  Normal  Scheduled  40s   default-scheduler  Successfully assigned default/my-pod to kind-worker
+  Normal  Pulling    39s   kubelet            Pulling image "nginx:latest"
+  Normal  Pulled     35s   kubelet            Successfully pulled image "nginx:latest"
+  Normal  Created    35s   kubelet            Created container nginx
+  Normal  Started    34s   kubelet            Started container nginx</code></pre>
+  <p>When something is broken, the Events section tells you exactly which stage failed: stuck on <code>Pending</code>/<code>Scheduled</code> often means insufficient resources or an unsatisfied node selector; failures around <code>Pulling</code>/<code>Pulled</code> mean an image or registry-auth problem; anything after <code>Started</code> failing points at the application itself (check <code>kubectl logs</code> next).</p>
+</section>
+
+<hr class="div">
+
+<section id="part5">
+  <div class="kicker">Part 5 · Visual tooling</div>
+  <h2><span class="num">12</span>Freelens — a visual Kubernetes IDE</h2>
+  <p class="lede"><strong>Freelens</strong> is a free, open-source, MIT-licensed desktop application for browsing and managing Kubernetes clusters visually. It is a community-maintained fork of <strong>OpenLens</strong> (the open-source core that used to power the original Lens Desktop app), created after Lens's commercial owner, Mirantis, restricted the free version and development on OpenLens stalled. Freelens is the actively maintained continuation of that free lineage.</p>
+
+  <h3>What it actually gives you</h3>
+  <ul>
+    <li><strong>Cluster list &amp; context switcher</strong> — reads your existing <code>~/.kube/config</code> directly, so every cluster you can already reach with <code>kubectl</code> (including kind clusters) shows up automatically.</li>
+    <li><strong>Live resource views</strong> — Pods, Deployments, Services, Nodes, ConfigMaps, Secrets, etc., with real-time status, searchable/sortable tables, in place of typing <code>kubectl get</code> repeatedly.</li>
+    <li><strong>Built-in terminal</strong> — both a cluster-wide terminal (pre-authenticated <code>kubectl</code> context) and a per-pod "exec into container" terminal, without typing the full <code>kubectl exec -it … -- sh</code> command.</li>
+    <li><strong>Live log viewer</strong> — streaming, searchable, syntax-aware log tailing per container, equivalent to <code>kubectl logs -f</code> but with UI scrollback and highlighting.</li>
+    <li><strong>Resource graphs</strong> — CPU/memory usage over time per pod/node (requires metrics-server in-cluster, same as <code>kubectl top</code>).</li>
+    <li><strong>YAML editing in place</strong> — view and edit any resource's live YAML directly, equivalent to <code>kubectl edit</code>.</li>
+    <li><strong>Helm support</strong> — browse repos and install/upgrade Helm charts through the UI.</li>
+    <li><strong>Extension ecosystem</strong> — many original Lens extensions have been ported/are compatible.</li>
+    <li>Ships with bundled <code>kubectl</code> and <code>Helm</code> binaries internally, so it works even on a machine without those tools separately installed.</li>
+  </ul>
+
+  <h3>Install</h3>
+  <pre><code><span class="c"># macOS — download the .dmg from the GitHub Releases page, or:</span>
+<span class="k">brew install --cask</span> freelens
+
+<span class="c"># Windows — download the installer .exe from GitHub Releases</span>
+
+<span class="c"># Linux — pick whichever packaging format you prefer:</span>
+<span class="c">#   AppImage, .deb, .rpm, Snap, or Flatpak — all published on the</span>
+<span class="c">#   Freelens GitHub Releases page (github.com/freelensapp/freelens)</span></code></pre>
+
+  <div class="callout">
+    <b>About the diagrams below</b>
+    The two figures in this section are labeled layout diagrams I built to show you exactly where things live and what to click — not literal screenshots (I don't have a way to capture and embed live screenshots into this offline file). Freelens is a direct fork of OpenLens, so if you want to see the actual rendered UI before installing, search "Freelens screenshot" or "OpenLens screenshot" — the window chrome, sidebar, and bottom terminal dock are essentially identical between the two, since Freelens hasn't changed that base layout.
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 960 560" xmlns="http://www.w3.org/2000/svg">
+      <text x="480" y="26" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#1b2027" font-weight="700">Freelens window layout — main view</text>
+
+      <!-- window frame -->
+      <rect x="20" y="46" width="920" height="490" rx="10" fill="#ffffff" stroke="#1b2027" stroke-width="1.6"/>
+      <!-- title bar -->
+      <rect x="20" y="46" width="920" height="30" rx="10" fill="#2a2f36"/>
+      <circle cx="40" cy="61" r="5" fill="#e2534d"/>
+      <circle cx="58" cy="61" r="5" fill="#e2b83d"/>
+      <circle cx="76" cy="61" r="5" fill="#3fae5c"/>
+      <text x="480" y="66" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#d7e0e8">Freelens — kind-multinode</text>
+
+      <!-- hotbar (far left icon strip) -->
+      <rect x="20" y="76" width="54" height="460" fill="#1e2229"/>
+      <circle cx="47" cy="106" r="16" fill="#3a5ba0"/>
+      <text x="47" y="110" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#fff">kind</text>
+      <circle cx="47" cy="146" r="16" fill="#3a4550" opacity="0.6"/>
+      <text x="47" y="150" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#aab">eks</text>
+      <text x="47" y="200" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="17" fill="#7fd0c4">+</text>
+      <text x="47" y="500" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#8a93a0" transform="rotate(-90 47 500)">hotbar</text>
+
+      <!-- left sidebar -->
+      <rect x="74" y="76" width="170" height="460" fill="#262b33"/>
+      <g font-family="JetBrains Mono, monospace" font-size="11.5" fill="#c7cdd4">
+        <text x="90" y="102" fill="#7fd0c4" font-weight="700">Cluster</text>
+        <text x="90" y="126">Nodes</text>
+        <rect x="82" y="140" width="150" height="20" rx="4" fill="#3a5ba0" opacity="0.35"/>
+        <text x="90" y="154" fill="#fff" font-weight="700">▸ Workloads</text>
+        <text x="102" y="174" fill="#9aa3ad">Overview</text>
+        <text x="102" y="192" fill="#fff">● Pods</text>
+        <text x="102" y="210" fill="#9aa3ad">Deployments</text>
+        <text x="102" y="228" fill="#9aa3ad">StatefulSets</text>
+        <text x="102" y="246" fill="#9aa3ad">DaemonSets</text>
+        <text x="102" y="264" fill="#9aa3ad">Jobs / CronJobs</text>
+        <text x="90" y="292">Config</text>
+        <text x="90" y="316">Network</text>
+        <text x="90" y="340">Storage</text>
+        <text x="90" y="364">Namespaces</text>
+        <text x="90" y="388">Helm</text>
+        <text x="90" y="412">Custom Resources</text>
+        <text x="90" y="440" fill="#7fd0c4">Access Control</text>
+      </g>
+
+      <!-- top toolbar over content -->
+      <rect x="244" y="76" width="696" height="34" fill="#f4f2ec"/>
+      <rect x="256" y="84" width="220" height="18" rx="4" fill="#fff" stroke="#c9c4b6"/>
+      <text x="266" y="97" font-family="JetBrains Mono, monospace" font-size="10" fill="#8a8f78">🔍 filter pods…</text>
+      <circle cx="880" cy="93" r="10" fill="#eef3f2" stroke="#2e6f6a"/>
+      <text x="880" y="97" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#2e6f6a">&gt;_</text>
+      <text x="905" y="97" font-family="JetBrains Mono, monospace" font-size="8.5" fill="#b8562f">① terminal</text>
+
+      <!-- pod table -->
+      <rect x="244" y="110" width="696" height="230" fill="#fdfcf9"/>
+      <g font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">
+        <text x="256" y="128" font-weight="700">NAME</text>
+        <text x="470" y="128" font-weight="700">NAMESPACE</text>
+        <text x="600" y="128" font-weight="700">NODE</text>
+        <text x="720" y="128" font-weight="700">STATUS</text>
+        <text x="820" y="128" font-weight="700">CPU / MEM</text>
+      </g>
+      <line x1="256" y1="134" x2="920" y2="134" stroke="#e4e1d8"/>
+
+      <rect x="244" y="140" width="696" height="30" fill="#eef3f2"/>
+      <g font-family="JetBrains Mono, monospace" font-size="10.5" fill="#1b2027">
+        <text x="256" y="159">nginx-7d9f-x2k4l</text>
+        <text x="470" y="159">default</text>
+        <text x="600" y="159">kind-worker</text>
+        <text x="720" y="159" fill="#2e6f6a">● Running</text>
+        <text x="820" y="159">3m / 24Mi</text>
+      </g>
+      <circle cx="905" cy="155" r="9" fill="#eef3f2" stroke="#2e6f6a"/>
+      <text x="905" y="159" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#2e6f6a">⋮</text>
+      <text x="925" y="159" font-family="JetBrains Mono, monospace" font-size="8" fill="#b8562f">②</text>
+
+      <g font-family="JetBrains Mono, monospace" font-size="10.5" fill="#1b2027">
+        <text x="256" y="192">nginx-7d9f-p91qz</text>
+        <text x="470" y="192">default</text>
+        <text x="600" y="192">kind-control-plane</text>
+        <text x="720" y="192" fill="#2e6f6a">● Running</text>
+        <text x="820" y="192">2m / 22Mi</text>
+      </g>
+
+      <!-- context menu popup near row 1 to illustrate right-click -->
+      <rect x="900" y="145" width="150" height="0" fill="none"/>
+      <g>
+        <rect x="770" y="150" width="150" height="120" rx="6" fill="#ffffff" stroke="#1b2027" stroke-width="1.2"/>
+        <text x="782" y="170" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#1b2027">View Events</text>
+        <text x="782" y="190" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#1b2027" font-weight="700">Shell</text>
+        <text x="782" y="210" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#1b2027">Logs</text>
+        <text x="782" y="230" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#1b2027">Edit YAML</text>
+        <text x="782" y="250" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#b8562f">Delete</text>
+        <text x="930" y="150" font-family="JetBrains Mono, monospace" font-size="8" fill="#b8562f">③ right-click menu</text>
+      </g>
+
+      <!-- bottom dock: terminal panel -->
+      <rect x="244" y="340" width="696" height="196" fill="#12161c"/>
+      <rect x="244" y="340" width="696" height="22" fill="#1c2128"/>
+      <text x="256" y="356" font-family="JetBrains Mono, monospace" font-size="10" fill="#7fd0c4">● Terminal</text>
+      <text x="340" y="356" font-family="JetBrains Mono, monospace" font-size="10" fill="#6b7784">Pod: nginx-7d9f-x2k4l</text>
+      <text x="920" y="356" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10" fill="#6b7784">×</text>
+      <text x="256" y="380" font-family="JetBrains Mono, monospace" font-size="11" fill="#d7e0e8">$ kubectl exec -it nginx-7d9f-x2k4l -- sh</text>
+      <text x="256" y="398" font-family="JetBrains Mono, monospace" font-size="11" fill="#7fd0c4">/ # ls</text>
+      <text x="256" y="416" font-family="JetBrains Mono, monospace" font-size="11" fill="#9aa3ad">bin  dev  etc  home  usr  var</text>
+      <text x="256" y="434" font-family="JetBrains Mono, monospace" font-size="11" fill="#7fd0c4">/ # ▏</text>
+      <text x="256" y="527" font-family="JetBrains Mono, monospace" font-size="8.5" fill="#b8562f">④ bottom-docked terminal panel — tabs live along this bar</text>
+
+      <defs></defs>
+    </svg>
+    <figcaption>FIG. 6 — Freelens window layout: ① toolbar terminal icon opens the cluster shell · ② row menu icon / right-click for per-pod actions · ③ the context menu, with Shell/Logs/Edit YAML/Delete · ④ the bottom-docked terminal panel where every shell session (cluster or pod) actually opens.</figcaption>
+  </figure>
+
+  <figure>
+    <svg viewBox="0 0 960 260" xmlns="http://www.w3.org/2000/svg">
+      <text x="480" y="24" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#1b2027" font-weight="700">Two different terminals, same bottom dock</text>
+
+      <rect x="20" y="46" width="440" height="190" rx="10" fill="#12161c" stroke="#3a5ba0" stroke-width="1.8"/>
+      <rect x="20" y="46" width="440" height="26" fill="#1c2128"/>
+      <text x="36" y="64" font-family="JetBrains Mono, monospace" font-size="11" fill="#3a5ba0" font-weight="700">Cluster terminal</text>
+      <text x="36" y="94" font-family="JetBrains Mono, monospace" font-size="11" fill="#d7e0e8">$ kubectl config current-context</text>
+      <text x="36" y="112" font-family="JetBrains Mono, monospace" font-size="11" fill="#7fd0c4">kind-multinode</text>
+      <text x="36" y="136" font-family="JetBrains Mono, monospace" font-size="11" fill="#d7e0e8">$ kubectl get nodes</text>
+      <text x="36" y="154" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#9aa3ad">kind-control-plane   Ready   control-plane</text>
+      <text x="36" y="170" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#9aa3ad">kind-worker          Ready   &lt;none&gt;</text>
+      <text x="36" y="200" font-family="JetBrains Mono, monospace" font-size="11" fill="#7fd0c4">$ ▏</text>
+      <text x="240" y="216" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#4b5563">whole-cluster scope — for any kubectl/helm command</text>
+
+      <rect x="500" y="46" width="440" height="190" rx="10" fill="#12161c" stroke="#2e6f6a" stroke-width="1.8"/>
+      <rect x="500" y="46" width="440" height="26" fill="#1c2128"/>
+      <text x="516" y="64" font-family="JetBrains Mono, monospace" font-size="11" fill="#2e6f6a" font-weight="700">Pod shell — nginx-7d9f-x2k4l</text>
+      <text x="516" y="94" font-family="JetBrains Mono, monospace" font-size="11" fill="#d7e0e8">$ whoami</text>
+      <text x="516" y="112" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#9aa3ad">root</text>
+      <text x="516" y="136" font-family="JetBrains Mono, monospace" font-size="11" fill="#d7e0e8">$ hostname</text>
+      <text x="516" y="154" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#9aa3ad">nginx-7d9f-x2k4l</text>
+      <text x="516" y="180" font-family="JetBrains Mono, monospace" font-size="11" fill="#7fd0c4">/ # ▏</text>
+      <text x="720" y="216" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#4b5563">scoped INSIDE one container — same as kubectl exec -it</text>
+    </svg>
+    <figcaption>FIG. 7 — The two terminal types side by side: the cluster terminal runs on your machine (scoped to the kubeconfig context), the pod shell runs inside the container itself.</figcaption>
+  </figure>
+
+  <h3>Connecting Freelens to your kind cluster</h3>
+  <ol class="step-list">
+    <li>Make sure your kind cluster is running and its context exists in <code>~/.kube/config</code> (this happens automatically when you run <code>kind create cluster</code>).</li>
+    <li>Open Freelens. It scans your kubeconfig and lists every context it finds, including <code>kind-&lt;cluster-name&gt;</code>, on the cluster catalog / "Hotbar" screen.</li>
+    <li>Click the kind cluster's tile to connect. Freelens opens a dedicated tabbed pane for it.</li>
+  </ol>
+
+  <h3>Navigating the IDE — the left sidebar</h3>
+  <p>Once connected, the left sidebar is your entire map of the cluster — it mirrors the API resource groups you'd otherwise have to remember for <code>kubectl get</code>:</p>
+  <table>
+    <tr><th>Sidebar section</th><th>Contains</th><th>kubectl equivalent</th></tr>
+    <tr><td><strong>Overview / Cluster</strong></td><td>Node count, pod count, resource pressure, API server version</td><td><code>kubectl cluster-info</code>, <code>kubectl get nodes</code></td></tr>
+    <tr><td><strong>Nodes</strong></td><td>Every node, its CPU/mem, conditions, taints</td><td><code>kubectl get nodes -o wide</code></td></tr>
+    <tr><td><strong>Workloads</strong></td><td>Pods, Deployments, DaemonSets, StatefulSets, ReplicaSets, Jobs, CronJobs</td><td><code>kubectl get pods/deployments/...</code></td></tr>
+    <tr><td><strong>Config</strong></td><td>ConfigMaps, Secrets, ResourceQuotas, HPAs</td><td><code>kubectl get configmap/secret</code></td></tr>
+    <tr><td><strong>Network</strong></td><td>Services, Endpoints, Ingresses, NetworkPolicies</td><td><code>kubectl get svc/endpoints/ingress</code></td></tr>
+    <tr><td><strong>Storage</strong></td><td>PersistentVolumes, PersistentVolumeClaims, StorageClasses</td><td><code>kubectl get pv/pvc/sc</code></td></tr>
+    <tr><td><strong>Namespaces</strong></td><td>Switch/filter the whole UI to one namespace, or view all</td><td><code>kubectl get pods -n &lt;ns&gt;</code> / <code>-A</code></td></tr>
+    <tr><td><strong>Helm</strong></td><td>Installed releases and chart repos, upgrade/rollback buttons</td><td><code>helm list</code>, <code>helm upgrade</code></td></tr>
+    <tr><td><strong>Custom Resources</strong></td><td>Any CRDs installed in the cluster (e.g. Argo CD's <code>Application</code>)</td><td><code>kubectl get &lt;crd&gt;</code></td></tr>
+  </table>
+  <p>Every list view supports fuzzy search/column filtering at the top, and right-clicking a row opens a context menu (Scale, Cordon/Drain, Restart, Delete, Edit, and — for pods — Exec / Logs) instead of remembering the matching <code>kubectl</code> flag.</p>
+
+  <h3>Using the built-in console / terminal — step by step</h3>
+  <p>Freelens actually exposes <strong>two different kinds of terminal</strong>, and it's worth knowing which one you're opening:</p>
+
+  <h4>1. The cluster terminal (a pre-authenticated kubectl shell)</h4>
+  <p>This is a general-purpose terminal, already pointed at the connected cluster's context — equivalent to opening your own terminal after running <code>kubectl config use-context kind-&lt;name&gt;</code>.</p>
+  <ol class="step-list">
+    <li>With a cluster open, look at the <strong>bottom-right of the window</strong> (or the terminal/<code>&gt;_</code> icon in the top toolbar, depending on version) and click the terminal icon.</li>
+    <li>A terminal panel slides up from the bottom of the app, docked below the resource view — it behaves like a normal terminal tab (you can open several, each gets its own tab along the bottom edge).</li>
+    <li>It drops you into a shell with <code>kubectl</code>, <code>helm</code>, and (for kind) usually <code>docker</code> already on the <code>PATH</code>, and <code>KUBECONFIG</code>/context already set to the cluster you have open — so you can type <code>kubectl get pods</code> immediately with no extra setup.</li>
+    <li>By default this runs a sandboxed <code>/bin/sh</code> bundled with the app, not your real login shell. If you want it to be your actual host shell (so your own aliases, <code>zsh</code>/<code>bash</code> config, and tools are available), go to <strong>Preferences → Terminal</strong> and set the "Terminal Shell Path" (on Linux this is often pointed at a helper such as <code>host-spawn</code> to escape the app's sandbox; on macOS/Windows you can usually just point it at <code>/bin/zsh</code>, <code>/bin/bash</code>, or <code>powershell.exe</code>).</li>
+    <li>Close a terminal tab with its <code>×</code>, or the whole panel with the same terminal-icon toggle.</li>
+  </ol>
+
+  <h4>2. A pod shell (the visual equivalent of <code>kubectl exec -it</code>)</h4>
+  <ol class="step-list">
+    <li>Go to <strong>Workloads → Pods</strong> in the left sidebar.</li>
+    <li>Click directly on a pod's name to open its detail page (Overview, Events, and a live YAML view).</li>
+    <li>On the detail page — or via right-click on the pod's row in the list — find the <strong>Shell</strong> (sometimes shown as a small terminal/<code>&gt;_</code> icon next to the pod, or a "Pod Shell" entry in the context menu) and click it.</li>
+    <li>If the pod has more than one container, Freelens shows a dropdown to pick which container to exec into — the same choice <code>kubectl exec -c &lt;container&gt;</code> makes explicit.</li>
+    <li>A new terminal tab opens at the bottom, already running the equivalent of <code>kubectl exec -it &lt;pod&gt; -c &lt;container&gt; -- sh -c "clear; (bash || ash || sh)"</code> — it tries <code>bash</code> first and falls back to <code>ash</code>/<code>sh</code> for minimal images (Alpine, distroless-with-shell, etc.).</li>
+    <li>Type normally; exit with <code>exit</code> or by closing the tab, exactly like leaving an SSH session.</li>
+  </ol>
+
+  <h4>3. Logs (not a shell, but lives in the same area)</h4>
+  <ol class="step-list">
+    <li>From a pod's detail page, click <strong>Logs</strong> (or the small document icon on its row).</li>
+    <li>A log panel opens at the bottom with live-tailing output, a search box, timestamp toggle, and a container picker for multi-container pods — the visual equivalent of <code>kubectl logs -f &lt;pod&gt; -c &lt;container&gt;</code>.</li>
+    <li>You can pop the log view into its own larger window, download the log to a file, or wrap/unwrap long lines from the small toolbar above the log text.</li>
+  </ol>
+
+  <div class="callout warn">
+    <b>If the pod shell hangs on "Connecting…" or errors</b>
+    This is a known, fairly common rough edge (tracked in Freelens's GitHub issues), usually caused by: the container image genuinely lacking <em>any</em> shell (very minimal/distroless images), an RBAC role missing the <code>pods/exec</code> permission, or a proxy/port conflict on the machine. If the in-app shell won't connect, the reliable fallback is the plain command it's trying to run for you: <code>kubectl exec -it &lt;pod&gt; -n &lt;namespace&gt; -- sh</code> — if that also fails the same way, the problem is the cluster/RBAC/image, not Freelens.
+  </div>
+
+  <h4>4. Node shell (SSH-like access to a node, not just a pod)</h4>
+  <p>Selecting a node under <strong>Nodes</strong> and choosing <strong>Shell</strong> from its menu asks the cluster to schedule a temporary privileged debug pod onto that node and drops you into it — this is Freelens's equivalent of <code>kubectl debug node/&lt;node&gt; -it --image=busybox</code>. On a kind cluster this is rarely needed (you can just <code>docker exec -it kind-control-plane bash</code> instead, since the "node" is already a container on your host) — it's more useful on real cloud clusters where you don't have direct SSH/console access to nodes.</p>
+
+  <h4>5. Port-forwarding from the UI</h4>
+  <ol class="step-list">
+    <li>Go to <strong>Network → Services</strong> (or Workloads → Pods for a single pod).</li>
+    <li>Open the Service you want to reach, and find the <strong>Forward</strong> / "Port Forward" control near its connection details.</li>
+    <li>Pick the local port to bind to and click Start — Freelens keeps this tunnel running in the background (recent versions let you pin it to a specific local address), equivalent to leaving a <code>kubectl port-forward svc/&lt;name&gt; 8080:80</code> command running in a terminal.</li>
+  </ol>
+
+  <div class="callout">
+    <b>How to think about it</b>
+    Freelens doesn't talk to your cluster differently than <code>kubectl</code> does — it's making the exact same authenticated calls to the same kube-apiserver, using the same kubeconfig credentials, and its built-in terminal/shell/logs features are thin visual wrappers around the exact <code>kubectl exec</code>/<code>kubectl logs</code>/<code>kubectl port-forward</code> commands shown above. Everything you see in Freelens, you could reconstruct by typing enough <code>kubectl</code> commands yourself — Freelens just makes it faster to browse, click into, and spot problems across many pods, namespaces, or clusters at once.
+  </div>
+</section>
+
+<hr class="div">
+
+<section id="glossary">
+  <div class="kicker">Reference</div>
+  <h2><span class="num">13</span>Glossary</h2>
+  <dl class="glossary">
+    <dt>Namespace (Linux)</dt><dd>Kernel feature that gives a process a restricted, isolated view of a global system resource (network, PIDs, mounts, etc.). Not to be confused with a Kubernetes Namespace, which is an unrelated, higher-level concept for organizing API objects.</dd>
+    <dt>cgroups</dt><dd>The companion kernel feature to namespaces — limits and accounts for how much CPU, memory, and I/O a process (or group of processes) may use. Namespaces provide isolation; cgroups provide resource limits.</dd>
+    <dt>veth pair</dt><dd>A linked pair of virtual Ethernet interfaces; a packet sent into one end appears instantly on the other. The standard way to connect a namespace to a bridge or to another namespace.</dd>
+    <dt>Linux bridge</dt><dd>An in-kernel virtual Layer-2 switch. Interfaces (usually veth ends) are attached to it and it forwards frames between them by MAC address.</dd>
+    <dt>iptables / nftables</dt><dd>The Linux kernel's packet filtering and NAT rule engines. Used for container port publishing (DNAT), outbound NAT (MASQUERADE), and — inside Kubernetes — implementing Service ClusterIP redirection.</dd>
+    <dt>CNI (Container Network Interface)</dt><dd>A CNCF specification defining how a container runtime should invoke executable network plugins to configure a container's network namespace. Not software itself — a contract that plugins implement.</dd>
+    <dt>IPAM</dt><dd>IP Address Management — the sub-task (often a separate, delegated CNI plugin like <code>host-local</code>) of choosing which IP address to hand out to a new pod.</dd>
+    <dt>CRI (Container Runtime Interface)</dt><dd>The gRPC API kubelet uses to talk to a container runtime (containerd, CRI-O) without needing to know its implementation details.</dd>
+    <dt>Pod sandbox</dt><dd>The "infra"/pause container that owns a pod's shared Linux namespaces (network, IPC) before any application container starts — this is why containers in the same pod can reach each other over <code>localhost</code>.</dd>
+    <dt>ClusterIP</dt><dd>A Kubernetes Service's default virtual IP — exists only as routing/NAT rules on every node, not attached to any real network interface.</dd>
+    <dt>Control loop / reconciliation</dt><dd>The core Kubernetes pattern: a controller continuously compares desired state (what you declared) against actual state (what's really running) and takes action to close any gap.</dd>
+    <dt>kind</dt><dd>"Kubernetes IN Docker" — runs full Kubernetes nodes as Docker containers for fast local/CI clusters.</dd>
+    <dt>kindnet / kindnetd</dt><dd>The lightweight default CNI plugin kind installs automatically so clusters come up <code>Ready</code> without any manual CNI installation step.</dd>
+    <dt>kubectl context</dt><dd>A named bundle of {cluster address, user credentials, default namespace} stored in kubeconfig, letting you switch which cluster your commands target.</dd>
+    <dt>Freelens</dt><dd>Free, open-source, MIT-licensed desktop GUI for Kubernetes; community fork of OpenLens, using your existing kubeconfig to browse/manage clusters visually.</dd>
+  </dl>
+</section>
+
+</div>
+
+<footer>Prepared as a study companion to the DevOps Bootcamp Kubernetes module · covers namespaces, CNI internals, kind, kubectl, and Freelens · researched and compiled Aug 2026</footer>
+
+<a href="#" class="backtotop" title="Back to top">↑</a>
+
+</body>
+</html>

@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EKS via Terraform, Properly: Class 4 — Part 5 (Argo CD, GitOps in Practice)</title>
+<style>
+  :root{
+    --ink:#1b2027; --sub:#4b5563; --bg:#fbfaf7; --panel:#ffffff; --line:#e4e1d8;
+    --accent:#2e6f6a; --accent2:#b8562f; --accent3:#3a5ba0;
+    --mono-bg:#12161c; --mono-ink:#d7e0e8; --mono-accent:#7fd0c4; --code-inline-bg:#eef0eb;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:"Iowan Old Style","Palatino Linotype",Georgia,"Noto Serif",serif; line-height:1.65; font-size:17px;}
+  .wrap{max-width:960px; margin:0 auto; padding:0 32px 120px;}
+  header.hero{padding:70px 32px 50px; border-bottom:1px solid var(--line); background: linear-gradient(180deg, rgba(46,111,106,0.06), rgba(46,111,106,0) 60%);}
+  header.hero .eyebrow{font-family:"JetBrains Mono","SF Mono",Consolas,monospace; letter-spacing:.14em; text-transform:uppercase; font-size:12.5px; color:var(--accent); margin-bottom:14px; display:flex; gap:10px; align-items:center;}
+  header.hero .eyebrow::before{content:"//"; color:var(--accent2);}
+  h1.title{font-size:clamp(30px,4.2vw,46px); line-height:1.12; margin:0 0 14px; max-width:820px; letter-spacing:-0.01em;}
+  .subtitle{color:var(--sub); font-size:18px; max-width:700px; margin:0 0 26px;}
+  .meta-row{display:flex; gap:22px; flex-wrap:wrap; font-family:"JetBrains Mono",monospace; font-size:12.5px; color:var(--sub);}
+  .meta-row span b{color:var(--ink);}
+  nav.toc{margin:36px auto 0; max-width:960px; padding:22px 32px 26px; border:1px solid var(--line); border-radius:10px; background:var(--panel);}
+  nav.toc h2{font-family:"JetBrains Mono",monospace; font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 14px;}
+  nav.toc ol{columns:2; column-gap:36px; margin:0; padding-left:20px;}
+  nav.toc li{break-inside:avoid; margin-bottom:8px; font-size:15px;}
+  nav.toc a{color:var(--ink); text-decoration:none; border-bottom:1px dotted var(--line);}
+  nav.toc a:hover{color:var(--accent); border-color:var(--accent);}
+  @media (max-width:640px){nav.toc ol{columns:1;}}
+  section{padding-top:56px;}
+  section > .kicker{font-family:"JetBrains Mono",monospace; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent2); margin-bottom:8px;}
+  h2{font-size:30px; margin:0 0 6px; letter-spacing:-0.01em; scroll-margin-top:20px;}
+  h2 .num{color:var(--accent); font-family:"JetBrains Mono",monospace; font-size:19px; margin-right:10px;}
+  h3{font-size:21px; margin:34px 0 10px; scroll-margin-top:20px; color:#20262c;}
+  h4{font-size:16.5px; margin:22px 0 8px; color:#20262c; font-family:"JetBrains Mono",monospace; letter-spacing:.02em;}
+  p{margin:0 0 15px;}
+  ul,ol{margin:0 0 16px; padding-left:22px;}
+  li{margin-bottom:6px;}
+  strong{color:#10161c;}
+  .lede{font-size:18.5px; color:#2b323a;}
+  code, .code-inline{font-family:"JetBrains Mono","SF Mono",Consolas,monospace; font-size:0.86em; background:var(--code-inline-bg); padding:1px 6px; border-radius:4px; color:#3a2f1f;}
+  pre{background:var(--mono-bg); color:var(--mono-ink); padding:18px 20px; border-radius:10px; overflow-x:auto; font-family:"JetBrains Mono","SF Mono",Consolas,monospace; font-size:13.5px; line-height:1.55; margin:16px 0 22px;}
+  pre code{background:none; padding:0; color:inherit; font-size:1em;}
+  pre .c{color:#7f8b98;} pre .k{color:var(--mono-accent);} pre .s{color:#e2b872;} pre .out{color:#9aa3ad;} pre .bad{color:#e58b8b;}
+  .callout{border-left:3px solid var(--accent); background:#eef3f2; padding:14px 18px; border-radius:0 8px 8px 0; margin:18px 0; font-size:15.5px;}
+  .callout.warn{border-left-color:var(--accent2); background:#f7ece5;}
+  .callout.myth{border-left-color:#8a3f8a; background:#f3ecf3;}
+  .callout.fix{border-left-color:#3a5ba0; background:#e9eef7;}
+  .callout.bug{border-left-color:#c0392b; background:#fbe9e7;}
+  .callout b{display:block; font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px;}
+  .callout.warn b{color:var(--accent2);} .callout.myth b{color:#8a3f8a;} .callout.fix b{color:#3a5ba0;} .callout.bug b{color:#c0392b;}
+  .callout:not(.warn):not(.myth):not(.fix):not(.bug) b{color:var(--accent);}
+  table{width:100%; border-collapse:collapse; margin:18px 0 26px; font-size:15px;}
+  th{text-align:left; font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--sub); border-bottom:2px solid var(--ink); padding:8px 12px;}
+  td{border-bottom:1px solid var(--line); padding:10px 12px; vertical-align:top;}
+  tr:hover td{background:#f5f3ee;}
+  td code{white-space:nowrap;}
+  hr.div{border:none; border-top:1px solid var(--line); margin:56px 0;}
+  .backtotop{position:fixed; right:24px; bottom:24px; background:var(--ink); color:#fff; width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; text-decoration:none; font-size:18px; opacity:.85; box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  .backtotop:hover{opacity:1;}
+  .step-list{counter-reset:step; list-style:none; padding-left:0;}
+  .step-list li{counter-increment:step; padding-left:38px; position:relative; margin-bottom:16px;}
+  .step-list li::before{content:counter(step); position:absolute; left:0; top:0; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; font-family:"JetBrains Mono",monospace; font-size:13px; display:flex; align-items:center; justify-content:center;}
+  .exercise{border:1.5px solid var(--accent); border-radius:12px; padding:22px 26px; margin:28px 0; background:#fcfdfc;}
+  .exercise .ex-label{font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:#fff; background:var(--accent); display:inline-block; padding:4px 10px; border-radius:5px; margin-bottom:10px;}
+  .exercise h3{margin-top:0;}
+  .goal{font-size:14.5px; color:var(--sub); font-style:italic; margin-top:-4px; margin-bottom:16px;}
+  .yourturn{border:1.5px dashed var(--accent2); border-radius:12px; padding:20px 24px; margin:22px 0; background:#fffaf6;}
+  .yourturn .yt-label{font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:#fff; background:var(--accent2); display:inline-block; padding:4px 10px; border-radius:5px; margin-bottom:10px;}
+  .checklist{list-style:none; padding-left:0;}
+  .checklist li{padding-left:30px; position:relative; margin-bottom:10px;}
+  .checklist li::before{content:"☐"; position:absolute; left:0; top:0; color:var(--accent); font-size:17px;}
+  .glossary dt{font-family:"JetBrains Mono",monospace; font-weight:700; color:var(--ink); margin-top:14px;}
+  .glossary dd{margin:2px 0 0; color:var(--sub);}
+  footer{padding:60px 32px 40px; text-align:center; color:var(--sub); font-size:13px; font-family:"JetBrains Mono",monospace;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap" style="padding:0;">
+    <div class="eyebrow">devops bootcamp — hands-on lab · follow-along series</div>
+    <h1 class="title">EKS via Terraform, Properly: Class 4 — Part 5 (Argo CD, GitOps in Practice)</h1>
+    <p class="subtitle">Part 4 ended with GitOps named as a problem, ten minutes before the bell, with no tool attached yet. This session is the tool: what a CRD and an operator actually are, why Argo CD needs its own control loop on top of Kubernetes' native one, installing it properly via Terraform instead of ad-hoc CLI commands, exposing it through your own domain, wiring your CI pipeline to push image updates through it — and, at the very end, watching a manual <code>kubectl</code> change get silently undone live, which is GitOps working exactly as designed.</p>
+    <div class="meta-row">
+      <span>Instructor: <b>Akhilesh Mishra</b></span>
+      <span>Builds on: <b>eks-core-infra/</b>, <b>k8s-services/</b>, <b>app-infra/</b>, <b>eks-infra.yaml</b>, <b>eks-3tier-build-deploy.yaml</b> from Parts 1–4</span>
+      <span>Class date: <b>Aug 30, 2026</b></span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#howto">0 · How we're going to work through this</a></li>
+    <li><a href="#ex1">Exercise 1 — Database migrations must be version-controlled too</a></li>
+    <li><a href="#ex2">Exercise 2 — CRDs and Operators: how Kubernetes learns new tricks</a></li>
+    <li><a href="#ex3">Exercise 3 — Why Kubernetes' own control loop isn't enough for Argo CD</a></li>
+    <li><a href="#ex4">Exercise 4 — Argo CD ships as a Helm chart, on purpose</a></li>
+    <li><a href="#ex5">Exercise 5 — Installing Argo CD: CLI first, Terraform for real</a></li>
+    <li><a href="#ex6">Exercise 6 — Getting into the UI: port-forward and the initial admin secret</a></li>
+    <li><a href="#ex7">Exercise 7 — The Argo CD Application: teaching it what "source of truth" means</a></li>
+    <li><a href="#ex8">Exercise 8 — Sync policy: manual vs. automatic, and what "3 minutes" means</a></li>
+    <li><a href="#ex9">Exercise 9 — GitOps as policy enforcement, not just automation</a></li>
+    <li><a href="#ex10">Exercise 10 — Control plane vs. data plane: what's actually in the argocd namespace</a></li>
+    <li><a href="#ex11">Exercise 11 — Prerequisites you can't skip: network path and repo auth</a></li>
+    <li><a href="#ex12">Exercise 12 — Scoping: what Argo CD will and won't touch</a></li>
+    <li><a href="#ex13">Exercise 13 — Branching strategy: why Argo CD should never point at main</a></li>
+    <li><a href="#ex14">Exercise 14 — Moving Argo CD itself into Terraform</a></li>
+    <li><a href="#ex15">Exercise 15 — Exposing the Argo CD UI: Ingress, HTTPS, and reusing an existing cert</a></li>
+    <li><a href="#ex16">Exercise 16 — One load balancer, many Ingresses: the group.name pattern</a></li>
+    <li><a href="#ex17">Exercise 17 — Argo CD Application-as-code, via the argocd Terraform provider</a></li>
+    <li><a href="#ex18">Exercise 18 — Wiring the build pipeline to Argo CD: the sed-and-push pattern</a></li>
+    <li><a href="#ex19">Exercise 19 — Proof: watching self-healing kill a manual kubectl change</a></li>
+    <li><a href="#closing">Closing — practicing without an EKS bill, and what's next</a></li>
+    <li><a href="#openitems">Open items in your own repo</a></li>
+    <li><a href="#glossary">Glossary</a></li>
+  </ol>
+</nav>
+
+<section id="howto">
+  <div class="kicker">Before you begin</div>
+  <h2><span class="num">00</span>How we're going to work through this</h2>
+  <p class="lede">This was the first Argo CD session, and it was run almost entirely as a live demo plus an unusually long, high-quality Q&amp;A — several students (Jas N especially) pushed hard on "but why do we need this if Kubernetes already reconciles" and the answers given are some of the most interview-relevant material in the whole class so far. Treat this document as concept-heavy: there is real Terraform and real YAML shown on-screen, captured below wherever it was legible, but you have not yet written any of your own Argo CD code — that starts next session, once this conceptual ground is solid.</p>
+  <div class="callout fix">
+    <b>What this class actually built, concretely</b>
+    Three things, in order: (1) Argo CD installed manually via <code>helm install</code> first, purely to show what "the CLI way" looks like and why it's not what you'd keep; (2) Argo CD reinstalled properly via a Terraform <code>helm_release</code>, exposed on its own subdomain (<code>argo-cd.&lt;domain&gt;</code>) through an <code>Ingress</code> reusing an existing ACM cert, sharing a load balancer with the main app's Ingress via a <code>group.name</code> annotation; (3) a new GitHub Actions job (<code>update-k8s-images</code>, in <code>eks-3tier-argo-deploy.yaml</code>) that runs after the build job, rewrites the image tag in <code>backend.yaml</code>/<code>frontend.yaml</code> with <code>sed</code>, and commits that change straight back to the branch — which Argo CD then picks up and deploys, with no <code>kubectl</code> anywhere in the loop.</p>
+  </div>
+  <div class="callout warn">
+    <b>What you don't have yet, and shouldn't assume</b>
+    Your own <code>k8s-services</code> module has no Argo CD Terraform in it at all as of this session — no <code>argocd.tf</code>, no Argo <code>Application</code> resource, nothing. Everything in Exercises 14–18 is the coach's live-demo code, shown here so you know the target shape before you write your own version next session. Don't copy it in blind — some of it (the shared-certificate workaround in Exercise 16, in particular) was an explicit, named shortcut the coach took to avoid breaking other students' in-progress work, not the "correct" long-term pattern.
+  </div>
+</section>
+
+<section id="ex1">
+  <div class="kicker">Exercise 1</div>
+  <h2><span class="num">01</span>Database migrations must be version-controlled too</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept — interview-flagged</span>
+    <p class="goal">Goal: be able to state, precisely, what "rolling back a deployment" actually requires when a database is involved — this was named directly as a frequent, difficult interview question.</p>
+    <p>Opening five minutes, before any Argo CD content: a reminder that rollback strategies are genuinely complicated and worth independent research (carried over from Part 4). The concrete addition this session: <strong>database migrations need their own version history, tracked deliberately, the same way application code has commit history.</strong> Each migration version represents one state of your schema — add a column, add a table, and you have a new version, kept alongside the old ones rather than overwritten.</p>
+    <p>The reason this matters for rollback specifically: rolling back "the app" by itself is not enough. <strong>Rolling back the application code without also rolling back the database migration state leaves you with new code (or old code) running against a mismatched schema</strong> — which is exactly the kind of crash window Part 3 and Part 4 already walked through from the deploy-ordering side. Different companies solve the "how do we track and apply this" problem differently — some keep migrations in a separate repository maintained by a data-focused team, others fold it into the same app pipeline — but the requirement itself (version your schema changes, roll back code and schema together) doesn't change.</p>
+  </div>
+  <div class="callout">
+    <b>Assigned, not covered</b>
+    This was flagged as homework, not classroom content: research the different rollback patterns companies actually use for both application code and database migrations, specifically because it comes up in interviews and is "complicated" enough to need real study rather than a one-line answer.
+  </div>
+</section>
+
+<section id="ex2">
+  <div class="kicker">Exercise 2</div>
+  <h2><span class="num">02</span>CRDs and Operators: how Kubernetes learns new tricks</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: define both terms precisely enough to use them correctly in a sentence, and know which one does which job.</p>
+    <p>Kubernetes, out of the box, only understands its own built-in resource types — <code>Deployment</code>, <code>Service</code>, <code>Job</code>, and so on. It doesn't know what "Argo CD" is, or what a Postgres cluster managed by a third-party tool should look like. To teach it, Kubernetes exposes an API extension mechanism with two distinct halves:</p>
+    <table>
+      <tr><th>Piece</th><th>What it actually is</th><th>Job</th></tr>
+      <tr><td><strong>CRD</strong> — Custom Resource Definition</td><td>A schema. Defines a brand-new resource <em>type</em> Kubernetes will now accept — the shape of the YAML, what fields exist.</td><td>Lets you write <code>kind: Application</code> (or whatever the new type is called) and have the API server accept it as valid, the same way it already accepts <code>kind: Deployment</code>.</td></tr>
+      <tr><td><strong>Operator</strong></td><td>A running piece of software (itself deployed as one or more Pods) that watches instances of that new custom resource type.</td><td>Does the actual work implied by the custom resource — creates the real underlying objects, keeps them healthy, reacts when reality drifts from what the custom resource says should exist.</td></tr>
+    </table>
+    <p>A CRD alone is inert — it just makes a new kind of YAML syntactically legal. Nothing happens when you apply one on its own. The operator is what turns "Kubernetes now accepts this shape of object" into "Kubernetes now actually does something when you create one."</p>
+  </div>
+  <div class="callout">
+    <b>Why companies package whole applications this way</b>
+    The example given: a complex multi-component product (built on Zookeeper, Kafka, a custom search engine, its own internal services) that takes roughly 40 minutes to start correctly, in a strict order, with dependencies configured a very particular way. If a vendor just handed you the raw containers and said "figure out the startup order yourself," every customer would burn significant engineering time getting it right — and get it wrong in different ways. Instead, the vendor packages the <em>entire</em> application, dependency graph and all, as a CRD plus an operator. You deploy one custom resource; the operator handles the 40-minute correct-order startup internally. You don't need to understand or reproduce their internal architecture — you only need to know what your own environment has to provide (e.g., if a piece of it is a <code>StatefulSet</code>, you need persistent storage configured correctly).</p>
+  </div>
+</section>
+
+<section id="ex3">
+  <div class="kicker">Exercise 3</div>
+  <h2><span class="num">03</span>Why Kubernetes' own control loop isn't enough for Argo CD</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept — from a real, extended Q&amp;A (Jas N)</span>
+    <p class="goal">Goal: this exact question gets asked in interviews almost verbatim — "Kubernetes already reconciles, so why do you need another tool for it?" Be ready with the precise answer, not a vague one.</p>
+    <p>First, the baseline everyone already has from earlier parts: a <strong>control loop</strong> is a mechanism that continuously compares <em>desired state</em> to <em>current state</em> and acts to close any gap. Kubernetes has this built in for its native resources — kill a Pod that's part of a <code>Deployment</code>, and Kubernetes' own control loop notices the current replica count no longer matches the desired count and creates a replacement, with zero third-party tooling involved.</p>
+    <p>The precise answer to "why isn't that enough": <strong>Kubernetes' built-in control loops only know about Kubernetes' own built-in resource types.</strong> They reconcile a <code>Deployment</code> back to its desired replica count because <code>Deployment</code> reconciliation is logic Kubernetes itself ships with. Kubernetes has no opinion at all about <em>which Git commit's manifests should be the source of truth</em> — that's not a concept native Kubernetes resources know about or care about. Argo CD's operator exists specifically to run <em>that</em> control loop: "does the live cluster state match what's declared in this Git repo path, right now" — a comparison Kubernetes itself has no built-in mechanism for, because Git isn't a Kubernetes concept.</p>
+    <p>So the two control loops operate at genuinely different layers, and both are running simultaneously, unbothered by each other: Kubernetes' native loop keeps a <code>Deployment</code>'s replica count correct; Argo CD's loop keeps the <em>definition</em> of that <code>Deployment</code> (which image tag, how many replicas it's supposed to want) aligned with what Git says it should be. Argo CD itself even runs <em>as</em> a Kubernetes <code>Deployment</code> — so if an Argo CD Pod dies, Kubernetes' own native loop restarts it, the same as any other Pod. Argo CD doesn't replace or duplicate Kubernetes' reconciliation; it adds a new kind of reconciliation Kubernetes was never designed to know about.</p>
+  </div>
+  <div class="callout myth">
+    <b>Close, but not the same thing: Argo CD sync vs. Terraform idempotency</b>
+    A student compared Argo CD's reconciliation to Terraform's idempotency directly. Worth being precise about the difference if this comes up: <strong>idempotent</strong> describes an operation that produces the same result no matter how many times you run it — running <code>terraform apply</code> twice in a row with no changes does nothing the second time. Argo CD's reconciliation is a different property: it's <strong>continuous and standing</strong>, not "run-once-and-done." It doesn't wait to be manually re-triggered; an operator Pod is always running, checking on an interval (by default, roughly every 3 minutes — see Exercise 8), actively watching for drift rather than only acting when a human invokes a command.
+  </div>
+</section>
+
+<section id="ex4">
+  <div class="kicker">Exercise 4</div>
+  <h2><span class="num">04</span>Argo CD ships as a Helm chart, on purpose</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: understand the adoption logic — this is a general pattern for any serious open-source Kubernetes tool, not an Argo-CD-specific quirk.</p>
+    <p>Argo CD is not part of Kubernetes — it's an open-source project a group of engineers built to solve the exact drift/source-of-truth problem named at the end of Part 4, which then got adopted broadly enough to become close to a de facto standard. Whoever builds a tool like this faces an adoption problem: if they just publish raw source code and tell you to write your own CRDs and operators against their logic, almost nobody adopts it — people don't want to read an unfamiliar codebase just to figure out how to install something.</p>
+    <p>So the maintainers do the packaging work themselves: Argo CD is distributed as a <strong>Helm chart</strong> that includes its own CRDs and its own operator Pods already wired up correctly. Installing it is "point Helm at the chart," not "hand-write operator logic yourself." This is the same underlying pattern named in Exercise 2 for the Zookeeper/Kafka example — package the complexity once, at the source, so every downstream user gets a one-command install instead of reimplementing internals.</p>
+  </div>
+  <div class="callout">
+    <b>Assigned, not covered — Helm 3 vs. Helm 4</b>
+    Named explicitly as independent research, not classroom content this session: look up what changed between Helm 3 and Helm 4 (Helm 2 preceded both and is no longer relevant). Framed as good interview-prep background on how the tool your <code>helm_release</code> resources depend on has itself evolved.
+  </div>
+</section>
+
+<section id="ex5">
+  <div class="kicker">Exercise 5</div>
+  <h2><span class="num">05</span>Installing Argo CD: CLI first, Terraform for real</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept + live demo</span>
+    <p class="goal">Goal: see the manual path once, understand exactly why it's the wrong one to keep, before Exercise 14 replaces it.</p>
+    <p>Demoed first, deliberately, as the thing <em>not</em> to keep doing: raw Helm CLI commands run directly against the cluster.</p>
+    <pre><code>helm repo add argo https://argoproj.github.io/argo-helm
+helm install argocd argo/argo-cd -n argocd --create-namespace</code></pre>
+    <p>This works — a real, healthy Argo CD install comes up, namespace and all. The problem named explicitly: components installed this way are effectively <strong>infrastructure</strong> (long-lived, expected to still be there in six months), but running the install as a bare CLI command leaves no record anywhere of what was installed, with which values, or how to reproduce it. "Infra-feeling" components belong in Terraform for the same reason the EKS cluster itself does — repeatable, reviewable, versioned, not "whatever a person happened to type into their terminal that day."</p>
+    <p>The manual install was torn back down before moving on — both the Argo CD <code>Application</code> config, and the underlying Helm release itself (<code>helm uninstall</code> from the <code>argocd</code> namespace) — so the Terraform-managed version in Exercise 14 wasn't fighting a leftover manual one.</p>
+  </div>
+</section>
+
+<section id="ex6">
+  <div class="kicker">Exercise 6</div>
+  <h2><span class="num">06</span>Getting into the UI: port-forward and the initial admin secret</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept + live demo</span>
+    <p class="goal">Goal: know the two-step "get in for the first time" ritual cold — you'll do this on every fresh Argo CD install.</p>
+    <p>Before any Ingress/HTTPS exposure exists (that's Exercise 15), the fastest way to reach the UI locally is standard Kubernetes port-forwarding to the <code>argocd-server</code> Service:</p>
+    <pre><code>kubectl port-forward service/argocd-server -n argocd 8080:443</code></pre>
+    <p>Then open <code>https://localhost:8080</code> and accept the self-signed certificate warning. Username is always <code>admin</code>; the initial password is auto-generated at install time and stored as a Kubernetes <code>Secret</code> — retrieved, not chosen:</p>
+    <pre><code>kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath="{.data.password}" | base64 -d</code></pre>
+  </div>
+  <div class="callout warn">
+    <b>Documented best practice, named but not demoed</b>
+    Argo CD's own getting-started guide recommends deleting <code>argocd-initial-admin-secret</code> after the first login, once a real admin password/identity provider is configured — the initial secret is meant to be a one-time bootstrap credential, not a standing one. Not acted on live in this session (the class kept regenerating and re-reading it repeatedly through the demo), but worth doing for real once your own install is stable.
+  </div>
+</section>
+
+<section id="ex7">
+  <div class="kicker">Exercise 7</div>
+  <h2><span class="num">07</span>The Argo CD Application: teaching it what "source of truth" means</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept + live demo</span>
+    <p class="goal">Goal: know exactly which fields on an Argo CD <code>Application</code> matter and what each one answers.</p>
+    <p>Creating an <code>Application</code> in the UI (equivalent to applying an <code>argoproj.io/v1alpha1 Application</code> custom resource — see Exercise 2) is how you tell Argo CD which Git path is the source of truth for which cluster resources. The fields that matter, walked through live:</p>
+    <ul class="step-list">
+      <li><strong>Repository URL</strong> — the Git repo Argo CD should watch.</li>
+      <li><strong>Revision</strong> — <code>HEAD</code> (tracks whichever branch is currently checked out/default) vs. an explicit branch or tag. For this demo, <code>HEAD</code> against <code>main</code> was used — explicitly called out as <em>not</em> the real-world pattern (see Exercise 13).</li>
+      <li><strong>Path</strong> — must be a <strong>directory</strong>, not a single file. Argo CD watches everything matching inside that directory.</li>
+      <li><strong>Cluster URL</strong> — which cluster to deploy into. Argo CD can manage multiple remote clusters from one install; this demo used the local, in-cluster option since Argo CD is running in the same EKS cluster it's deploying to.</li>
+      <li><strong>Destination namespace</strong> — must match the namespace your actual workload manifests are already scoped to.</li>
+      <li><strong>Directory recursion</strong> — if the target path has nested subfolders each containing more manifests, a recursive option tells Argo CD to walk the whole tree rather than only the top level. Not needed for this flat demo layout, but named as relevant for larger repos.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="ex8">
+  <div class="kicker">Exercise 8</div>
+  <h2><span class="num">08</span>Sync policy: manual vs. automatic, and what "3 minutes" means</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept + live demo, with a real unresolved bug</span>
+    <p class="goal">Goal: know precisely what triggers a sync, since "Argo CD watches Git" undersells what's actually happening.</p>
+    <p>Sync policy on an <code>Application</code> is either <strong>Manual</strong> (a human clicks "Sync" in the UI, or runs the CLI equivalent, every time) or <strong>Automatic</strong> (Argo CD applies changes on its own once it detects the live cluster is out of sync with Git). A direct student question — "does it just check the latest commit ID?" — got a precise correction worth remembering: <strong>Argo CD is not simply diffing commit IDs.</strong> It continuously evaluates the actual rendered manifests at the configured path against live cluster state. The commit ID is relevant context, but the comparison that actually drives a sync decision is manifest-content-vs-live-state, not "is this a new SHA."</p>
+    <p>On automatic sync's cadence: it re-checks on an interval — <strong>roughly every 3 minutes</strong> by default (the coach's own approximate figure, not quoted as an exact, documented constant) — rather than reacting instantly to every Git push via a webhook. A manual "Sync Now" is always available in the UI to force an immediate check rather than waiting out that window.</p>
+  </div>
+  <div class="callout bug">
+    <b>Real bug hit live, never fully resolved this session</b>
+    After a manual deployment change was made outside Git (to demonstrate drift), the <code>Application</code> correctly flagged itself <strong>OutOfSync</strong> — but automatic sync did not fire and self-correct within the expected ~3-minute window, despite Auto-Sync being enabled. The coach acknowledged this directly on-air and guessed that some sync-policy setting likely needed adjustment, without identifying exactly which one. If you hit the same thing in your own install: don't assume your <code>Application</code> config is definitely wrong — this was flagged as a known rough edge in the class's own live environment, not something confirmed as a specific misconfiguration. Worth testing your own <code>syncPolicy.automated</code> block carefully once you write it, rather than assuming "Automatic" alone is sufficient.
+  </div>
+</section>
+
+<section id="ex9">
+  <div class="kicker">Exercise 9</div>
+  <h2><span class="num">09</span>GitOps as policy enforcement, not just automation</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept — the "why" behind the whole session</span>
+    <p class="goal">Goal: be able to explain GitOps to a non-technical stakeholder, not just to another engineer — this framing is what the coach explicitly said made it click for the class.</p>
+    <p>Walked through with an organizational example: a company has stakeholders (who may themselves just be relaying requirements from an external client), developers, and DevOps engineers. A stakeholder doesn't want to run <code>kubectl get deployment</code> to confirm a feature shipped — they want to look at something they already trust (a ticket, a merged pull request, a commit) and <em>assume</em> that what's in Git is what's actually running. If a feature's PR is merged, the expectation is: that is now live. No further verification should be necessary.</p>
+    <p>GitOps is what makes that assumption <em>safe to hold</em> rather than just optimistic. By making Git the enforced source of truth — with a controller actively reconciling any divergence back to it — nobody needs to manually check the cluster to know what's running; the guarantee is structural, not a matter of trusting that nobody made an unrecorded manual change. This reduces <strong>configuration drift</strong> (the live cluster state silently diverging from what the repository claims) and gives the whole organization, technical and non-technical alike, one place to look for the true state of the system.</p>
+  </div>
+</section>
+
+<section id="ex10">
+  <div class="kicker">Exercise 10</div>
+  <h2><span class="num">10</span>Control plane vs. data plane: what's actually in the argocd namespace</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept + live demo</span>
+    <p class="goal">Goal: use "control plane" and "data plane" correctly and specifically when describing any third-party tool's footprint in your cluster — not just for Argo CD.</p>
+    <p>A student asked directly what's actually sitting inside the <code>argocd</code> namespace. The answer, demonstrated by walking the running Pods: <code>argocd-server</code>, <code>argocd-repo-server</code>, <code>argocd-application-controller</code>, <code>argocd-applicationset-controller</code>, <code>argocd-notifications-controller</code>, and <code>argocd-redis</code> — a StatefulSet, several Deployments, and their supporting Pods, all doing the actual work of watching Git, computing diffs, and issuing reconciliation actions.</p>
+    <p>The framing that ties it together: Argo CD's own components (everything in the <code>argocd</code> namespace) are its <strong>control plane</strong> — the tracking-and-decision layer. Your actual application workloads (the <code>frontend</code>/<code>backend</code> Deployments, wherever their namespace is) are the <strong>data plane</strong> — what the control plane acts upon, but is not itself part of. The <code>Application</code> custom resource that ties a Git path to a destination namespace isn't visible as a "normal" workload resource, but conceptually sits on the data-plane side of that boundary — it describes the data plane's desired state, even though the object itself lives in the <code>argocd</code> namespace.</p>
+  </div>
+</section>
+
+<section id="ex11">
+  <div class="kicker">Exercise 11</div>
+  <h2><span class="num">11</span>Prerequisites you can't skip: network path and repo auth</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: two checklist items to verify before assuming an Argo CD install is broken when it's actually just unreachable.</p>
+    <ul class="step-list">
+      <li><strong>Network connectivity to GitHub.</strong> Argo CD's <code>argocd-repo-server</code> Pod, running inside your private cluster subnets, needs outbound internet access to reach <code>github.com</code> (or wherever your repo is hosted) to poll for changes. This depends on the same <strong>NAT gateway</strong> concept from earlier parts — no NAT, no outbound path, no way for Argo CD to ever see your commits, regardless of how correctly the <code>Application</code> resource itself is configured.</li>
+      <li><strong>Repository authentication, for private repos.</strong> This demo's repo was public, so no auth was needed to read it. For a private repository, Argo CD needs credentials — either a GitHub personal access token, or a registered <strong>GitHub App/integration</strong> — configured in Argo CD's own repository-connections settings before it can read anything at the configured path.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="ex12">
+  <div class="kicker">Exercise 12</div>
+  <h2><span class="num">12</span>Scoping: what Argo CD will and won't touch</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept — direct answer to a student question</span>
+    <p class="goal">Goal: be able to state, without hedging, exactly where the Terraform/Argo CD boundary sits by default — this is a favorite "do you actually understand the architecture" interview probe.</p>
+    <p>Asked directly: if Argo CD reconciles drift, does it also need AWS permissions to reconcile infrastructure-level drift? <strong>No, by default.</strong> Argo CD's job is reconciling <strong>Kubernetes manifests and application state</strong> — it does not manage AWS infrastructure (VPCs, RDS instances, IAM roles, the EKS control plane itself) unless you deliberately configure it to manage Kubernetes-level representations of those things.</p>
+    <p>The framing offered: you, the engineer, choose the boundary. Put your Kubernetes <code>Deployment</code>/<code>Service</code>/<code>Ingress</code> manifests under Argo CD's watch, and keep your AWS resources (RDS, IAM, VPC, the cluster itself) in Terraform, applied through your own CI pipeline as before — that's the default, and the boundary used throughout this class. Nothing stops you from being more aggressive about what Argo CD owns, but going further than "Kubernetes objects only" is a deliberate choice with real implications, not something that happens by accident.</p>
+  </div>
+</section>
+
+<section id="ex13">
+  <div class="kicker">Exercise 13</div>
+  <h2><span class="num">13</span>Branching strategy: why Argo CD should never point at main</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept — explicitly named as "not what we're doing today"</span>
+    <p class="goal">Goal: know the real pattern even though this session's demo intentionally didn't use it — this gap between "demo simplicity" and "the real pattern" was called out directly, twice.</p>
+    <p>Stated as a rule for production use, not followed in this session's demo: <strong>never point a production-facing Argo CD <code>Application</code> at your <code>main</code> branch.</strong> The reasoning: your CI pipeline is what updates image tags automatically (Exercise 18) — and that automation should not be writing directly to a protected branch that's also the branch humans merge reviewed pull requests into. Doing so risks an automated commit landing on the same branch a human just merged a change to, with no clean separation between "code review happened here" and "CI just pushed here."</p>
+    <p>The real pattern named: separate branches per environment — <code>argo-dev</code>, <code>argo-prod</code> were the example names given — each with its own Argo CD <code>Application</code> pointed specifically at that branch. A change destined for dev has the pipeline update image tags on <code>argo-dev</code> only; the <code>Application</code> watching <code>argo-dev</code> deploys it. Promoting to production is then a separate, deliberate action targeting <code>argo-prod</code>, not something that happens automatically just because <code>main</code> moved. This also generalizes to multiple clusters: a company with several real clusters (dev, staging, prod as physically separate clusters, not just namespaces) typically runs Argo CD once — often in a dedicated management cluster — with each <code>Application</code> targeting a different destination cluster, rather than installing a separate Argo CD instance per cluster.</p>
+  </div>
+  <div class="callout warn">
+    <b>What this session actually did instead, and why</b>
+    For the live demo, the coach deliberately stayed on <code>main</code> for both the <code>Application</code>'s tracked revision and the CI job's commit target — explicitly flagged as the simplified, wrong-for-production version, kept that way only to avoid adding branch-management complexity to an already dense first session. Don't infer that <code>main</code> is an acceptable target from watching this demo; the coach said outright it isn't.
+  </div>
+</section>
+
+<section id="ex14">
+  <div class="kicker">Exercise 14</div>
+  <h2><span class="num">14</span>Moving Argo CD itself into Terraform</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept + live demo — coach's real code, shown on screen</span>
+    <p class="goal">Goal: recognize the shape of an <code>argocd.tf</code> before you write your own — same <code>helm_release</code> pattern you already used for the Load Balancer Controller in Part 3.</p>
+    <p>After tearing down the manual CLI install from Exercise 5, the coach rebuilt Argo CD as Terraform-managed, inside a new file (shown on screen as <code>argocd.tf</code>, alongside the existing <code>aws-load-balancer-controller.tf</code> in <code>k8s-services</code>). Structurally, this is the same pattern you already know from Part 3's LBC install — a namespace, then a <code>helm_release</code> pointed at the same public Argo Helm chart used manually in Exercise 5:</p>
+    <pre><code><span class="c"># conceptual shape, matching the on-screen structure — confirm exact syntax against your own Helm provider version</span>
+resource "kubernetes_namespace" "argocd" {
+  metadata {
+    name = "argocd"
+  }
+}
+
+resource "helm_release" "argocd" {
+  name       = "argocd"
+  repository = "https://argoproj.github.io/argo-helm"
+  chart      = "argo-cd"
+  namespace  = kubernetes_namespace.argocd.metadata[0].name
+}</code></pre>
+    <p>One piece of cleanup named explicitly while reviewing the file against Terraform's own documentation: an earlier draft had a <strong>redundant namespace definition</strong> — the namespace being both hardcoded in one place and referenced elsewhere, cleaned up to a single source of truth for the namespace name, the same "don't duplicate the same value in two places" discipline from earlier parts' variable design.</p>
+  </div>
+  <div class="callout warn">
+    <b>Deliberately commented out in the coach's committed repo — expect this if you clone it</b>
+    Because other students in the same cohort are still working through earlier parts of the class, the coach explicitly commented out the Argo CD Terraform block in his own pushed repository after this session, specifically so nobody following along from Part 1–3 has their pipeline break trying to deploy resources from a class they haven't reached yet. If you look at the coach's real repo directly: uncomment this block before trying to <code>apply</code> it, and expect to re-comment it yourself later if you ever share your own code the same way.
+  </div>
+</section>
+
+<section id="ex15">
+  <div class="kicker">Exercise 15</div>
+  <h2><span class="num">15</span>Exposing the Argo CD UI: Ingress, HTTPS, and reusing an existing cert</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept + live demo — coach's real code, shown on screen</span>
+    <p class="goal">Goal: recognize this as the exact same Ingress + ACM + Route 53 pattern you already wrote for your own app in Part 4, applied to a second, different subdomain.</p>
+    <p>Port-forwarding (Exercise 6) doesn't scale to a real team — everyone needs their own tunnel, and it's not how anyone would actually access this day-to-day. The fix: a dedicated Argo CD subdomain (<code>argo-cd.&lt;domain&gt;</code>) with its own <code>Ingress</code>, using the tag-based ALB lookup and alias-record pattern you already built in Part 4's Exercise 10 — same mechanics, second subdomain.</p>
+    <p>Two deliberate simplifications named on-air, both worth flagging as "shortcuts taken for this demo," not as the pattern to copy blindly:</p>
+    <ul class="step-list">
+      <li><strong>Authentication left as Argo CD's own built-in admin login</strong>, not wired to an identity provider. The real-world answer named (not implemented): an enterprise SSO provider like Azure AD or Okta, so Argo CD access is governed by the same identity system as everything else at a company. Okta specifically was named as relatively expensive to set up just for a training/trial environment, which is why it was skipped here rather than demonstrated.</li>
+      <li><strong>Reused an already-issued ACM certificate</strong> rather than requesting a new one for this subdomain — explicitly to avoid extra DNS validation wait time mid-class, not because reusing an existing cert is always the right call.</li>
+    </ul>
+  </div>
+  <div class="callout bug">
+    <b>Propagation-delay failure, resolved by reapplying — same pattern as Part 4's Clinic</b>
+    The first <code>apply</code> for this Ingress failed, with the certificate showing "pending validation" in ACM and the Route 53 record not yet resolving — a timing issue, not a code bug. Re-running <code>apply</code> a short while later, once ACM/Route 53 had caught up, succeeded and the app became reachable at the new subdomain. Consistent with the two-phase-apply timing lesson from Part 4: DNS/cert validation genuinely takes real wall-clock time, and a failed first <code>apply</code> immediately after creating a cert or record isn't necessarily a sign anything is wrong.
+  </div>
+</section>
+
+<section id="ex16">
+  <div class="kicker">Exercise 16</div>
+  <h2><span class="num">16</span>One load balancer, many Ingresses: the group.name pattern</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept + live demo — coach's real code, shown on screen</span>
+    <p class="goal">Goal: know this annotation exists and what problem it solves — cost/resource efficiency at the ALB level, a real thing companies actively manage.</p>
+    <p>By default, every distinct <code>Ingress</code> resource causes the AWS Load Balancer Controller to provision its own separate ALB. With two Ingresses now in play (the main 3-tier app's, and Argo CD's new one from Exercise 15), that's two ALBs running — wasted cost and unnecessary resource sprawl for what's conceptually one logical entry point into the cluster. The fix, demoed live on both Ingresses:</p>
+    <pre><code><span class="c"># on BOTH the app's Ingress and Argo CD's Ingress — same value</span>
+annotations = {
+  "alb.ingress.kubernetes.io/group.name" = var.alb_group_name
+}</code></pre>
+    <p>Any Ingresses sharing the same <code>group.name</code> value get consolidated onto a single physical ALB by the Load Balancer Controller, with each Ingress contributing its own routing rules to that one shared listener. Applying this to an existing Ingress that already has a physical ALB attached causes a real resource-transition conflict — the coach resolved it live by <strong>manually deleting the old, now-orphaned load balancer</strong> in the AWS Console so the controller could reconcile cleanly onto the new shared one, rather than trying to migrate it in place.</p>
+  </div>
+  <div class="callout warn">
+    <b>The real constraint this creates, and the deliberate shortcut taken around it</b>
+    Sharing one ALB across multiple Ingresses on different subdomains has a hard requirement: <strong>the shared ALB needs one HTTPS listener, which means one certificate covering every subdomain using it</strong> — normally solved with a wildcard ACM certificate (<code>*.domain.com</code>) rather than a separate exact-match cert per subdomain. Implementing that wildcard-cert restructuring correctly would have required changing the certificate resource in a way that risked breaking other students who hadn't reached this point in their own coursework yet — so the coach explicitly deferred it, keeping the existing single-subdomain certificate in place for now and promising the real wildcard-certificate implementation "when we get to the microservices section." Treat the wildcard-cert pattern as the correct target architecture, and this session's workaround as intentionally temporary, not a mistake to replicate.
+  </div>
+</section>
+
+<section id="ex17">
+  <div class="kicker">Exercise 17</div>
+  <h2><span class="num">17</span>Argo CD Application-as-code, via the argocd Terraform provider</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept + live demo — coach's real code, shown on screen</span>
+    <p class="goal">Goal: recognize that the Argo CD <code>Application</code> you clicked through in the UI in Exercise 7 can be fully Terraform-managed instead — and why that's the direction the class is heading.</p>
+    <p>Rather than keep creating <code>Application</code> resources by hand in the UI, the coach introduced a dedicated <strong>Terraform provider for Argo CD itself</strong> (distinct from the AWS/Kubernetes/Helm providers already in use), configured with the now-Ingress-exposed Argo CD server address and its admin credentials:</p>
+    <pre><code><span class="c"># conceptual shape, matching the on-screen structure</span>
+provider "argocd" {
+  server_addr = var.argo_cd_server_addr
+  username    = "admin"
+  password    = var.argo_cd_admin_password
+}
+
+resource "argocd_application" "devopsdozo" {
+  metadata {
+    name = "devopsdozo"
+  }
+  spec {
+    <span class="c"># source (repo URL, path, target revision) and destination (cluster, namespace)
+       — same fields you set by hand in the UI in Exercise 7, now declared in code</span>
+  }
+}</code></pre>
+    <p>The explicit intent stated for the target end-state: this <code>argocd-application.tf</code> file should live <strong>inside the same repository as the 3-tier app itself</strong>, not in the separate infrastructure repo — because the <code>Application</code> definition is conceptually part of "how this app gets deployed," which travels with the app's own code, not with cluster-level infra like the VPC or the EKS cluster itself.</p>
+  </div>
+  <div class="callout bug">
+    <b>Real provider-config error hit live: don't skip <code>use_local_config</code></b>
+    The first <code>apply</code> of this provider block failed with an explicit error: <em>"invalid provider configuration: one of `core`, `port_forward`, `port_forward_with_namespace`, `use_local_config`, `server_addr` must be specified."</em> The fix that made it work was adding <code>use_local_config = true</code> alongside <code>server_addr</code>, <code>username</code>, and <code>password</code> in the provider block — the <code>argocd</code> provider needs one of that specific set of connection-mode arguments, and <code>server_addr</code> alone wasn't sufficient on its own.
+  </div>
+  <div class="callout">
+    <b>A deprecation warning surfaced, worth noting, not urgent</b>
+    Terraform flagged a deprecated-value warning on the app's own <code>Ingress</code> resource during this same stretch — a backend service name being read as a value in a way the provider schema has since deprecated in favor of a different syntax. Named on-screen but not fixed live in this session; worth checking your own provider's current documentation before it becomes a hard error in a future provider version rather than just a warning.
+  </div>
+</section>
+
+<section id="ex18">
+  <div class="kicker">Exercise 18</div>
+  <h2><span class="num">18</span>Wiring the build pipeline to Argo CD: the sed-and-push pattern</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept + live demo — coach's real code, shown on screen</span>
+    <p class="goal">Goal: understand exactly how "GitOps" turns a built image into a live deployment with zero <code>kubectl</code>/<code>terraform apply</code> in the loop — this is the mechanism, made concrete.</p>
+    <p>A new workflow file, <code>eks-3tier-argo-deploy.yaml</code>, adds a second job after the existing image-build matrix job, gated with <code>needs: build</code> so it only runs once both frontend and backend images are successfully pushed to ECR:</p>
+    <pre><code>update-k8s-images:
+  needs: build
+  runs-on: ubuntu-latest
+  permissions:
+    contents: write   <span class="c"># required — this job commits back to the repo itself</span>
+  steps:
+    - name: Checkout branch
+      uses: actions/checkout@v3
+
+    - name: Point backend and frontend Deployments at the new images
+      run: |
+        BACKEND_IMAGE="${{ env.ECR_REGISTRY }}/augk8s26-backend:${{ github.sha }}"
+        FRONTEND_IMAGE="${{ env.ECR_REGISTRY }}/augk8s26-frontend:${{ github.sha }}"
+
+        sed -i "s|image: ${{ env.ECR_REGISTRY }}/augk8s26-backend:.*|image: ${BACKEND_IMAGE}|" \
+          Kubernetes-world/3-tier-app/k8s/backend.yaml
+        sed -i "s|image: ${{ env.ECR_REGISTRY }}/augk8s26-frontend:.*|image: ${FRONTEND_IMAGE}|" \
+          Kubernetes-world/3-tier-app/k8s/frontend.yaml
+
+    - name: Commit and push manifest updates
+      run: |
+        git config user.name  "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add Kubernetes-world/3-tier-app/k8s/backend.yaml \
+                Kubernetes-world/3-tier-app/k8s/frontend.yaml
+        git commit -m "GitOps: bump image tags to ${{ github.sha }}"
+        git push</code></pre>
+    <p>Walk the flow end to end, since this is the whole point of the session: a developer pushes app code → the <code>build</code> job builds and pushes new frontend/backend images to ECR, tagged with the commit SHA → <code>update-k8s-images</code> runs <code>sed</code> to rewrite the exact <code>image:</code> line in <code>backend.yaml</code>/<code>frontend.yaml</code> to point at that new tag → that change is committed and pushed, as a normal Git commit, back into the branch Argo CD is watching → Argo CD's own control loop (Exercise 3, Exercise 8) notices the manifest content changed, and deploys it. <strong>No step in this pipeline runs <code>kubectl apply</code> or <code>terraform apply</code> against the cluster at all</strong> — the pipeline's only job is to make Git correct; Argo CD's job is making the cluster match Git.</p>
+    <p>On <code>YQ</code> vs. <code>sed</code>: the coach considered <code>yq</code> (a purpose-built YAML editor, more structurally correct for modifying YAML than a generic text-stream tool) but chose plain <code>sed</code> for this demo specifically to keep the pipeline simple while the migration-Job piece (referenced, not yet built into this pipeline) was still unintroduced — named as something likely to be revisited and improved once that piece is added.</p>
+  </div>
+  <div class="callout fix">
+    <b>Why no GitHub token was needed here — but would be, in a different layout</b>
+    This job pushes to the <strong>same repository</strong> the workflow is already running in, on the same branch, so the default, automatically-issued <code>GITHUB_TOKEN</code> (scoped by the <code>permissions: contents: write</code> block above) is sufficient — no personal access token or extra secret required. That would <strong>not</strong> hold if your manifests lived in a separate repository from your application code (a common real pattern, sometimes called a "config repo" or "GitOps repo") — cross-repository pushes need an explicit token with access to the target repo, since the default <code>GITHUB_TOKEN</code> is scoped only to the repo the workflow itself is running in.
+  </div>
+</section>
+
+<section id="ex19">
+  <div class="kicker">Exercise 19</div>
+  <h2><span class="num">19</span>Proof: watching self-healing kill a manual kubectl change</h2>
+  <div class="exercise">
+    <span class="ex-label">Live demo — the payoff of the whole session</span>
+    <p class="goal">Goal: this is the single clearest, most concrete demonstration of what "GitOps" buys you in practice — be able to describe this exact sequence if asked to explain GitOps with an example.</p>
+    <p>With the full pipeline from Exercise 18 working end to end (a real code change → build → <code>sed</code>-and-push → Argo CD auto-sync → new Pods live, confirmed in the browser), the coach then deliberately tried to break the guarantee: manually running <code>kubectl set image deployment/frontend-deployment &lt;container&gt;=&lt;older-image-tag&gt; -n &lt;namespace&gt;</code> to force a rollback to a previous image, entirely outside Git and outside the pipeline.</p>
+    <p><strong>The manual change did not stick.</strong> New Pods briefly started coming up with the old, manually-specified image — and were then terminated and replaced again with the Git-defined (newer) image, without any human intervention. The Argo CD <code>Application</code> UI showed exactly what happened underneath: the manual <code>kubectl</code> change was detected as drift (the live state no longer matched the Git-declared state), and Argo CD's own control loop reconciled it straight back — undoing the manual rollback attempt as if it had never happened.</p>
+    <p>To prove the point conclusively, the coach then <strong>deleted the Argo CD <code>Application</code> itself</strong> and re-ran the same manual <code>kubectl set image</code> command. This time, the manual change held — nothing reverted it. That's the direct, live-demonstrated proof that Argo CD's control loop, specifically, was what had been undoing manual changes the whole time — not some other Kubernetes mechanism, and not coincidence.</p>
+  </div>
+  <div class="callout">
+    <b>What this means in practice, stated plainly</b>
+    Once Argo CD is managing a Deployment with automatic sync enabled, <code>kubectl</code> is no longer a reliable way to change that Deployment's running state — any manual change gets treated exactly like configuration drift and reverted on the next reconciliation pass. The only way to make a change stick is to make it the way the pipeline does: update the manifest in Git. This is the mechanism, not a side effect — it's precisely the "nobody can bypass the pipeline and have it stay bypassed" guarantee from Exercise 9's GitOps-as-policy-enforcement framing, made concrete and watchable.
+  </div>
+</section>
+
+<hr class="div">
+
+<section id="closing">
+  <div class="kicker">Closing</div>
+  <h2>Practicing without an EKS bill, and what's next</h2>
+  <div class="exercise">
+    <span class="ex-label">Practical advice</span>
+    <p class="goal">Goal: know how to keep practicing Argo CD specifically without paying for EKS while you do it.</p>
+    <p>Explicit, practical closing advice: Argo CD itself doesn't need a real EKS cluster to practice on — <strong>Minikube or a lightweight K3s cluster</strong> is enough to install it, create <code>Application</code> resources, and watch reconciliation/self-healing behavior, all for free, locally. The stated intent behind this advice: reserve real EKS spin-up time for the parts of this class that genuinely need AWS (the VPC, IAM/OIDC, RDS, ALB/Route 53/ACM work from Parts 1–4) — do the full build once, end to end — and use a local cluster for repeated Argo CD practice in between.</p>
+  </div>
+  <div class="callout fix">
+    <b>What's coming next in the class</b>
+    Named directly as the next topics, roughly in order: <strong>microservices</strong> (including the deferred wildcard-certificate implementation flagged in Exercise 16), <strong>StatefulSets</strong>, and <strong>Helm charts</strong> — building your own, not just consuming ones like Argo CD's. Any remaining questions from this session were directed to the class Discord channel, to be addressed together in a future session rather than in follow-up messages.
+  </div>
+</section>
+
+<hr class="div">
+
+<section id="openitems">
+  <div class="kicker">Carried forward</div>
+  <h2>Open items in your own repo — not blocking, not urgent</h2>
+  <p>Nothing new was found in your own Terraform this session — this class was entirely conceptual/demo, and your <code>k8s-services</code> module currently has no Argo CD code of any kind yet. Listed here so the two open items already flagged in earlier sessions stay visible, since this class is directly relevant to one of them.</p>
+  <ul>
+    <li><strong>Your Terraform-managed migration Job needs to become plain YAML before or during your own Argo CD work.</strong> This is the item flagged at the end of Part 4: your <code>app-infra/k8-backend-mig-job.tf</code> currently manages the migration <code>Job</code> via <code>kubernetes_job_v1</code> with a Terraform <code>depends_on</code> enforcing "migration before deploy." Once you bring your own <code>backend</code>/<code>frontend</code> Deployments under Argo CD's control (Exercise 17's pattern), <strong>Terraform and Argo CD cannot both own the same live Kubernetes objects without drift/OutOfSync conflicts</strong> — Argo CD will see Terraform's changes as drift from Git, and Terraform will see Argo CD's syncs as drift from state. This session's transcript didn't resolve how the coach's own repo handles the migration Job under GitOps (their real <code>eks-3tier-argo-deploy.yaml</code> workflow, reviewed in a prior session, was confirmed to never touch <code>migration.yaml</code> at all) — worth raising directly next time you're ready to move your own migration Job into this pipeline.</li>
+    <li><strong>OIDC trust-policy mismatch, still unresolved and still deliberately deferred.</strong> Your <code>aws-github-oidc/oidc.tf</code> only matches the branch-ref <code>sub</code> shape; any job using <code>environment: dev</code> issues an environment-shaped <code>sub</code> instead. Per your own instruction, this stays parked until you deliberately trigger the pipeline live and hit the failure for real.</li>
+  </ul>
+</section>
+
+<hr class="div">
+
+<section id="glossary">
+  <div class="kicker">Reference</div>
+  <h2>Glossary</h2>
+  <dl class="glossary">
+    <dt>CRD (Custom Resource Definition)</dt><dd>A schema that teaches the Kubernetes API server to accept a brand-new resource type. Inert on its own — defines the shape, does nothing by itself.</dd>
+    <dt>Operator</dt><dd>Running software (Pods) that watches instances of a custom resource and does the actual work implied by it — the piece that turns a CRD's schema into real behavior.</dd>
+    <dt>Control loop</dt><dd>A continuously-running comparison between desired state and current state, with automatic action to close any gap. Kubernetes has built-in ones for native resources (Deployments, etc.); Argo CD adds one for "does the cluster match Git."</dd>
+    <dt>Control plane vs. data plane</dt><dd>Control plane = the tooling that tracks and decides (e.g. everything in the <code>argocd</code> namespace). Data plane = the actual workloads being acted upon (your app's Deployments/Pods).</dd>
+    <dt>GitOps</dt><dd>An operational pattern making a Git repository the enforced source of truth for desired cluster state, with an in-cluster controller continuously reconciling live state to match it.</dd>
+    <dt>Configuration drift</dt><dd>The live, running state of a system silently diverging from what its declared source of truth (Git) says it should be — typically from manual, out-of-band changes.</dd>
+    <dt>Argo CD <code>Application</code></dt><dd>The custom resource (via Argo CD's own CRD) that tells Argo CD which Git repo/path/revision is the source of truth for which destination cluster/namespace.</dd>
+    <dt>Sync policy — Manual vs. Automatic</dt><dd>Manual requires a human to trigger reconciliation each time; Automatic lets Argo CD apply changes on its own once drift is detected, on a recurring check interval (roughly every 3 minutes by default in this class's install).</dd>
+    <dt>Self-healing (in this context)</dt><dd>Argo CD reverting an out-of-band manual change (e.g. a direct <code>kubectl</code> edit) back to whatever Git declares, on its next reconciliation pass — demonstrated live in Exercise 19.</dd>
+    <dt><code>alb.ingress.kubernetes.io/group.name</code></dt><dd>An Ingress annotation that consolidates multiple Ingress resources sharing the same value onto a single physical ALB, instead of one ALB per Ingress.</dd>
+    <dt>Wildcard ACM certificate</dt><dd>A single TLS certificate (e.g. <code>*.domain.com</code>) covering every subdomain of a base domain — the correct fix for the one-cert-per-shared-ALB requirement created by <code>group.name</code>, deferred in this session to the microservices section.</dd>
+    <dt>argocd Terraform provider</dt><dd>A dedicated Terraform provider (separate from AWS/Kubernetes/Helm) for managing Argo CD's own resources — e.g. <code>argocd_application</code> — as code, requiring a connection-mode argument such as <code>use_local_config</code> alongside <code>server_addr</code>.</dd>
+    <dt><code>GITHUB_TOKEN</code></dt><dd>The default, automatically-issued token available to a GitHub Actions job, scoped only to the repository the workflow is running in — sufficient for a same-repo commit/push (as in Exercise 18), not sufficient across repositories.</dd>
+    <dt>Config repo / GitOps repo</dt><dd>A pattern (named but not used in this class's demo) of keeping Kubernetes manifests in a separate repository from application source code — requires an explicit cross-repo token for CI to push to it, unlike the same-repo pattern this class actually built.</dd>
+  </dl>
+</section>
+
+</div>
+
+<a href="#" class="backtotop">↑</a>
+
+<footer>
+  Follow-along series · DevOps Bootcamp April 2026 · Class 4, Part 5 — generated from class notes and transcript (Aug 30, 2026)
+</footer>
+
+</body>
+</html>

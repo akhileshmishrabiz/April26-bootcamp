@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AWS EKS Hands-On Lab — Class 3 (EKS Architecture, Node Options &amp; Service Types)</title>
+<style>
+  :root{
+    --ink:#1b2027;
+    --sub:#4b5563;
+    --bg:#fbfaf7;
+    --panel:#ffffff;
+    --line:#e4e1d8;
+    --accent:#2e6f6a;
+    --accent2:#b8562f;
+    --accent3:#3a5ba0;
+    --mono-bg:#12161c;
+    --mono-ink:#d7e0e8;
+    --mono-accent:#7fd0c4;
+    --code-inline-bg:#eef0eb;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Georgia,"Noto Serif",serif;
+    line-height:1.65; font-size:17px;
+  }
+  .wrap{max-width:960px; margin:0 auto; padding:0 32px 120px;}
+  header.hero{
+    padding:70px 32px 50px; text-align:left; border-bottom:1px solid var(--line);
+    background: linear-gradient(180deg, rgba(46,111,106,0.06), rgba(46,111,106,0) 60%);
+  }
+  header.hero .eyebrow{
+    font-family:"JetBrains Mono","SF Mono",Consolas,monospace;
+    letter-spacing:.14em; text-transform:uppercase; font-size:12.5px;
+    color:var(--accent); margin-bottom:14px; display:flex; gap:10px; align-items:center;
+  }
+  header.hero .eyebrow::before{content:"//"; color:var(--accent2);}
+  h1.title{font-size:clamp(30px,4.2vw,46px); line-height:1.12; margin:0 0 14px; max-width:820px; letter-spacing:-0.01em;}
+  .subtitle{color:var(--sub); font-size:18px; max-width:700px; margin:0 0 26px;}
+  .meta-row{display:flex; gap:22px; flex-wrap:wrap; font-family:"JetBrains Mono",monospace; font-size:12.5px; color:var(--sub);}
+  .meta-row span b{color:var(--ink);}
+
+  nav.toc{margin:36px auto 0; max-width:960px; padding:22px 32px 26px; border:1px solid var(--line); border-radius:10px; background:var(--panel);}
+  nav.toc h2{font-family:"JetBrains Mono",monospace; font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 14px;}
+  nav.toc ol{columns:2; column-gap:36px; margin:0; padding-left:20px;}
+  nav.toc li{break-inside:avoid; margin-bottom:8px; font-size:15px;}
+  nav.toc a{color:var(--ink); text-decoration:none; border-bottom:1px dotted var(--line);}
+  nav.toc a:hover{color:var(--accent); border-color:var(--accent);}
+  @media (max-width:640px){nav.toc ol{columns:1;}}
+
+  section{padding-top:56px;}
+  section > .kicker{font-family:"JetBrains Mono",monospace; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent2); margin-bottom:8px;}
+  h2{font-size:30px; margin:0 0 6px; letter-spacing:-0.01em; scroll-margin-top:20px;}
+  h2 .num{color:var(--accent); font-family:"JetBrains Mono",monospace; font-size:19px; margin-right:10px;}
+  h3{font-size:21px; margin:34px 0 10px; scroll-margin-top:20px; color:#20262c;}
+  h4{font-size:16.5px; margin:22px 0 8px; color:#20262c; font-family:"JetBrains Mono",monospace; letter-spacing:.02em;}
+  p{margin:0 0 15px;}
+  ul,ol{margin:0 0 16px; padding-left:22px;}
+  li{margin-bottom:6px;}
+  strong{color:#10161c;}
+  .lede{font-size:18.5px; color:#2b323a;}
+
+  code, .code-inline{font-family:"JetBrains Mono","SF Mono",Consolas,monospace; font-size:0.86em; background:var(--code-inline-bg); padding:1px 6px; border-radius:4px; color:#3a2f1f;}
+  pre{background:var(--mono-bg); color:var(--mono-ink); padding:18px 20px; border-radius:10px; overflow-x:auto; font-family:"JetBrains Mono","SF Mono",Consolas,monospace; font-size:13.5px; line-height:1.55; margin:16px 0 22px;}
+  pre code{background:none; padding:0; color:inherit; font-size:1em;}
+  pre .c{color:#7f8b98;}
+  pre .k{color:var(--mono-accent);}
+  pre .s{color:#e2b872;}
+  pre .out{color:#9aa3ad;}
+
+  .callout{border-left:3px solid var(--accent); background:#eef3f2; padding:14px 18px; border-radius:0 8px 8px 0; margin:18px 0; font-size:15.5px;}
+  .callout.warn{border-left-color:var(--accent2); background:#f7ece5;}
+  .callout.myth{border-left-color:#8a3f8a; background:#f3ecf3;}
+  .callout.fix{border-left-color:#3a5ba0; background:#e9eef7;}
+  .callout b{display:block; font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px;}
+  .callout.warn b{color:var(--accent2);}
+  .callout.myth b{color:#8a3f8a;}
+  .callout.fix b{color:#3a5ba0;}
+  .callout:not(.warn):not(.myth):not(.fix) b{color:var(--accent);}
+
+  figure{margin:22px 0 30px; padding:18px; background:var(--panel); border:1px solid var(--line); border-radius:12px;}
+  figure svg{width:100%; height:auto; display:block;}
+  figcaption{font-size:13px; color:var(--sub); margin-top:12px; text-align:center; font-family:"JetBrains Mono",monospace;}
+
+  table{width:100%; border-collapse:collapse; margin:18px 0 26px; font-size:15px;}
+  th{text-align:left; font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--sub); border-bottom:2px solid var(--ink); padding:8px 12px;}
+  td{border-bottom:1px solid var(--line); padding:10px 12px; vertical-align:top;}
+  tr:hover td{background:#f5f3ee;}
+  td code{white-space:nowrap;}
+
+  hr.div{border:none; border-top:1px solid var(--line); margin:56px 0;}
+
+  .backtotop{position:fixed; right:24px; bottom:24px; background:var(--ink); color:#fff; width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; text-decoration:none; font-size:18px; opacity:.85; box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  .backtotop:hover{opacity:1;}
+
+  .step-list{counter-reset:step; list-style:none; padding-left:0;}
+  .step-list li{counter-increment:step; padding-left:38px; position:relative; margin-bottom:16px;}
+  .step-list li::before{content:counter(step); position:absolute; left:0; top:0; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; font-family:"JetBrains Mono",monospace; font-size:13px; display:flex; align-items:center; justify-content:center;}
+
+  .exercise{border:1.5px solid var(--accent); border-radius:12px; padding:22px 26px; margin:28px 0; background:#fcfdfc;}
+  .exercise .ex-label{font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:#fff; background:var(--accent); display:inline-block; padding:4px 10px; border-radius:5px; margin-bottom:10px;}
+  .exercise h3{margin-top:0;}
+  .goal{font-size:14.5px; color:var(--sub); font-style:italic; margin-top:-4px; margin-bottom:16px;}
+
+  .checklist{list-style:none; padding-left:0;}
+  .checklist li{padding-left:30px; position:relative; margin-bottom:10px;}
+  .checklist li::before{content:"☐"; position:absolute; left:0; top:0; color:var(--accent); font-size:17px;}
+
+  .glossary dt{font-family:"JetBrains Mono",monospace; font-weight:700; color:var(--ink); margin-top:14px;}
+  .glossary dd{margin:2px 0 0; color:var(--sub);}
+
+  footer{padding:60px 32px 40px; text-align:center; color:var(--sub); font-size:13px; font-family:"JetBrains Mono",monospace;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap" style="padding:0;">
+    <div class="eyebrow">devops bootcamp — hands-on lab</div>
+    <h1 class="title">AWS EKS Hands-On Lab: Rebuild Class 3, Start to End</h1>
+    <p class="subtitle">A guided, typed-out walkthrough of everything demoed in Class 3 — creating a real EKS cluster, wiring up local &amp; IAM access, provisioning a managed node group, and touring all three Kubernetes Service types (ClusterIP, NodePort, LoadBalancer) — rebuilt as a completable exercise, with the trade-offs and "why" filled in wherever the live demo moved fast.</p>
+    <div class="meta-row">
+      <span>Companion to: <b>DevOps Bootcamp — EKS Module, Class 3 (Aug 8, 2026)</b></span>
+      <span>Instructor: <b>Akhilesh Mishra</b></span>
+      <span>Pairs with: <b>kind Class 1 Hands-On Lab</b></span>
+      <span>Time: <b>90–120 min</b>, hands-on, needs an AWS account</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#setup">0 · Before you start — install, IAM, and cost warning</a></li>
+    <li><a href="#ex1">Exercise 1 — Create the EKS control plane (custom config)</a></li>
+    <li><a href="#ex2">Exercise 2 — Point kubectl at your new cluster</a></li>
+    <li><a href="#ex3">Exercise 3 — AWS access ≠ Kubernetes access (IAM access entries)</a></li>
+    <li><a href="#ex4">Exercise 4 — Pending pods, and why EKS looks "empty" at first</a></li>
+    <li><a href="#ex5">Exercise 5 — Provision a managed node group</a></li>
+    <li><a href="#ex6">Exercise 6 — Validate the CNI, run kubectl top</a></li>
+    <li><a href="#ex7">Exercise 7 — Deploy nginx &amp; the default ClusterIP type</a></li>
+    <li><a href="#ex8">Exercise 8 — NodePort, and why it's a "security nightmare"</a></li>
+    <li><a href="#ex9">Exercise 9 — LoadBalancer, and where it breaks down</a></li>
+    <li><a href="#gaps">What Class 3 covered in theory but not hands-on</a></li>
+    <li><a href="#cheatsheet">Full command cheat-sheet for Class 3</a></li>
+    <li><a href="#cleanup">Cleanup &amp; homework checklist</a></li>
+    <li><a href="#glossary">Glossary</a></li>
+  </ol>
+</nav>
+
+<section id="setup">
+  <div class="kicker">Before you begin</div>
+  <h2><span class="num">00</span>Install, IAM, and a cost warning</h2>
+  <p class="lede">Unlike the kind labs, this one runs against a <strong>real AWS account and spends real money</strong> — a bare EKS control plane costs about $0.10/hour on its own, plus whatever EC2 nodes you add on top. Do the cleanup section at the end even if you're planning to come back tomorrow; leaving a cluster + node group running overnight is the single most common accidental AWS bill among bootcamp students.</p>
+
+  <pre><code><span class="c"># 1. AWS CLI v2 — confirm you have it and are authenticated</span>
+<span class="k">aws --version</span>
+<span class="k">aws sts get-caller-identity</span>
+<span class="out">{
+    "UserId": "AIDAEXAMPLE...",
+    "Account": "123456789012",
+    "Arn": "arn:aws:iam::123456789012:user/your-user"
+}</span>
+
+<span class="c"># 2. kubectl — same tool you used against kind, works against any cluster</span>
+<span class="k">kubectl version --client</span>
+
+<span class="c"># 3. Confirm you're using an IAM user with console + CLI access, not just console</span>
+<span class="c">#    (needed for the "aws eks update-kubeconfig" step in Exercise 2)</span></code></pre>
+
+  <div class="callout warn">
+    <b>What this lab does <em>not</em> use — on purpose</b>
+    Class 3 built the cluster by hand through the EKS console so you could see every field and understand what it configures. This lab follows that exact path — console first — so the concepts land before you automate them. Terraform is coming in Class 4 (the three-tier app), where the instructor explicitly said "same idea, different implementation." Don't jump ahead to Terraform for this lab; typing the console flow once is what makes the Terraform version make sense later.
+  </div>
+
+  <div class="callout">
+    <b>A note on how to use this document</b>
+    Every exercise below is something your instructor actually did live in Class 3 — reconstructed here so you can click/type it yourself, at your own pace, and see the actual output rather than just watch a screen share. Wherever the class demo assumed something ("keep it default, don't worry about it right now"), this guide explains what that default actually does.
+  </div>
+</section>
+
+<hr class="div">
+
+<section id="ex1">
+  <div class="kicker">Exercise 1</div>
+  <h2><span class="num">01</span>Create the EKS control plane (custom config)</h2>
+
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: stand up a real, managed EKS control plane through the console, understanding every field instead of clicking "next" blindly.</p>
+    <ol class="step-list">
+      <li>Console → <strong>EKS</strong> → <strong>Create cluster</strong>. You'll be offered <strong>Auto Mode</strong> or <strong>Custom configuration</strong>. Choose <strong>Custom configuration</strong> and turn Auto Mode <em>off</em> — Auto Mode adds ~12% extra cost per node and hides the exact pieces this lab is teaching you to see.</li>
+      <li><strong>Name</strong> your cluster (e.g. <code>august-cluster</code>).</li>
+      <li><strong>Cluster IAM role</strong> — click "Create new role." The console attaches the correct managed policy (the <strong>Amazon EKS cluster policy</strong>) for you automatically — this is the control-plane-side IAM role, permitted to talk to EC2 and VPC APIs so it can manage nodes and load balancers on your behalf.</li>
+      <li><strong>Kubernetes version</strong> — pick a supported, non-bleeding-edge version (avoid the very newest unless you have a reason).</li>
+      <li><strong>Cluster access</strong> — choose <strong>EKS API</strong> (not the legacy <code>aws-auth</code> ConfigMap — nobody uses that path anymore). Leave it here; you'll come back to grant a second user access in Exercise 3.</li>
+      <li><strong>Networking</strong> — keep the default VPC for this lab. Choose <strong>private subnets only</strong> for the control plane when the console asks — EKS deliberately won't let you pick a public subnet here, precisely so newcomers can't accidentally expose the control plane's API to the internet.</li>
+      <li><strong>Security group</strong> — for this lab, choose one with open outbound access on port <code>443</code> so the control plane can reach nodes and other AWS APIs. In a real environment you'd scope this down; Class 4's Terraform version will show the tightened version.</li>
+      <li><strong>Cluster endpoint access</strong> — choose <strong>Private</strong> if you have a VPN/jump host set up, otherwise <strong>Public</strong> (scoped to your IP) is fine for this lab. Never leave it open to <code>0.0.0.0/0</code> in anything beyond a throwaway lab.</li>
+      <li><strong>Logging</strong> — enable at least <strong>API server</strong> logging so you can audit calls later; leave the rest off for now.</li>
+      <li><strong>Add-ons</strong> — keep the defaults checked: <strong>CoreDNS</strong>, <strong>kube-proxy</strong>, and the <strong>VPC CNI plugin</strong>. Do not skip the VPC CNI add-on — without it, nodes will show up as running EC2 instances but will never join the cluster (you'll deliberately reproduce this failure mode in Exercise 4).</li>
+      <li>Click <strong>Create</strong>. This step only builds the <em>control plane</em> — it takes roughly 10–15 minutes. No nodes exist yet, and nothing can run yet.</li>
+    </ol>
+  </div>
+
+  <div class="callout fix">
+    <b>What "custom configuration" actually bought you</b>
+    Every field above maps to something Akhilesh described in theory earlier in class: the cluster IAM role is the "left side" permission layer (control plane ↔ EC2/VPC APIs); the private-subnets requirement is EKS refusing to let you expose your API server by accident; the add-ons are exactly the three components he called out as load-bearing — CoreDNS for name resolution, kube-proxy for the iptables rules behind every Service, and the VPC CNI for pod networking. None of this is optional scaffolding; skip any one of them and something specific breaks later in this lab.
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 940 300" xmlns="http://www.w3.org/2000/svg">
+      <text x="470" y="24" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#1b2027" font-weight="700">What "Create cluster" actually provisions (control plane only)</text>
+      <rect x="30" y="50" width="880" height="220" rx="12" fill="#faf8f3" stroke="#b8562f" stroke-width="1.5" stroke-dasharray="5,4"/>
+      <text x="50" y="76" font-family="JetBrains Mono, monospace" font-size="12" fill="#b8562f" font-weight="700">AWS-MANAGED (you never see these directly)</text>
+      <rect x="60" y="94" width="250" height="80" rx="8" fill="#fff" stroke="#b8562f"/>
+      <text x="185" y="120" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11">Zone A: etcd + API server</text>
+      <text x="185" y="140" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#4b5563">primary</text>
+      <rect x="345" y="94" width="250" height="80" rx="8" fill="#fff" stroke="#b8562f"/>
+      <text x="470" y="120" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11">Zone B: etcd + API server</text>
+      <text x="470" y="140" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#4b5563">standby, data-synced</text>
+      <rect x="630" y="94" width="250" height="80" rx="8" fill="#fff" stroke="#b8562f"/>
+      <text x="755" y="120" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11">Automatic etcd backups</text>
+      <text x="755" y="140" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#4b5563">default, before restore</text>
+      <rect x="60" y="196" width="820" height="56" rx="8" fill="#eef3f2" stroke="#2e6f6a" stroke-width="1.6"/>
+      <text x="470" y="228" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#2e6f6a">You configured: cluster IAM role · VPC + private subnets · security group · logging · CoreDNS / kube-proxy / VPC-CNI add-ons</text>
+    </svg>
+    <figcaption>FIG. A — "Create cluster" only builds the control-plane side. No compute for your workloads exists until Exercise 5.</figcaption>
+  </figure>
+</section>
+
+<section id="ex2">
+  <h2><span class="num">02</span>Point kubectl at your new cluster</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: reproduce the exact <code>aws eks update-kubeconfig</code> / rename-context flow from class, and understand what it actually edits.</p>
+    <pre><code><span class="c"># before: only your kind context (if any) exists</span>
+<span class="k">kubectl config get-contexts</span>
+
+<span class="c"># add the new EKS cluster to your local kubeconfig</span>
+<span class="k">aws eks update-kubeconfig</span> --name august-cluster --region &lt;your-region&gt;
+<span class="out">Added new context arn:aws:eks:us-east-1:123456789012:cluster/august-cluster to /Users/you/.kube/config</span>
+
+<span class="c"># confirm the new, long ARN-style context now exists</span>
+<span class="k">kubectl config get-contexts</span>
+
+<span class="c"># give it a short, memorable name — exactly as done in class</span>
+<span class="k">kubectl config rename-context</span> \
+  arn:aws:eks:us-east-1:123456789012:cluster/august-cluster aug
+
+<span class="k">kubectl config use-context</span> aug
+<span class="out">Switched to context "aug".</span></code></pre>
+  </div>
+
+  <div class="callout fix">
+    <b>What update-kubeconfig actually wrote</b>
+    Open <code>~/.kube/config</code> in an editor and look for the new entry: it added a <code>cluster</code> block with the API server <strong>endpoint URL</strong> and a base64 <code>certificate-authority-data</code> blob, plus a <code>user</code> block that shells out to <code>aws eks get-token</code> at request time rather than storing a static credential. That's the same file kind was writing to all along — EKS just adds one more <code>context</code>/<code>cluster</code>/<code>user</code> triplet to it, which is exactly why <code>rename-context</code> and <code>use-context</code> work identically to how you switched between kind clusters.
+  </div>
+</section>
+
+<section id="ex3">
+  <h2><span class="num">03</span>AWS access ≠ Kubernetes access (IAM access entries)</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: reproduce the exact "I have AWS access, why can't I list pods?" moment from class, then fix it properly with an IAM access entry.</p>
+    <pre><code><span class="k">kubectl get pods -A</span>
+<span class="out">Error from server (Forbidden): pods is forbidden: User "arn:aws:iam::123456789012:user/your-user"
+cannot list resource "pods" in API group "" at the cluster scope</span></code></pre>
+    <p>This will fail for <strong>any</strong> IAM identity that wasn't the one that created the cluster — the cluster creator gets admin by default; nobody else does, automatically, no matter what AWS-side permissions they hold.</p>
+    <ol class="step-list">
+      <li>Console → your cluster → <strong>Access</strong> tab → <strong>IAM access entries</strong> → <strong>Create access entry</strong>.</li>
+      <li>Choose the IAM user or role you want to grant access to (type ahead to find it). Keep type = <strong>Standard</strong>.</li>
+      <li>Attach an access policy — for this lab, attach the <strong>AmazonEKSClusterAdminPolicy</strong> so you can follow the rest of the exercises without permission friction. In a real team, you'd scope this to a read-only or namespace-limited policy instead — see the callout below.</li>
+      <li>Scope = <strong>cluster</strong> (not namespace) for this lab.</li>
+      <li>Save, then wait ~5–10 seconds for the change to propagate.</li>
+    </ol>
+    <pre><code><span class="k">kubectl get pods -A</span>
+<span class="out">NAMESPACE     NAME                       READY   STATUS    RESTARTS   AGE
+kube-system   aws-node-xxxxx             1/1     Running   0          2m   ← wait, see Exercise 4
+kube-system   coredns-xxxxxxxxx-xxxxx    0/1     Pending   0          5m
+kube-system   coredns-xxxxxxxxx-xxxxx    0/1     Pending   0          5m</span></code></pre>
+  </div>
+
+  <div class="callout warn">
+    <b>Don't hand out AmazonEKSClusterAdminPolicy by default</b>
+    This lab uses the admin policy so nothing blocks you while you're learning. In a real team, follow the same instinct Akhilesh described for banking-grade environments: scope access entries per person or per team, often down to a specific <strong>namespace</strong>, using a read-only or namespace-restricted policy instead of cluster-wide admin. The access-entry <code>scope</code> field you saw in step 4 is exactly the lever for that — cluster-wide vs. a single namespace.
+  </div>
+</section>
+
+<section id="ex4">
+  <h2><span class="num">04</span>Pending pods — and why EKS looks "empty" at first</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: see, hands-on, the exact difference the instructor pointed out between a kind cluster and a real EKS cluster — and understand why CoreDNS is stuck Pending.</p>
+    <pre><code><span class="k">kubectl get pods -n kube-system</span>
+<span class="out">NAME                       READY   STATUS    RESTARTS   AGE
+coredns-xxxxxxxxx-xxxxx    0/1     Pending   0          6m
+coredns-xxxxxxxxx-xxxxx    0/1     Pending   0          6m</span>
+
+<span class="k">kubectl describe pod</span> -n kube-system -l k8s-app=kube-dns
+<span class="out">...
+Events:
+  Type     Reason            Message
+  ----     ------            -------
+  Warning  FailedScheduling  0/0 nodes are available: no nodes found matching node affinity</span></code></pre>
+    <p>Compare this to <code>kubectl get pods -A</code> against a kind cluster (see the Class 1 lab) — kind showed you <code>etcd-...</code>, <code>kube-apiserver-...</code>, <code>kube-scheduler-...</code>, and <code>kube-controller-manager-...</code> pods living in <code>kube-system</code>. Run the same command here:</p>
+    <pre><code><span class="k">kubectl get pods -n kube-system</span>
+<span class="c"># notice: no etcd pod, no kube-apiserver pod, no kube-scheduler pod anywhere</span></code></pre>
+  </div>
+
+  <div class="callout fix">
+    <b>Why the control plane is invisible here — this is the point of "managed"</b>
+    On kind, the control plane runs as ordinary pods on your one node, so <code>kubectl get pods -A</code> shows you etcd, the API server, and the scheduler directly. On EKS, AWS runs those components on infrastructure you never see or query with <code>kubectl</code> — that's precisely what "AWS manages the control plane" means in practice, not just in theory. What you <em>do</em> see in <code>kube-system</code> on EKS are the pieces layered <em>on top</em> of the managed control plane: the CoreDNS, kube-proxy, and VPC CNI add-ons you selected in Exercise 1 — and right now, CoreDNS is <code>Pending</code> for the same reason any pod would be: there is nowhere to schedule it. <strong>Zero worker nodes exist yet.</strong>
+  </div>
+</section>
+
+<section id="ex5">
+  <h2><span class="num">05</span>Provision a managed node group</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: give your cluster somewhere to actually run workloads, using the "Managed Nodes" option (AWS handles autoscaling/patching, EBS mounts supported) — the middle option of the three discussed in class.</p>
+    <ol class="step-list">
+      <li>Console → your cluster → <strong>Compute</strong> tab → <strong>Add node group</strong>.</li>
+      <li>Name it (e.g. <code>aug-ng-1</code>) and create/select a <strong>node IAM role</strong> — this is the <em>second</em> IAM layer from class: permissions for the nodes themselves (mounting EBS volumes, pulling from ECR, talking to the cluster).</li>
+      <li><strong>AMI type</strong> — keep the default (Amazon Linux). <strong>Capacity type</strong> — On-Demand for this lab. <strong>Instance type</strong> — <code>t3.medium</code>.</li>
+      <li><strong>Scaling configuration</strong> — set desired = <strong>1</strong>, minimum = <strong>1</strong>, maximum = <strong>2</strong>. Keep it small; this is a lab, not a production sizing exercise.</li>
+      <li><strong>Subnets</strong> — choose <strong>private subnets only</strong>, same instinct as the control plane.</li>
+      <li><strong>Remote access (SSH)</strong> — leave this <strong>disabled</strong>. As Akhilesh put it: nobody should be able to log directly into these nodes; that's not a healthy pattern even for admins.</li>
+      <li>Create the node group. Watch it progress from <code>Creating</code> → <code>Active</code>, which takes a few minutes.</li>
+    </ol>
+    <pre><code><span class="c"># while it's provisioning, watch the EC2 side directly</span>
+<span class="k">aws ec2 describe-instances</span> --filters "Name=tag:eks:nodegroup-name,Values=aug-ng-1" \
+  --query "Reservations[].Instances[].State.Name"
+<span class="out">[
+    "pending"
+]</span></code></pre>
+  </div>
+
+  <div class="callout">
+    <b>The security-group detail from class, made concrete</b>
+    When the node instance comes up, check <strong>EC2 → Instances → your node → Security</strong>: you'll see it was attached the <em>cluster's default</em> security group automatically (not necessarily the custom one you may have created), and it needs inbound/outbound rules that let it reach the control plane's API server and let the control plane reach it back. If a node's EC2 instance appears healthy but never shows up in <code>kubectl get nodes</code>, this is the first thing to check — followed immediately by the VPC CNI add-on, per the next exercise.
+  </div>
+</section>
+
+<section id="ex6">
+  <h2><span class="num">06</span>Validate the CNI, run kubectl top</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: confirm the node actually joined the cluster, identify the <code>aws-node</code> pods for what they are (exactly as Deepak Gupta did live in class), and get <code>kubectl top</code> working.</p>
+    <pre><code><span class="k">kubectl get nodes</span>
+<span class="out">NAME                         STATUS   ROLES    AGE   VERSION
+ip-10-0-1-23.ec2.internal    Ready    &lt;none&gt;   90s   v1.31.0</span>
+
+<span class="k">kubectl get pods -n kube-system -o wide</span>
+<span class="out">NAME                       READY   STATUS    NODE
+aws-node-abcde              1/1     Running   ip-10-0-1-23.ec2.internal
+coredns-xxxxxxxxx-xxxxx     1/1     Running   ip-10-0-1-23.ec2.internal
+coredns-xxxxxxxxx-xxxxx     1/1     Running   ip-10-0-1-23.ec2.internal
+kube-proxy-fghij            1/1     Running   ip-10-0-1-23.ec2.internal</span></code></pre>
+    <p>The <code>aws-node</code> pod is the VPC CNI plugin's per-node agent — one per node, exactly like <code>kindnet</code> was one-per-node on kind. Its job: assign real VPC IP addresses to pods and wire up routing so pod traffic behaves like normal AWS networking. Without it, this node would show as a healthy EC2 instance in the AWS console but would <strong>never</strong> appear in <code>kubectl get nodes</code> at all.</p>
+
+    <pre><code><span class="c"># kubectl top needs the metrics-server add-on — install it if you haven't:</span>
+<span class="k">kubectl apply -f</span> https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+<span class="k">kubectl top nodes</span>
+<span class="out">NAME                         CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%
+ip-10-0-1-23.ec2.internal   78m          3%     612Mi           15%</span>
+
+<span class="k">kubectl top pods</span> -n kube-system</code></pre>
+  </div>
+
+  <div class="callout warn">
+    <b>Reproduce the failure on purpose (optional, worth 5 minutes)</b>
+    To see exactly what Akhilesh meant by "if the CNI plug-in was not there you would not see this node here," try removing the VPC CNI add-on from Console → your cluster → Add-ons, then watch <code>kubectl get nodes</code>. The existing node will eventually go <code>NotReady</code>, and any <em>new</em> node group you provision afterward will show healthy EC2 instances that never join the cluster. Re-add the CNI add-on afterward to fix it before continuing.
+  </div>
+</section>
+
+<section id="ex7">
+  <h2><span class="num">07</span>Deploy nginx &amp; the default ClusterIP type</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: deploy the same dummy nginx app used in class, confirm the default (unspecified) Service type is ClusterIP, and reach it the only way ClusterIP allows — <code>port-forward</code>.</p>
+    <pre><code><span class="c"># deployment.yaml</span>
+<span class="k">apiVersion:</span> apps/v1
+<span class="k">kind:</span> Deployment
+<span class="k">metadata:</span>
+  name: nginx-deploy
+<span class="k">spec:</span>
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          ports:
+            - containerPort: 80</code></pre>
+    <pre><code><span class="c"># service.yaml — note: no "type" field at all</span>
+<span class="k">apiVersion:</span> v1
+<span class="k">kind:</span> Service
+<span class="k">metadata:</span>
+  name: nginx-svc
+<span class="k">spec:</span>
+  selector:
+    app: nginx
+  ports:
+    - port: 8080
+      targetPort: 80</code></pre>
+    <pre><code><span class="k">kubectl apply -f</span> deployment.yaml
+<span class="k">kubectl apply -f</span> service.yaml
+
+<span class="k">kubectl get svc</span> nginx-svc
+<span class="out">NAME        TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)
+nginx-svc   ClusterIP   172.20.211.44   &lt;none&gt;        8080/TCP</span></code></pre>
+    <p>Notice <code>TYPE</code> is <code>ClusterIP</code> even though the manifest never said so — this is EKS's (and every EKS cluster's) default, exactly as covered in class. It's also <strong>this same type that's recommended for production</strong>, precisely because it's private-only and pairs with an Ingress/Load Balancer Controller in front of it — the topic teed up for Class 4.</p>
+    <pre><code><span class="c"># the ClusterIP is not reachable from your laptop directly:</span>
+<span class="k">curl</span> 172.20.211.44:8080
+<span class="out">curl: (28) Failed to connect: Connection timed out</span>
+
+<span class="c"># the only way to reach it, exactly as demoed:</span>
+<span class="k">kubectl port-forward</span> svc/nginx-svc 8080:8080
+<span class="out">Forwarding from 127.0.0.1:8080 -> 80</span>
+<span class="c"># now open http://localhost:8080 — you'll see the nginx welcome page</span></code></pre>
+  </div>
+</section>
+
+<section id="ex8">
+  <h2><span class="num">08</span>NodePort — and why it's a "security nightmare"</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: reproduce the NodePort demo end-to-end, including opening the security-group port and hitting the node's public IP directly — then feel exactly why the instructor called this a nightmare.</p>
+    <pre><code><span class="c"># service-nodeport.yaml</span>
+<span class="k">apiVersion:</span> v1
+<span class="k">kind:</span> Service
+<span class="k">metadata:</span>
+  name: nginx-svc-nodeport
+<span class="k">spec:</span>
+  type: NodePort
+  selector:
+    app: nginx
+  ports:
+    - port: 8080
+      targetPort: 80
+      nodePort: 30380</code></pre>
+    <pre><code><span class="k">kubectl apply -f</span> service-nodeport.yaml
+<span class="k">kubectl get svc</span> nginx-svc-nodeport
+<span class="out">NAME                  TYPE       CLUSTER-IP     PORT(S)
+nginx-svc-nodeport    NodePort   172.20.9.201   8080:30380/TCP</span></code></pre>
+    <ol class="step-list">
+      <li>Note the <code>nodePort</code> must be in the <strong>30000–32767</strong> range — Kubernetes will reject anything outside it.</li>
+      <li>Console → EC2 → find your node's security group → add an <strong>inbound rule</strong>: custom TCP, port <code>30380</code>, source = your IP (never <code>0.0.0.0/0</code> even for a lab).</li>
+      <li>Console → EC2 → your node instance → copy its <strong>public IPv4 address</strong> (only present because this lab used the default public VPC — see the callout below).</li>
+      <li>Open <code>http://&lt;node-public-ip&gt;:30380</code> in your browser — you should see the nginx page, reached with zero <code>kubectl port-forward</code> process running.</li>
+    </ol>
+  </div>
+
+  <div class="callout warn">
+    <b>Why this is genuinely bad practice, made concrete</b>
+    You just: (1) exposed a specific node's IP directly to the internet, (2) opened a nonstandard, hard-to-remember port on a security group by hand, and (3) have no way to attach a normal domain name to <code>ip:30380</code> without a DNS provider that supports SRV-style port records (most don't — Route 53 alias records map to an IP or ALIAS target, not a port). Multiply this by every node in an autoscaling group and every microservice you run, and you get exactly the "manual, cumbersome" mess Akhilesh described. This is why production EKS clusters essentially never use NodePort directly — it exists mostly as the plumbing that <em>LoadBalancer</em> and Ingress controllers configure automatically underneath the surface.
+  </div>
+</section>
+
+<section id="ex9">
+  <h2><span class="num">09</span>LoadBalancer — and where it breaks down</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: let EKS provision a real AWS load balancer for you with zero extra plugins, reach the app over a real DNS endpoint, then run into the exact microservices-scaling problem raised in class.</p>
+    <pre><code><span class="c"># service-lb.yaml</span>
+<span class="k">apiVersion:</span> v1
+<span class="k">kind:</span> Service
+<span class="k">metadata:</span>
+  name: nginx-svc-lb
+<span class="k">spec:</span>
+  type: LoadBalancer
+  selector:
+    app: nginx
+  ports:
+    - port: 80
+      targetPort: 80</code></pre>
+    <pre><code><span class="k">kubectl apply -f</span> service-lb.yaml
+
+<span class="c"># wait ~1-2 minutes for AWS to provision the load balancer</span>
+<span class="k">kubectl get svc</span> nginx-svc-lb -w
+<span class="out">NAME            TYPE           CLUSTER-IP     EXTERNAL-IP                                   PORT(S)
+nginx-svc-lb    LoadBalancer   172.20.55.10   a1b2c3d4e5f6.us-east-1.elb.amazonaws.com     80:31980/TCP</span>
+
+<span class="c"># open the EXTERNAL-IP hostname directly in your browser on port 80</span></code></pre>
+    <p>Notice port <code>80</code> matters here specifically — Akhilesh flagged that leaving the default target port unaligned (e.g. forcing the browser to use <code>:8080</code> against a load balancer only listening on <code>80</code>) is a common self-inflicted mistake. Keep the Service's <code>port</code> at <code>80</code> to match what a plain HTTP request expects.</p>
+    <p>Now, the scaling problem — hands-on. Deploy one more "microservice" and give it its own LoadBalancer Service:</p>
+    <pre><code><span class="k">kubectl create deployment</span> second-app --image=hashicorp/http-echo -- -text="hello from service 2"
+<span class="k">kubectl expose deployment</span> second-app --type=LoadBalancer --port=80 --target-port=5678
+
+<span class="k">kubectl get svc</span> -l 'kubernetes.io/service-type'
+<span class="out">NAME            TYPE           EXTERNAL-IP                                    PORT(S)
+nginx-svc-lb    LoadBalancer   a1b2c3d4e5f6...elb.amazonaws.com               80:31980/TCP
+second-app      LoadBalancer   f6e5d4c3b2a1...elb.amazonaws.com               80:32011/TCP</span></code></pre>
+  </div>
+
+  <div class="callout myth">
+    <b>The exact problem this exercise is meant to make you feel</b>
+    You now have <strong>two separate AWS load balancers</strong>, each billed independently, each with its own DNS name, with no shared HTTPS termination, no path-based or header-based routing between them, and no way to point one clean domain at both. Now imagine five services, ten services. This is precisely the "surplus of load balancers and significant manual work" Akhilesh warned about — and it's the reason Class 4 moves to an <strong>Ingress + Load Balancer Controller</strong> pattern: one load balancer, path/host-based routing to many backing Services, centralized HTTPS. Don't fix this in this lab — leave the feeling of "this doesn't scale" intact; it's the whole motivation for the next class.
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 940 260" xmlns="http://www.w3.org/2000/svg">
+      <text x="470" y="24" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#1b2027" font-weight="700">Why "one LoadBalancer Service per app" doesn't scale</text>
+      <rect x="40" y="50" width="380" height="180" rx="10" fill="#f7ece5" stroke="#b8562f" stroke-width="1.6"/>
+      <text x="230" y="74" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#b8562f" font-weight="700">Service type: LoadBalancer × N</text>
+      <text x="230" y="100" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">N separate ALBs/ELBs, billed separately</text>
+      <text x="230" y="120" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">N separate DNS names</text>
+      <text x="230" y="140" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">HTTPS configured N times</text>
+      <text x="230" y="160" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">no path/host routing between them</text>
+      <text x="230" y="200" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#b8562f">✗ doesn't scale past a dummy app</text>
+
+      <rect x="520" y="50" width="380" height="180" rx="10" fill="#eef3f2" stroke="#2e6f6a" stroke-width="1.6"/>
+      <text x="710" y="74" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#2e6f6a" font-weight="700">Class 4 preview: Ingress + LB Controller</text>
+      <text x="710" y="100" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">1 shared ALB provisioned by the controller</text>
+      <text x="710" y="120" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">path- and host-based routing rules</text>
+      <text x="710" y="140" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">HTTPS terminated once, centrally</text>
+      <text x="710" y="160" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">backing Services stay ClusterIP</text>
+      <text x="710" y="200" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#2e6f6a">✓ what real microservice apps use</text>
+    </svg>
+    <figcaption>FIG. B — The exact gap between what you just built and what Class 4 introduces.</figcaption>
+  </figure>
+</section>
+
+<hr class="div">
+
+<section id="gaps">
+  <div class="kicker">Filling the gaps</div>
+  <h2><span class="num">10</span>What Class 3 covered in theory but not hands-on</h2>
+
+  <h3>1. Fargate vs. Managed Nodes vs. Self-managed Nodes — side by side</h3>
+  <p>This lab only used Managed Nodes (Exercise 5). Here's the full trade-off table from class, for reference when you're deciding on a real project:</p>
+  <table>
+    <tr><th>Option</th><th>Patching / scaling</th><th>EBS support</th><th>Startup speed</th><th>Compliance visibility</th><th>Best for</th></tr>
+    <tr><td><strong>Fargate</strong></td><td>Fully AWS-managed</td><td>No (EFS only)</td><td>Slow (~50–60s per pod)</td><td>Nodes never visible — nothing to scan</td><td>Stable microservices, no storage, no spiky scaling</td></tr>
+    <tr><td><strong>Managed Nodes</strong></td><td>AWS-managed autoscaling &amp; patching</td><td>Yes</td><td>Faster, but autoscaler still not instant</td><td>Nodes visible in EC2 — needs Qualys/Trend Micro etc. in regulated environments</td><td>General workloads needing persistent volumes</td></tr>
+    <tr><td><strong>Self-managed Nodes</strong></td><td>You own launch templates, ASG, patching</td><td>Yes</td><td>Depends entirely on your ASG config</td><td>Full control, full responsibility for compliance tooling</td><td>Heavy compliance needs (banking/healthcare) requiring your own security stack</td></tr>
+  </table>
+  <p>Many real teams mix strategies — e.g. Fargate for stable stateless microservices, Managed Nodes for anything needing storage or custom security posture, exactly as Akhilesh described from his own KPMG banking project.</p>
+
+  <h3>2. CAP-theorem trade-off: data consistency vs. availability</h3>
+  <p>The long discussion with Jasleen Kaur about why the control plane doesn't run "HA like a database" comes down to one rule: <strong>you cannot have both perfect data consistency and 100% availability during a network partition.</strong> EKS's etcd is the cluster's single source of truth, so during a partition, EKS chooses consistency and accepts a small window of downtime (typically single-digit seconds) rather than risk a split-brain where two control planes both believe they're authoritative. This lab doesn't (and can't safely) simulate a real partition — but it's worth knowing this is why a "control plane HA" feature request doesn't really make sense the way "database read replica" does.</p>
+
+  <h3>3. RTO and RPO — plan for failure, don't chase 100% uptime</h3>
+  <p><strong>Recovery Time Objective (RTO)</strong>: how long you can tolerate being down. <strong>Recovery Point Objective (RPO)</strong>: how much data loss (measured in time) you can tolerate. Akhilesh's framing: 100% uptime is not physically achievable for a stateful system, so real system design work is about picking your RTO/RPO targets deliberately and building automated recovery (fast etcd restore, in EKS's case) to hit them — rather than pretending failure won't happen. This is explicitly called out as system-design-interview material.</p>
+
+  <h3>4. Two IAM layers — don't conflate them</h3>
+  <p>You touched both in this lab but it's worth stating explicitly: the <strong>cluster IAM role</strong> (Exercise 1) governs what the control plane can do to AWS (create load balancers, manage ENIs). The <strong>node IAM role</strong> (Exercise 5) governs what a worker node can do (mount EBS, pull from ECR). A <strong>third</strong>, separate thing — IAM access entries (Exercise 3) — governs which <em>humans</em> can run <code>kubectl</code> commands against the cluster at all. Mixing these up is one of the most common EKS support-ticket categories.</p>
+
+  <h3>5. Ingress Controller vs. Load Balancer Controller — not the same thing</h3>
+  <p>Harsha Reddy's question in class ("is the load balancer controller the same as an ingress controller?") got a "not exactly, but they work together" — and that's genuinely all Class 3 covers. The Load Balancer Controller is what lets an Ingress object (or a <code>type: LoadBalancer</code> Service) actually provision and configure a real AWS ALB/NLB; the Ingress Controller/object is the Kubernetes-native routing layer. Full detail is explicitly deferred to Class 4's three-tier app.</p>
+
+  <h3>6. VPC IP range sizing</h3>
+  <p>Briefly mentioned: your VPC's CIDR block directly caps how many pods + nodes your cluster can ever have, because the VPC CNI assigns real VPC IPs to pods (not an overlay network like kind's <code>10.244.0.0/16</code>). A <code>/16</code> VPC (≈64,000 IPs) is roomy; smaller VPCs can silently become the reason pods go <code>Pending</code> with no nodes at fault at all. Worth checking <code>Subnet → available IPv4 addresses</code> in the console if you ever see unexplained scheduling failures on a real project.</p>
+
+  <h3>7. Deprecated fourth Service type</h3>
+  <p>Akhilesh mentioned Kubernetes deprecated a fourth Service type as of 1.35 and told the class not to bother learning it. That's <code>ExternalName</code> — it's being phased out of common use in favor of clearer DNS-based patterns; you're not missing a hands-on exercise here, just know the name if it comes up.</p>
+</section>
+
+<section id="cheatsheet">
+  <div class="kicker">Quick reference</div>
+  <h2><span class="num">11</span>Full command cheat-sheet for Class 3</h2>
+  <table>
+    <tr><th>Step</th><th>Command</th></tr>
+    <tr><td>Confirm AWS identity</td><td><code>aws sts get-caller-identity</code></td></tr>
+    <tr><td>Add cluster to local kubeconfig</td><td><code>aws eks update-kubeconfig --name &lt;cluster&gt; --region &lt;region&gt;</code></td></tr>
+    <tr><td>Shorten a long context name</td><td><code>kubectl config rename-context &lt;arn&gt; &lt;short-name&gt;</code></td></tr>
+    <tr><td>Switch clusters</td><td><code>kubectl config use-context &lt;name&gt;</code></td></tr>
+    <tr><td>List nodes</td><td><code>kubectl get nodes</code></td></tr>
+    <tr><td>List pods across all namespaces</td><td><code>kubectl get pods -A</code></td></tr>
+    <tr><td>Diagnose a Pending pod</td><td><code>kubectl describe pod &lt;name&gt; -n &lt;namespace&gt;</code></td></tr>
+    <tr><td>CPU/memory usage (needs metrics-server)</td><td><code>kubectl top nodes</code> / <code>kubectl top pods</code></td></tr>
+    <tr><td>Apply manifests</td><td><code>kubectl apply -f deployment.yaml</code></td></tr>
+    <tr><td>Services</td><td><code>kubectl get svc</code></td></tr>
+    <tr><td>Reach a ClusterIP Service</td><td><code>kubectl port-forward svc/&lt;name&gt; 8080:8080</code></td></tr>
+    <tr><td>Expose via NodePort (imperative)</td><td><code>kubectl expose deployment &lt;name&gt; --type=NodePort --port=8080</code></td></tr>
+    <tr><td>Expose via LoadBalancer (imperative)</td><td><code>kubectl expose deployment &lt;name&gt; --type=LoadBalancer --port=80</code></td></tr>
+    <tr><td>Watch an external LB hostname appear</td><td><code>kubectl get svc &lt;name&gt; -w</code></td></tr>
+    <tr><td>List EKS clusters (AWS side)</td><td><code>aws eks list-clusters</code></td></tr>
+    <tr><td>Describe a node group</td><td><code>aws eks describe-nodegroup --cluster-name &lt;c&gt; --nodegroup-name &lt;ng&gt;</code></td></tr>
+  </table>
+</section>
+
+<section id="cleanup">
+  <div class="kicker">Don't skip this</div>
+  <h2><span class="num">12</span>Cleanup &amp; homework checklist</h2>
+
+  <div class="callout warn">
+    <b>Cleanup order matters — do it in this order</b>
+    Delete Services with type <code>LoadBalancer</code> <em>first</em> and confirm the underlying AWS load balancers are gone in the EC2 console before deleting anything else — if you delete the node group or cluster first, orphaned ELBs/ALBs can be left behind, silently billing you.
+  </div>
+
+  <pre><code><span class="c"># 1. delete LoadBalancer-type services and CONFIRM the ELB/ALB disappears in console</span>
+<span class="k">kubectl delete svc</span> nginx-svc-lb second-app
+
+<span class="c"># 2. delete the rest of your workloads</span>
+<span class="k">kubectl delete -f</span> service.yaml -f service-nodeport.yaml -f deployment.yaml
+
+<span class="c"># 3. delete the node group (console: Compute tab -&gt; delete node group)</span>
+<span class="k">aws eks delete-nodegroup</span> --cluster-name august-cluster --nodegroup-name aug-ng-1
+
+<span class="c"># 4. only after the node group is fully gone, delete the cluster</span>
+<span class="k">aws eks delete-cluster</span> --name august-cluster
+
+<span class="c"># 5. double-check nothing billable is left</span>
+<span class="k">aws elbv2 describe-load-balancers</span>
+<span class="k">aws ec2 describe-instances</span> --filters "Name=instance-state-name,Values=running"</code></pre>
+
+  <p><strong>Homework before Class 4</strong> (assigned live in class):</p>
+  <ul class="checklist">
+    <li>Read the blog post Akhilesh shared in chat end-to-end before the next session — it walks the three-tier app deployment via commands; Class 4 repeats the same idea via Terraform.</li>
+    <li>Re-run Exercises 7–9 from memory, without this document open, until the three Service types and their trade-offs feel automatic.</li>
+    <li>Write down, in your own words, why a LoadBalancer-type Service per microservice doesn't scale — you'll want that framing fresh when Ingress is introduced.</li>
+    <li>Confirm via the AWS Billing console that your cluster, node group, and any load balancers from this lab are actually gone.</li>
+  </ul>
+  <p class="callout" style="margin-top:6px;"><b>Heads up</b>Akhilesh mentioned Class 4 may start late due to a scheduled interview — watch for the timing announcement Akhilesh said he'd send out.</p>
+</section>
+
+<section id="glossary">
+  <div class="kicker">Reference</div>
+  <h2><span class="num">13</span>Glossary</h2>
+  <dl class="glossary">
+    <dt>Control plane</dt><dd>The decision-making core of Kubernetes (API server, etcd, scheduler, controller-manager). On EKS, AWS runs and hides this entirely.</dd>
+    <dt>etcd</dt><dd>The key-value store holding the cluster's entire state — the single source of truth EKS protects via consistency-over-availability during failures.</dd>
+    <dt>VPC CNI</dt><dd>The AWS-native networking add-on that assigns real VPC IP addresses to pods; without it, nodes can't join the cluster.</dd>
+    <dt>CSI driver (EBS / EFS)</dt><dd>Add-ons that let Kubernetes mount AWS block storage (EBS) or network file storage (EFS) as persistent volumes.</dd>
+    <dt>Cluster IAM role</dt><dd>Control-plane-side permissions — lets EKS talk to EC2/VPC APIs to manage nodes and load balancers.</dd>
+    <dt>Node IAM role</dt><dd>Worker-node-side permissions — lets nodes mount storage, pull images, and join the cluster.</dd>
+    <dt>IAM access entry</dt><dd>Grants a specific human IAM user/role Kubernetes-level access (separate from AWS-level access); replaces the legacy <code>aws-auth</code> ConfigMap.</dd>
+    <dt>Fargate</dt><dd>Serverless compute for pods — no nodes to patch or scale, but slower startup, no EBS, and higher cost.</dd>
+    <dt>Managed node group</dt><dd>AWS-handled EC2 worker nodes with autoscaling and patching, but nodes remain visible in EC2 (compliance implication).</dd>
+    <dt>ClusterIP</dt><dd>Default Service type; private, cluster-internal only IP. The type actually used in production, paired with Ingress.</dd>
+    <dt>NodePort</dt><dd>Opens the same port (30000–32767) on every node's IP; functional but considered a security/manageability anti-pattern.</dd>
+    <dt>LoadBalancer</dt><dd>EKS calls the AWS API to provision a real load balancer automatically; fine for one app, doesn't scale cleanly to many microservices.</dd>
+    <dt>RTO / RPO</dt><dd>Recovery Time Objective / Recovery Point Objective — how long you can be down, and how much data-loss time you can tolerate.</dd>
+    <dt>Split-brain</dt><dd>The failure mode where two control planes both believe they're authoritative over the same state — the scenario EKS's consistency-first design exists to prevent.</dd>
+  </dl>
+</section>
+
+</div>
+
+<a href="#" class="backtotop" title="Back to top">↑</a>
+
+<footer>
+  Companion lab document · AWS EKS Bootcamp, Class 3 · reconstructed from the class transcript for hands-on practice
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AWS EKS via Terraform — Class 4, Part 1 (Infra Build)</title>
+<style>
+  :root{
+    --ink:#1b2027;
+    --sub:#4b5563;
+    --bg:#fbfaf7;
+    --panel:#ffffff;
+    --line:#e4e1d8;
+    --accent:#2e6f6a;
+    --accent2:#b8562f;
+    --accent3:#3a5ba0;
+    --mono-bg:#12161c;
+    --mono-ink:#d7e0e8;
+    --mono-accent:#7fd0c4;
+    --code-inline-bg:#eef0eb;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Georgia,"Noto Serif",serif;
+    line-height:1.65; font-size:17px;
+  }
+  .wrap{max-width:960px; margin:0 auto; padding:0 32px 120px;}
+  header.hero{
+    padding:70px 32px 50px; text-align:left; border-bottom:1px solid var(--line);
+    background: linear-gradient(180deg, rgba(46,111,106,0.06), rgba(46,111,106,0) 60%);
+  }
+  header.hero .eyebrow{
+    font-family:"JetBrains Mono","SF Mono",Consolas,monospace;
+    letter-spacing:.14em; text-transform:uppercase; font-size:12.5px;
+    color:var(--accent); margin-bottom:14px; display:flex; gap:10px; align-items:center;
+  }
+  header.hero .eyebrow::before{content:"//"; color:var(--accent2);}
+  h1.title{font-size:clamp(30px,4.2vw,46px); line-height:1.12; margin:0 0 14px; max-width:820px; letter-spacing:-0.01em;}
+  .subtitle{color:var(--sub); font-size:18px; max-width:700px; margin:0 0 26px;}
+  .meta-row{display:flex; gap:22px; flex-wrap:wrap; font-family:"JetBrains Mono",monospace; font-size:12.5px; color:var(--sub);}
+  .meta-row span b{color:var(--ink);}
+
+  nav.toc{margin:36px auto 0; max-width:960px; padding:22px 32px 26px; border:1px solid var(--line); border-radius:10px; background:var(--panel);}
+  nav.toc h2{font-family:"JetBrains Mono",monospace; font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 14px;}
+  nav.toc ol{columns:2; column-gap:36px; margin:0; padding-left:20px;}
+  nav.toc li{break-inside:avoid; margin-bottom:8px; font-size:15px;}
+  nav.toc a{color:var(--ink); text-decoration:none; border-bottom:1px dotted var(--line);}
+  nav.toc a:hover{color:var(--accent); border-color:var(--accent);}
+  @media (max-width:640px){nav.toc ol{columns:1;}}
+
+  section{padding-top:56px;}
+  section > .kicker{font-family:"JetBrains Mono",monospace; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent2); margin-bottom:8px;}
+  h2{font-size:30px; margin:0 0 6px; letter-spacing:-0.01em; scroll-margin-top:20px;}
+  h2 .num{color:var(--accent); font-family:"JetBrains Mono",monospace; font-size:19px; margin-right:10px;}
+  h3{font-size:21px; margin:34px 0 10px; scroll-margin-top:20px; color:#20262c;}
+  h4{font-size:16.5px; margin:22px 0 8px; color:#20262c; font-family:"JetBrains Mono",monospace; letter-spacing:.02em;}
+  p{margin:0 0 15px;}
+  ul,ol{margin:0 0 16px; padding-left:22px;}
+  li{margin-bottom:6px;}
+  strong{color:#10161c;}
+  .lede{font-size:18.5px; color:#2b323a;}
+
+  code, .code-inline{font-family:"JetBrains Mono","SF Mono",Consolas,monospace; font-size:0.86em; background:var(--code-inline-bg); padding:1px 6px; border-radius:4px; color:#3a2f1f;}
+  pre{background:var(--mono-bg); color:var(--mono-ink); padding:18px 20px; border-radius:10px; overflow-x:auto; font-family:"JetBrains Mono","SF Mono",Consolas,monospace; font-size:13.5px; line-height:1.55; margin:16px 0 22px;}
+  pre code{background:none; padding:0; color:inherit; font-size:1em;}
+  pre .c{color:#7f8b98;}
+  pre .k{color:var(--mono-accent);}
+  pre .s{color:#e2b872;}
+  pre .out{color:#9aa3ad;}
+  pre .bad{color:#e58b8b;}
+
+  .callout{border-left:3px solid var(--accent); background:#eef3f2; padding:14px 18px; border-radius:0 8px 8px 0; margin:18px 0; font-size:15.5px;}
+  .callout.warn{border-left-color:var(--accent2); background:#f7ece5;}
+  .callout.myth{border-left-color:#8a3f8a; background:#f3ecf3;}
+  .callout.fix{border-left-color:#3a5ba0; background:#e9eef7;}
+  .callout.bug{border-left-color:#c0392b; background:#fbe9e7;}
+  .callout b{display:block; font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px;}
+  .callout.warn b{color:var(--accent2);}
+  .callout.myth b{color:#8a3f8a;}
+  .callout.fix b{color:#3a5ba0;}
+  .callout.bug b{color:#c0392b;}
+  .callout:not(.warn):not(.myth):not(.fix):not(.bug) b{color:var(--accent);}
+
+  figure{margin:22px 0 30px; padding:18px; background:var(--panel); border:1px solid var(--line); border-radius:12px;}
+  figure svg{width:100%; height:auto; display:block;}
+  figcaption{font-size:13px; color:var(--sub); margin-top:12px; text-align:center; font-family:"JetBrains Mono",monospace;}
+
+  table{width:100%; border-collapse:collapse; margin:18px 0 26px; font-size:15px;}
+  th{text-align:left; font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--sub); border-bottom:2px solid var(--ink); padding:8px 12px;}
+  td{border-bottom:1px solid var(--line); padding:10px 12px; vertical-align:top;}
+  tr:hover td{background:#f5f3ee;}
+  td code{white-space:nowrap;}
+
+  hr.div{border:none; border-top:1px solid var(--line); margin:56px 0;}
+
+  .backtotop{position:fixed; right:24px; bottom:24px; background:var(--ink); color:#fff; width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; text-decoration:none; font-size:18px; opacity:.85; box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  .backtotop:hover{opacity:1;}
+
+  .step-list{counter-reset:step; list-style:none; padding-left:0;}
+  .step-list li{counter-increment:step; padding-left:38px; position:relative; margin-bottom:16px;}
+  .step-list li::before{content:counter(step); position:absolute; left:0; top:0; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; font-family:"JetBrains Mono",monospace; font-size:13px; display:flex; align-items:center; justify-content:center;}
+
+  .exercise{border:1.5px solid var(--accent); border-radius:12px; padding:22px 26px; margin:28px 0; background:#fcfdfc;}
+  .exercise .ex-label{font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:#fff; background:var(--accent); display:inline-block; padding:4px 10px; border-radius:5px; margin-bottom:10px;}
+  .exercise h3{margin-top:0;}
+  .goal{font-size:14.5px; color:var(--sub); font-style:italic; margin-top:-4px; margin-bottom:16px;}
+
+  .yourturn{border:1.5px dashed var(--accent2); border-radius:12px; padding:20px 24px; margin:22px 0; background:#fffaf6;}
+  .yourturn .yt-label{font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:#fff; background:var(--accent2); display:inline-block; padding:4px 10px; border-radius:5px; margin-bottom:10px;}
+
+  .checklist{list-style:none; padding-left:0;}
+  .checklist li{padding-left:30px; position:relative; margin-bottom:10px;}
+  .checklist li::before{content:"☐"; position:absolute; left:0; top:0; color:var(--accent); font-size:17px;}
+
+  .glossary dt{font-family:"JetBrains Mono",monospace; font-weight:700; color:var(--ink); margin-top:14px;}
+  .glossary dd{margin:2px 0 0; color:var(--sub);}
+
+  footer{padding:60px 32px 40px; text-align:center; color:var(--sub); font-size:13px; font-family:"JetBrains Mono",monospace;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap" style="padding:0;">
+    <div class="eyebrow">devops bootcamp — hands-on lab · follow-along series</div>
+    <h1 class="title">EKS via Terraform, Properly: Class 4 — Part 1 (Infra Build)</h1>
+    <p class="subtitle">Class 3 built EKS by hand through the console so the concepts would land. This class rebuilds the same cluster as real, reusable Terraform — VPC design, subnet tagging for Kubernetes, NAT trade-offs, state management, module versioning, and node-join troubleshooting — with the "why" behind every decision spelled out for interview depth, not just click-through.</p>
+    <div class="meta-row">
+      <span>Companion to: <b>DevOps Bootcamp — EKS Module, Class 4 (Aug 15, 2026)</b></span>
+      <span>Instructor: <b>Akhilesh Mishra</b></span>
+      <span>Covers: <b>infra only</b> — app deployment + OIDC pipeline are Part 2</span>
+      <span>Pairs with: <b>eks-core-infra/</b> in your repo</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#howto">0 · How we're going to work through this</a></li>
+    <li><a href="#ex1">Exercise 1 — Size the VPC (CIDR math you must own for interviews)</a></li>
+    <li><a href="#ex2">Exercise 2 — Public vs. private subnets across 2 AZs</a></li>
+    <li><a href="#ex3">Exercise 3 — NAT Gateway vs. VPC endpoints (the cost/resilience trade-off)</a></li>
+    <li><a href="#ex4">Exercise 4 — Write the network module (variables, not hardcodes)</a></li>
+    <li><a href="#ex5">Exercise 5 — EKS subnet tags: why the LB controller needs them</a></li>
+    <li><a href="#ex6">Exercise 6 — Repo layout &amp; Terraform state (backend, locking, keys)</a></li>
+    <li><a href="#ex7">Exercise 7 — Pin your versions (Terraform, provider, module)</a></li>
+    <li><a href="#ex8">Exercise 8 — Write the EKS module (control plane + managed node group)</a></li>
+    <li><a href="#ex9">Exercise 9 — Node IAM &amp; the ECR pull-permission demo</a></li>
+    <li><a href="#ex10">Exercise 10 — Apply, kubeconfig, and IAM access entries</a></li>
+    <li><a href="#ex11">Exercise 11 — When nodes won't join: the 3 usual suspects</a></li>
+    <li><a href="#clinic">Code Review Clinic — refining the coach's <code>eks-core-infra</code></a></li>
+    <li><a href="#nextup">What's explicitly Part 2 (not covered here)</a></li>
+    <li><a href="#cheatsheet">Command &amp; concept cheat-sheet</a></li>
+    <li><a href="#homework">Homework checklist (from class "next steps")</a></li>
+    <li><a href="#glossary">Glossary</a></li>
+  </ol>
+</nav>
+
+<section id="howto">
+  <div class="kicker">Before you begin</div>
+  <h2><span class="num">00</span>How we're going to work through this</h2>
+  <p class="lede">This isn't a copy-paste lab. Each exercise gives you the concept, the reasoning, and a <strong>skeleton</strong> — then a <span class="code-inline">Your turn</span> box tells you exactly what to write yourself in your own <code>eks-core-infra</code> repo. Paste what you write back in chat and we'll review it together before moving to the next exercise, the same way you'd get code reviewed on a real team.</p>
+  <div class="callout warn">
+    <b>Why not just hand you finished code</b>
+    You already have a working version of this infra in your repo from class — and it has real issues (hardcoded values, empty files, unused variables) that we'll deliberately use as a refinement exercise later. If I just hand you clean code up front, you skip the part where you learn to <em>spot</em> these issues yourself — which is exactly what senior interviews probe for. Write it, break it, fix it.
+  </div>
+  <div class="callout">
+    <b>Scope of this document</b>
+    Class 4 (Aug 15) covered building EKS infra with Terraform end-to-end, then spent the last ~30 minutes previewing the 3-tier app's RDS/ECR/Docker-build/OIDC pieces without actually building them ("today I'm writing the code, tomorrow only I'll build this part," the instructor said about OIDC). This document sticks strictly to the <strong>infra half</strong> that was actually built: VPC → EKS cluster → node group → verified access. The app/RDS/pipeline/OIDC half is Part 2's document, once you send me those notes.
+  </div>
+</section>
+
+<hr class="div">
+
+<section id="ex1">
+  <div class="kicker">Exercise 1</div>
+  <h2><span class="num">01</span>Size the VPC — CIDR math you must own for interviews</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: be able to derive "a /16 gives ~65,536 IPs" on a whiteboard, not recite it.</p>
+    <p>An IPv4 address is 32 bits, written as four 8-bit octets (<code>10.0.0.0</code>). A CIDR block like <code>/16</code> tells you how many of those 32 bits are fixed as the <strong>network</strong> portion — the rest are free for <strong>hosts</strong> (in AWS terms: ENIs, which means pods and nodes under the VPC CNI).</p>
+    <pre><code><span class="c"># the math the instructor did live</span>
+total_bits        = 32
+network_bits      = 16          <span class="c"># from the /16</span>
+host_bits         = 32 - 16 = 16
+usable_addresses  = 2^16 - 2 = 65,534   <span class="c"># minus network + broadcast</span></code></pre>
+    <p>Why this matters beyond trivia: with the <strong>AWS VPC CNI</strong>, every pod gets a real IP from your VPC's range (unlike overlay-network CNIs where pod IPs are virtual). That means <strong>your VPC's CIDR size is a hard ceiling on how many pods + nodes your cluster can ever run</strong> — pick too small a range early and you re-architect networking later to fix it. <code>10.0.0.0/16</code> is the conventional starting point precisely because it's large enough to not think about again for a long time.</p>
+  </div>
+  <div class="callout fix">
+    <b>Interview framing</b>
+    If asked "how would you size a VPC for a Kubernetes cluster," the strong answer isn't "use a /16" — it's: "figure out max expected pods × nodes across all subnets, add headroom, work backward to the smallest CIDR that covers it, understanding the VPC CNI ties pod IP consumption directly to VPC address space, unlike overlay CNIs like Calico/Flannel which don't." That contrast (VPC-native vs. overlay CNI) is a very common follow-up question.
+  </div>
+  <div class="yourturn">
+    <span class="yt-label">Your turn</span>
+    <p>No code yet — just answer in your own words, in chat: why would an overlay CNI (like Calico) <em>not</em> have this same "VPC CIDR is my pod ceiling" constraint? What does it trade away to get that freedom?</p>
+  </div>
+</section>
+
+<section id="ex2">
+  <div class="kicker">Exercise 2</div>
+  <h2><span class="num">02</span>Public vs. private subnets across 2 AZs</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: know exactly what goes public vs. private, and why "2 AZs" is the HA baseline, not a nice-to-have.</p>
+    <ul>
+      <li><strong>Public subnets</strong> — only the load balancer lives here (has a route to an Internet Gateway). Nothing else should.</li>
+      <li><strong>Private subnets</strong> — the EKS control plane's ENIs, the worker nodes, and the database all live here. No route to the internet directly; outbound-only via NAT.</li>
+      <li><strong>Two AZs, not one</strong> — if AWS loses a zone, resources in the other zone keep serving traffic. This is the disaster-recovery baseline every production VPC design starts from.</li>
+    </ul>
+    <p>The trade-off the instructor called out explicitly: spreading a front-end and back-end across two AZs adds real <strong>cross-AZ data-transfer cost</strong> per request — small per call, real money at scale (millions of requests). You accept that cost for availability. This is the kind of trade-off senior interviews want you to be able to articulate, not just implement.</p>
+  </div>
+  <figure>
+    <svg viewBox="0 0 940 320" xmlns="http://www.w3.org/2000/svg">
+      <text x="470" y="24" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#1b2027" font-weight="700">VPC layout — 2 AZs, public vs. private</text>
+      <rect x="30" y="46" width="880" height="250" rx="12" fill="#faf8f3" stroke="#2e6f6a" stroke-width="1.5" stroke-dasharray="5,4"/>
+      <text x="50" y="70" font-family="JetBrains Mono, monospace" font-size="11" fill="#2e6f6a" font-weight="700">VPC 10.0.0.0/16</text>
+
+      <rect x="60" y="86" width="380" height="90" rx="8" fill="#fff" stroke="#b8562f"/>
+      <text x="250" y="106" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#b8562f" font-weight="700">PUBLIC — AZ-a — 10.0.101.0/24</text>
+      <text x="250" y="130" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10">Load balancer only</text>
+      <text x="250" y="148" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#4b5563">→ Internet Gateway</text>
+
+      <rect x="500" y="86" width="380" height="90" rx="8" fill="#fff" stroke="#b8562f"/>
+      <text x="690" y="106" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#b8562f" font-weight="700">PUBLIC — AZ-b — 10.0.102.0/24</text>
+      <text x="690" y="130" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10">Load balancer only</text>
+      <text x="690" y="148" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#4b5563">→ Internet Gateway</text>
+
+      <rect x="60" y="190" width="380" height="90" rx="8" fill="#fff" stroke="#2e6f6a"/>
+      <text x="250" y="210" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#2e6f6a" font-weight="700">PRIVATE — AZ-a — 10.0.1.0/24</text>
+      <text x="250" y="234" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10">EKS nodes · control-plane ENIs · RDS</text>
+      <text x="250" y="252" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#4b5563">→ NAT Gateway (outbound only)</text>
+
+      <rect x="500" y="190" width="380" height="90" rx="8" fill="#fff" stroke="#2e6f6a"/>
+      <text x="690" y="210" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#2e6f6a" font-weight="700">PRIVATE — AZ-b — 10.0.2.0/24</text>
+      <text x="690" y="234" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10">EKS nodes · control-plane ENIs · RDS</text>
+      <text x="690" y="252" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#4b5563">→ NAT Gateway (outbound only)</text>
+    </svg>
+    <figcaption>FIG. A — Only the load balancer touches a public subnet. Everything else, including the database, is private with no direct internet route.</figcaption>
+  </figure>
+</section>
+
+<section id="ex3">
+  <div class="kicker">Exercise 3</div>
+  <h2><span class="num">03</span>NAT Gateway vs. VPC endpoints — the cost/resilience trade-off</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: explain, unprompted, why private nodes need <em>some</em> path to the public ECR endpoint, and what the class chose and why.</p>
+    <p>Nodes sitting in private subnets need to pull container images from ECR's <em>public</em> API endpoint. Two ways to give them that path:</p>
+    <table>
+      <tr><th>Option</th><th>How it works</th><th>Trade-off</th></tr>
+      <tr><td><strong>NAT Gateway</strong></td><td>Private subnet routes outbound traffic through a NAT in a public subnet, which has an internet route.</td><td>Simple, works for everything (not just AWS APIs). Costs per-hour + per-GB processed. A <em>single</em> NAT (what the class chose) is cheaper but becomes a single point of failure if its AZ goes down — acceptable here only because the app itself would keep serving existing traffic even if new image pulls temporarily failed.</td></tr>
+      <tr><td><strong>VPC Endpoint</strong></td><td>A private, in-VPC route directly to specific AWS services — traffic never leaves AWS's network.</td><td>Free for S3 and DynamoDB (Gateway endpoints); billed per-hour + per-GB for others like ECR (Interface endpoints). No single point of failure the same way, but you need one endpoint per service you talk to, and it doesn't help with non-AWS internet traffic.</td></tr>
+    </table>
+  </div>
+  <div class="callout">
+    <b>The decision made in class</b>
+    Single NAT Gateway, not one-per-AZ, and not VPC endpoints. Reasoning given: it's the cheapest option that still works, and the resilience gap (NAT's AZ going down) is judged acceptable because it only blocks <em>new</em> image pulls, not already-running pods. This is a cost-vs-resilience call you should be ready to defend or challenge in an interview — "one-NAT-per-AZ" is the safer, pricier answer for production-grade HA.
+  </div>
+</section>
+
+<section id="ex4">
+  <div class="kicker">Exercise 4</div>
+  <h2><span class="num">04</span>Write the network module — variables, not hardcodes</h2>
+  <div class="exercise">
+    <span class="ex-label">Skeleton</span>
+    <p class="goal">Goal: a <code>network.tf</code> using the public <code>terraform-aws-modules/vpc/aws</code> module, driven entirely by variables — nothing typed twice.</p>
+    <pre><code><span class="c">// network.tf — fill in the blanks marked TODO</span>
+module "vpc" {
+  source  = "terraform-aws-modules/vpc/aws"
+  version = "&lt;pin an older, tested version — see Exercise 7&gt;"
+
+  name = var.vpc_name
+  cidr = var.vpc_cidr
+
+  azs             = <span class="c">// TODO: derive 2 AZ names from var.region, don't hardcode "a"/"b" strings</span>
+  private_subnets = var.private_subnets_cidr
+  public_subnets  = var.public_subnets_cidr
+
+  enable_nat_gateway     = true
+  single_nat_gateway     = <span class="c">// TODO: wire this to var.do_i_need_1_nat instead of hardcoding true</span>
+  one_nat_gateway_per_az = false
+
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  public_subnet_tags  = { <span class="c">// TODO: see Exercise 5</span> }
+  private_subnet_tags = { <span class="c">// TODO: see Exercise 5</span> }
+}</code></pre>
+  </div>
+  <div class="yourturn">
+    <span class="yt-label">Your turn</span>
+    <p>Write the full <code>network.tf</code> + matching <code>variables.tf</code> entries (cidr blocks, vpc name, region, the NAT toggle). Every value that could plausibly differ between <code>dev</code> and <code>prod</code> should be a variable with a sane default — nothing AZ- or region-specific typed directly into <code>network.tf</code>. Paste both files back here.</p>
+  </div>
+</section>
+
+<section id="ex5">
+  <div class="kicker">Exercise 5</div>
+  <h2><span class="num">05</span>EKS subnet tags — why the load-balancer controller needs them</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: explain what these tags <em>do</em>, not just paste them.</p>
+    <p>Kubernetes' AWS Load Balancer Controller doesn't know your account's subnet layout out of the box. When you create a <code>Service type=LoadBalancer</code> or an <code>Ingress</code>, the controller has to discover: "which subnets in this VPC am I allowed to place a load balancer's ENIs into, and are they public or private?" It answers that by scanning for specific tags:</p>
+    <pre><code>public_subnet_tags = {
+  "kubernetes.io/cluster/&lt;cluster-name&gt;" = "shared"
+  "kubernetes.io/role/elb"               = "1"     <span class="c"># public-facing ELB eligible</span>
+}
+
+private_subnet_tags = {
+  "kubernetes.io/cluster/&lt;cluster-name&gt;" = "shared"
+  "kubernetes.io/role/internal-elb"      = "1"     <span class="c"># internal ELB eligible</span>
+}</code></pre>
+    <p>Without the <code>kubernetes.io/cluster/&lt;name&gt;</code> tag, the controller can't even confirm a subnet belongs to <em>this</em> cluster (imagine multiple clusters sharing one VPC). Without the <code>role/elb</code> or <code>role/internal-elb</code> tag, it doesn't know whether a load balancer placed there would be internet-facing or internal.</p>
+  </div>
+  <div class="callout bug">
+    <b>Bug to fix in your own repo</b>
+    In the code from class, <code>private_subnet_tags</code> has the <code>kubernetes.io/role/internal-elb</code> line <strong>commented out</strong>. That means the LB controller currently has no way to place an <em>internal</em> load balancer in your private subnets — only public ones would work. This was flagged as a "next step" item in the class notes ("Add Subnet Tags"). Uncomment it as part of Exercise 4's your-turn.
+  </div>
+</section>
+
+<section id="ex6">
+  <div class="kicker">Exercise 6</div>
+  <h2><span class="num">06</span>Repo layout &amp; Terraform state — backend, locking, keys</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: know why infra is split into separate repos/paths, and how state isolation prevents accidental deletion.</p>
+    <ul>
+      <li><strong>Separate core EKS infra from app-level Kubernetes resources</strong> (Argo CD, LB controller, the app's own <code>k8s.tf</code>/RDS). Different lifecycles, different blast radii — you don't want an app-level <code>terraform apply</code> anywhere near the ability to touch the cluster itself.</li>
+      <li><strong>S3 backend</strong> for state storage — durable, versioned, shared across a team.</li>
+      <li><strong>Unique state key per environment/repo</strong> — this is not optional. The class hit a real incident live: the 3-tier app's infra was accidentally pointed at the <em>same</em> S3 key as the EKS core infra state, which risked one <code>terraform apply</code> silently destroying the other's resources. The fix is simply giving every distinct piece of infra its own <code>key</code>.</li>
+      <li><strong>State locking</strong> — historically a DynamoDB table; newer S3 backends support native locking via a lockfile, avoiding the extra DynamoDB resource entirely.</li>
+    </ul>
+    <pre><code>terraform {
+  backend "s3" {
+    bucket       = "state-bucket-&lt;account-id&gt;"
+    key          = "&lt;team-or-project&gt;/eks-core-infra/dev/terraform.tfstate"  <span class="c"># unique!</span>
+    region       = "ap-south-1"
+    use_lockfile = true
+  }
+}</code></pre>
+  </div>
+  <div class="callout warn">
+    <b>Why this is a real interview topic</b>
+    "How do you prevent two Terraform states from colliding" is a standard senior question. The honest answer from this class's own incident: naming convention discipline (<code>&lt;project&gt;/&lt;component&gt;/&lt;env&gt;/terraform.tfstate</code>) plus state locking to prevent concurrent applies — there's no magic flag that stops you from typing the same key twice, so the convention itself is the safeguard.
+  </div>
+</section>
+
+<section id="ex7">
+  <div class="kicker">Exercise 7</div>
+  <h2><span class="num">07</span>Pin your versions — Terraform, provider, module</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: understand three separate pinning decisions and why each matters.</p>
+    <ol class="step-list">
+      <li><strong>Terraform CLI version</strong> — pin exactly (<code>required_version = "= 1.15.1"</code>), managed locally via <code>tfenv</code>. Reasoning: dynamic/latest versions in CI/CD are a reproducibility risk — a version bump can silently change behavior between two runs of the same code.</li>
+      <li><strong>Provider version</strong> — pin a range (<code>~> 6.0</code> for the AWS provider), not exact, so you get patch fixes without a surprise major bump.</li>
+      <li><strong>Public module version</strong> — pin to a <em>stable, slightly-behind-latest</em> version deliberately, not <code>latest</code>. Two stated reasons: (a) supply-chain risk — a compromised or buggy new release of a widely-used public module is a real attack surface; (b) the class hit an actual bug in <code>terraform-aws-modules/eks/aws</code> v20 where a VPC-CNI dependency ordering issue made nodes silently fail to join, fixed in v21. "One version behind latest, verified" is the working rule of thumb.</li>
+    </ol>
+  </div>
+  <div class="callout myth">
+    <b>Myth: "pinning to latest keeps you most secure"</b>
+    It's the opposite instinct that's correct for infra-as-code: <em>un</em>pinned or always-latest dependencies are what let a compromised upstream release reach production automatically. Pinning + deliberate, reviewed upgrades is the secure pattern — the same logic as pinning npm/pip dependencies with a lockfile.
+  </div>
+</section>
+
+<section id="ex8">
+  <div class="kicker">Exercise 8</div>
+  <h2><span class="num">08</span>Write the EKS module — control plane + managed node group</h2>
+  <div class="exercise">
+    <span class="ex-label">Skeleton</span>
+    <p class="goal">Goal: an <code>eks.tf</code> that references your network module's outputs dynamically — never a hardcoded VPC/subnet ID.</p>
+    <pre><code>module "eks" {
+  source  = "terraform-aws-modules/eks/aws"
+  version = "&lt;one version behind latest, per Exercise 7&gt;"
+
+  name               = <span class="c">// TODO: reference var.eks_cluster_name — do NOT hardcode a string here</span>
+  kubernetes_version = <span class="c">// TODO: reference var.eks_cluster_version</span>
+
+  addons = {
+    coredns    = {}
+    kube-proxy = {}
+    vpc-cni    = { before_compute = true }   <span class="c"># must install before nodes, or nodes never join</span>
+  }
+
+  endpoint_public_access = true   <span class="c">// see the public/private/semi-private discussion below</span>
+  enable_cluster_creator_admin_permissions = true   <span class="c">// fine for dev, revisit for prod (Exercise 10)</span>
+
+  vpc_id     = module.vpc.vpc_id              <span class="c">// dynamic reference — good pattern</span>
+  subnet_ids = module.vpc.private_subnets     <span class="c">// nodes + control plane ENIs → private only</span>
+
+  eks_managed_node_groups = {
+    <span class="c">// TODO: give this a meaningful key, not "example"</span>
+    &lt;name&gt; = {
+      ami_type       = "AL2023_x86_64_STANDARD"
+      instance_types = ["m5.xlarge"]
+      min_size       = 1
+      max_size       = 5
+      desired_size   = 2
+    }
+  }
+}</code></pre>
+  </div>
+  <div class="callout">
+    <b>Cluster endpoint access — the three options from class</b>
+    <strong>Fully private:</strong> API server only reachable from inside the VPC (via VPN/bastion/Transit Gateway). Most secure, most operational overhead. <strong>Public:</strong> reachable from the internet — fine for a lab, risky for prod unless CIDR-restricted. <strong>Semi-private (public + CIDR-restricted):</strong> endpoint is technically public but the security group only allows specific IP ranges in (e.g. your office VPN egress IP) — the practical middle ground most teams actually run.
+  </div>
+  <div class="yourturn">
+    <span class="yt-label">Your turn</span>
+    <p>Fill in every TODO above using your own <code>variables.tf</code>, then paste the finished <code>eks.tf</code> back. Also decide and state which endpoint-access mode you're choosing for this lab and why.</p>
+  </div>
+</section>
+
+<section id="ex9">
+  <div class="kicker">Exercise 9</div>
+  <h2><span class="num">09</span>Node IAM &amp; the ECR pull-permission demo</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: reproduce, hands-on, the exact "access denied pulling from ECR" moment the instructor assigned as a group exercise.</p>
+    <ol class="step-list">
+      <li>Launch a plain EC2 instance in a <strong>default VPC</strong>, with <strong>no IAM instance role</strong> attached.</li>
+      <li>Install/use the Docker or AWS CLI to attempt <code>docker pull &lt;your-account&gt;.dkr.ecr.&lt;region&gt;.amazonaws.com/&lt;repo&gt;:&lt;tag&gt;</code> against a private ECR repo.</li>
+      <li>Confirm it fails with an authentication/permission error — no credentials means no access, by design.</li>
+      <li>Now compare: your <strong>EKS worker nodes</strong> don't hit this problem, because the managed node group's EC2 instances get an <strong>IAM instance role</strong> (attached automatically by the node group, with the AWS-managed ECR read policy) — never a hardcoded access key/secret on the box.</li>
+    </ol>
+  </div>
+  <div class="callout fix">
+    <b>Why this is the pattern, always</b>
+    Any time compute (EC2, Lambda, EKS nodes, ECS tasks) needs to talk to another AWS service, the answer is an <strong>IAM role attached to that compute</strong>, never long-lived access keys baked into config or environment variables. This is the same principle that later drives the OIDC decision for GitHub Actions (Part 2) — short-lived, role-based credentials over static secrets, everywhere.
+  </div>
+</section>
+
+<section id="ex10">
+  <div class="kicker">Exercise 10</div>
+  <h2><span class="num">10</span>Apply, kubeconfig, and IAM access entries</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: go from <code>terraform apply</code> to a working <code>kubectl get nodes</code>, hitting the same permission wall the class hit.</p>
+    <pre><code><span class="k">terraform init</span>
+<span class="k">terraform apply</span>
+<span class="c"># ~15-20 minutes for a fresh EKS control plane + node group — this is normal, not a hang</span>
+
+<span class="k">aws eks update-kubeconfig</span> --name &lt;your-cluster-name&gt; --region &lt;your-region&gt;
+<span class="k">kubectl config rename-context</span> &lt;long-arn-context&gt; my-cluster
+<span class="k">kubectl config use-context</span> my-cluster
+
+<span class="k">kubectl get nodes</span>
+<span class="out">Error from server (Forbidden): ...cannot list resource "nodes"...</span></code></pre>
+    <p>This is expected if the identity running <code>terraform apply</code> differs from the one running <code>kubectl</code> — or even the same identity, depending on how <code>enable_cluster_creator_admin_permissions</code> resolved. If you hit it, add an access entry:</p>
+    <pre><code><span class="k">aws eks create-access-entry</span> --cluster-name &lt;name&gt; --principal-arn &lt;your-iam-arn&gt;
+<span class="k">aws eks associate-access-policy</span> --cluster-name &lt;name&gt; \
+  --principal-arn &lt;your-iam-arn&gt; \
+  --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy \
+  --access-scope type=cluster
+
+<span class="k">kubectl get nodes</span>
+<span class="out">NAME                          STATUS   ROLES    AGE   VERSION
+ip-10-0-1-142.ec2.internal    Ready    &lt;none&gt;   3m    v1.34.x</span></code></pre>
+  </div>
+  <div class="callout">
+    <b>Confirms the "AWS access ≠ Kubernetes access" rule</b>
+    Same principle as Class 3's console-built cluster: an IAM identity having full AWS permissions says nothing about Kubernetes RBAC permissions inside the cluster. EKS access entries are the bridge between the two layers — you'll grant this explicitly, every time, for every new identity that needs cluster access.
+  </div>
+</section>
+
+<section id="ex11">
+  <div class="kicker">Exercise 11</div>
+  <h2><span class="num">11</span>When nodes won't join — the 3 usual suspects</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: have a mental checklist for "EC2 instance exists, but not showing up in <code>kubectl get nodes</code>" — a very common real-world and interview scenario.</p>
+    <table>
+      <tr><th>Cause</th><th>What's happening</th><th>How to confirm</th></tr>
+      <tr><td>VPC CNI plugin missing/misordered</td><td>Nodes came up before the CNI add-on finished installing (this is exactly the v20 module bug from Exercise 7) — no pod networking means the node can never report Ready.</td><td>Check the <code>vpc-cni</code> addon status in the console/CLI; confirm your module version enforces <code>before_compute = true</code> or equivalent ordering.</td></tr>
+      <tr><td>Security group blocks required outbound ports</td><td>Node's kubelet can't reach the control plane API or pull images if outbound traffic is restricted.</td><td>Review the node security group's egress rules against AWS's documented EKS port requirements.</td></tr>
+      <tr><td>Kubelet/bootstrap failure on the node itself</td><td>The user-data script that runs on node startup (which bootstraps kubelet and registers the node) failed silently.</td><td>SSH/SSM into the node, check <code>/var/log/cloud-init-output.log</code> and kubelet's own logs.</td></tr>
+    </table>
+  </div>
+</section>
+
+<hr class="div">
+
+<section id="clinic">
+  <div class="kicker">Code Review Clinic</div>
+  <h2>Refining the coach's <code>eks-core-infra</code></h2>
+  <p class="lede">You flagged that the class code needs cleanup — here's what I found scanning your actual <code>eks-core-infra/</code> files against everything above. Treat this as your Exercise 4/8 answer key to self-check against, <strong>after</strong> you've written your own version.</p>
+
+  <div class="callout bug">
+    <b>Bug 1 — cluster name is hardcoded, ignoring the variable</b>
+    <code>eks.tf</code> has <code>name = "my-cluster"</code> typed literally, while <code>variables.tf</code> separately defines <code>var.eks_cluster_name</code> (default <code>"aug-eks-cluster"</code>) — which is never referenced anywhere. This is precisely the "Rename Cluster" action item from the class notes. Fix: <code>name = var.eks_cluster_name</code>.
+  </div>
+
+  <div class="callout bug">
+    <b>Bug 2 — two different Kubernetes versions defined, only one used</b>
+    <code>variables.tf</code> defines <code>var.eks_cluster_version</code> with default <code>"1.27"</code>, but <code>eks.tf</code> hardcodes <code>kubernetes_version = "1.34"</code> directly — so the variable is dead code with a stale, misleading default. Fix: wire <code>eks.tf</code> to the variable, and update the default to match what you actually intend to run.
+  </div>
+
+  <div class="callout bug">
+    <b>Bug 3 — <code>do_i_need_1_nat</code> variable exists but is never used</b>
+    <code>network.tf</code> hardcodes <code>single_nat_gateway = true</code> instead of referencing <code>var.do_i_need_1_nat</code>. The variable was clearly intended to make this configurable per-environment (cheap single-NAT for dev, resilient one-per-AZ for prod) but currently does nothing.
+  </div>
+
+  <div class="callout bug">
+    <b>Bug 4 — region hardcoded in the provider, ignoring the variable</b>
+    <code>providers.tf</code> has <code>region = "ap-south-1"</code> typed literally, while <code>variables.tf</code> defines <code>var.region</code> with the same default value — again, defined but unused. Fix: <code>region = var.region</code>.
+  </div>
+
+  <div class="callout bug">
+    <b>Bug 5 — <code>iam.tf</code> and <code>output.tf</code> are empty placeholders</b>
+    Both files exist but contain nothing. At minimum, <code>output.tf</code> should expose the values other modules/repos will need to reference dynamically (cluster name, cluster endpoint, cluster CA data, VPC id, subnet ids) — this is what lets the 3-tier app's infra reference this cluster via <code>data</code> sources instead of copy-pasting IDs. <code>iam.tf</code> is presumably reserved for any custom IAM policies beyond what the EKS module creates by default (e.g. extra node permissions) — worth deciding now whether you need any, or removing the empty file.
+  </div>
+
+  <div class="callout bug">
+    <b>Bug 6 — commented-out private subnet ELB tag</b>
+    As called out in Exercise 5: <code>"kubernetes.io/role/internal-elb" = "1"</code> is commented out in <code>private_subnet_tags</code>, silently disabling internal load balancer placement.
+  </div>
+
+  <div class="callout fix">
+    <b>Minor, worth a look</b>
+    The <code>example</code> key for the managed node group in <code>eks.tf</code> is a placeholder name left over from the module's docs — rename it to something meaningful (e.g. <code>general</code> or <code>app</code>) since this key shows up in AWS console labels and future <code>terraform plan</code> diffs when you add a second node group.
+  </div>
+
+  <div class="yourturn">
+    <span class="yt-label">Your turn</span>
+    <p>Rewrite <code>eks-core-infra/</code> fixing all six bugs above, plus your Exercise 4/8 work. Paste the full set of files (<code>network.tf</code>, <code>eks.tf</code>, <code>variables.tf</code>, <code>providers.tf</code>, <code>versions.tf</code>, <code>output.tf</code>) back here and we'll do a proper review pass before you run <code>terraform apply</code> for real.</p>
+  </div>
+</section>
+
+<hr class="div">
+
+<section id="nextup">
+  <div class="kicker">Looking ahead</div>
+  <h2>What's explicitly Part 2 (not covered here)</h2>
+  <p>The last third of Class 4 previewed, but did not build, the following — these belong to their own follow-along document once you send me those notes:</p>
+  <ul>
+    <li>RDS provisioning (T3 Medium, KMS-encrypted, credentials in Secrets Manager as a full connection string)</li>
+    <li>3-tier app's own Terraform (<code>data.tf</code>, ECR repos, security groups scoped to Postgres port 5432)</li>
+    <li>Kubernetes Deployments/ConfigMaps/Secrets for the stateless frontend + backend</li>
+    <li>GitHub Actions matrix strategy for building both images without duplicated workflow code</li>
+    <li>Docker Buildx setup, build caching on ephemeral runners, image size/security optimization</li>
+    <li>OIDC federation between GitHub Actions and AWS (replacing static access keys) — your <code>aws-github-oidc/</code> folder</li>
+  </ul>
+  <div class="callout">
+    <b>Good news</b>
+    Your Archive.zip already contains working code for most of this (<code>3-tier-app/</code>, <code>aws-github-oidc/</code>) — once your Part 2 notes arrive, we'll build that document the same way: concept → skeleton → your-turn → review clinic against that existing code.
+  </div>
+</section>
+
+<hr class="div">
+
+<section id="cheatsheet">
+  <div class="kicker">Reference</div>
+  <h2>Command &amp; concept cheat-sheet</h2>
+  <table>
+    <tr><th>Command</th><th>What it does</th></tr>
+    <tr><td><code>terraform init / plan / apply</code></td><td>Standard TF lifecycle; always <code>plan</code> before <code>apply</code> on shared state.</td></tr>
+    <tr><td><code>aws eks update-kubeconfig --name X --region R</code></td><td>Writes cluster/context/user entries into <code>~/.kube/config</code>.</td></tr>
+    <tr><td><code>kubectl config rename-context / use-context</code></td><td>Manage which cluster kubectl talks to by default.</td></tr>
+    <tr><td><code>aws eks create-access-entry</code> / <code>associate-access-policy</code></td><td>Grant an IAM identity Kubernetes-level access — separate from AWS-level IAM permissions.</td></tr>
+    <tr><td><code>kubectl get nodes</code></td><td>Confirms nodes joined the cluster and are <code>Ready</code>.</td></tr>
+  </table>
+</section>
+
+<hr class="div">
+
+<section id="homework">
+  <div class="kicker">Straight from the class notes</div>
+  <h2>Homework checklist</h2>
+  <ul class="checklist">
+    <li>Test ECR permissions: launch a default-VPC EC2 with no IAM role, confirm ECR pull is denied (Exercise 9).</li>
+    <li>Add the missing EKS subnet tags to the network module and submit a PR (Exercise 5 / Bug 6).</li>
+    <li>Rename the cluster to match project requirements, driven by variable (Bug 1).</li>
+    <li>Refactor the Terraform codebase to remove all hardcoded values (the full Code Review Clinic list).</li>
+    <li>Define the ECR repositories needed for backend + frontend images (Part 2 prep).</li>
+    <li>Read up on Docker build optimization: faster builds, smaller images, better security — the three pillars called out as bare-minimum interview knowledge now.</li>
+    <li>Read the instructor's OIDC + GitHub Actions blog post before Part 2, and understand why short-lived OIDC tokens beat static AWS access keys.</li>
+    <li>Read up on why Docker build caching needs external storage on ephemeral GitHub-hosted runners.</li>
+  </ul>
+</section>
+
+<hr class="div">
+
+<section id="glossary">
+  <div class="kicker">Reference</div>
+  <h2>Glossary</h2>
+  <dl class="glossary">
+    <dt>CIDR</dt><dd>Classless Inter-Domain Routing — notation like <code>/16</code> that defines an IP range's size by how many bits are fixed as "network."</dd>
+    <dt>VPC CNI</dt><dd>AWS's native Container Network Interface plugin — assigns pods real IPs from the VPC's own address space, unlike overlay CNIs.</dd>
+    <dt>NAT Gateway</dt><dd>Managed AWS resource in a public subnet that lets private-subnet resources make outbound-only internet connections.</dd>
+    <dt>VPC Endpoint</dt><dd>A private route from inside your VPC directly to a specific AWS service, without traversing the public internet.</dd>
+    <dt>Managed Node Group</dt><dd>AWS-managed EC2 Auto Scaling group wired into EKS — handles node provisioning, IAM role attachment, and lifecycle.</dd>
+    <dt>IAM Access Entry</dt><dd>The EKS-native mechanism (replacing the old <code>aws-auth</code> ConfigMap) that maps an IAM identity to Kubernetes RBAC permissions.</dd>
+    <dt>Terraform State Locking</dt><dd>A mechanism preventing two concurrent <code>terraform apply</code> runs from corrupting the same state file.</dd>
+    <dt>OIDC (in this context)</dt><dd>OpenID Connect — lets GitHub Actions authenticate to AWS using short-lived, auto-expiring tokens instead of static access keys. Built in Part 2.</dd>
+  </dl>
+</section>
+
+</div>
+
+<a href="#" class="backtotop">↑</a>
+
+<footer>
+  Follow-along series · DevOps Bootcamp April 2026 · Class 4, Part 1 — generated from class notes, transcript, and your own repo code
+</footer>
+
+</body>
+</html>

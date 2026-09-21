@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>kind Hands-On Lab — Completing Class 1 (Kubernetes Fundamentals)</title>
+<style>
+  :root{
+    --ink:#1b2027;
+    --sub:#4b5563;
+    --bg:#fbfaf7;
+    --panel:#ffffff;
+    --line:#e4e1d8;
+    --accent:#2e6f6a;
+    --accent2:#b8562f;
+    --accent3:#3a5ba0;
+    --mono-bg:#12161c;
+    --mono-ink:#d7e0e8;
+    --mono-accent:#7fd0c4;
+    --code-inline-bg:#eef0eb;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Georgia,"Noto Serif",serif;
+    line-height:1.65; font-size:17px;
+  }
+  .wrap{max-width:960px; margin:0 auto; padding:0 32px 120px;}
+  header.hero{
+    padding:70px 32px 50px; text-align:left; border-bottom:1px solid var(--line);
+    background: linear-gradient(180deg, rgba(46,111,106,0.06), rgba(46,111,106,0) 60%);
+  }
+  header.hero .eyebrow{
+    font-family:"JetBrains Mono","SF Mono",Consolas,monospace;
+    letter-spacing:.14em; text-transform:uppercase; font-size:12.5px;
+    color:var(--accent); margin-bottom:14px; display:flex; gap:10px; align-items:center;
+  }
+  header.hero .eyebrow::before{content:"//"; color:var(--accent2);}
+  h1.title{font-size:clamp(30px,4.2vw,46px); line-height:1.12; margin:0 0 14px; max-width:820px; letter-spacing:-0.01em;}
+  .subtitle{color:var(--sub); font-size:18px; max-width:700px; margin:0 0 26px;}
+  .meta-row{display:flex; gap:22px; flex-wrap:wrap; font-family:"JetBrains Mono",monospace; font-size:12.5px; color:var(--sub);}
+  .meta-row span b{color:var(--ink);}
+
+  nav.toc{margin:36px auto 0; max-width:960px; padding:22px 32px 26px; border:1px solid var(--line); border-radius:10px; background:var(--panel);}
+  nav.toc h2{font-family:"JetBrains Mono",monospace; font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 14px;}
+  nav.toc ol{columns:2; column-gap:36px; margin:0; padding-left:20px;}
+  nav.toc li{break-inside:avoid; margin-bottom:8px; font-size:15px;}
+  nav.toc a{color:var(--ink); text-decoration:none; border-bottom:1px dotted var(--line);}
+  nav.toc a:hover{color:var(--accent); border-color:var(--accent);}
+  @media (max-width:640px){nav.toc ol{columns:1;}}
+
+  section{padding-top:56px;}
+  section > .kicker{font-family:"JetBrains Mono",monospace; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent2); margin-bottom:8px;}
+  h2{font-size:30px; margin:0 0 6px; letter-spacing:-0.01em; scroll-margin-top:20px;}
+  h2 .num{color:var(--accent); font-family:"JetBrains Mono",monospace; font-size:19px; margin-right:10px;}
+  h3{font-size:21px; margin:34px 0 10px; scroll-margin-top:20px; color:#20262c;}
+  h4{font-size:16.5px; margin:22px 0 8px; color:#20262c; font-family:"JetBrains Mono",monospace; letter-spacing:.02em;}
+  p{margin:0 0 15px;}
+  ul,ol{margin:0 0 16px; padding-left:22px;}
+  li{margin-bottom:6px;}
+  strong{color:#10161c;}
+  .lede{font-size:18.5px; color:#2b323a;}
+
+  code, .code-inline{font-family:"JetBrains Mono","SF Mono",Consolas,monospace; font-size:0.86em; background:var(--code-inline-bg); padding:1px 6px; border-radius:4px; color:#3a2f1f;}
+  pre{background:var(--mono-bg); color:var(--mono-ink); padding:18px 20px; border-radius:10px; overflow-x:auto; font-family:"JetBrains Mono","SF Mono",Consolas,monospace; font-size:13.5px; line-height:1.55; margin:16px 0 22px;}
+  pre code{background:none; padding:0; color:inherit; font-size:1em;}
+  pre .c{color:#7f8b98;}
+  pre .k{color:var(--mono-accent);}
+  pre .s{color:#e2b872;}
+  pre .out{color:#9aa3ad;}
+
+  .callout{border-left:3px solid var(--accent); background:#eef3f2; padding:14px 18px; border-radius:0 8px 8px 0; margin:18px 0; font-size:15.5px;}
+  .callout.warn{border-left-color:var(--accent2); background:#f7ece5;}
+  .callout.myth{border-left-color:#8a3f8a; background:#f3ecf3;}
+  .callout.fix{border-left-color:#3a5ba0; background:#e9eef7;}
+  .callout b{display:block; font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px;}
+  .callout.warn b{color:var(--accent2);}
+  .callout.myth b{color:#8a3f8a;}
+  .callout.fix b{color:#3a5ba0;}
+  .callout:not(.warn):not(.myth):not(.fix) b{color:var(--accent);}
+
+  figure{margin:22px 0 30px; padding:18px; background:var(--panel); border:1px solid var(--line); border-radius:12px;}
+  figure svg{width:100%; height:auto; display:block;}
+  figcaption{font-size:13px; color:var(--sub); margin-top:12px; text-align:center; font-family:"JetBrains Mono",monospace;}
+
+  table{width:100%; border-collapse:collapse; margin:18px 0 26px; font-size:15px;}
+  th{text-align:left; font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--sub); border-bottom:2px solid var(--ink); padding:8px 12px;}
+  td{border-bottom:1px solid var(--line); padding:10px 12px; vertical-align:top;}
+  tr:hover td{background:#f5f3ee;}
+  td code{white-space:nowrap;}
+
+  hr.div{border:none; border-top:1px solid var(--line); margin:56px 0;}
+
+  .backtotop{position:fixed; right:24px; bottom:24px; background:var(--ink); color:#fff; width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; text-decoration:none; font-size:18px; opacity:.85; box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  .backtotop:hover{opacity:1;}
+
+  .step-list{counter-reset:step; list-style:none; padding-left:0;}
+  .step-list li{counter-increment:step; padding-left:38px; position:relative; margin-bottom:16px;}
+  .step-list li::before{content:counter(step); position:absolute; left:0; top:0; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; font-family:"JetBrains Mono",monospace; font-size:13px; display:flex; align-items:center; justify-content:center;}
+
+  .exercise{border:1.5px solid var(--accent); border-radius:12px; padding:22px 26px; margin:28px 0; background:#fcfdfc;}
+  .exercise .ex-label{font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:#fff; background:var(--accent); display:inline-block; padding:4px 10px; border-radius:5px; margin-bottom:10px;}
+  .exercise h3{margin-top:0;}
+  .goal{font-size:14.5px; color:var(--sub); font-style:italic; margin-top:-4px; margin-bottom:16px;}
+
+  .checklist{list-style:none; padding-left:0;}
+  .checklist li{padding-left:30px; position:relative; margin-bottom:10px;}
+  .checklist li::before{content:"☐"; position:absolute; left:0; top:0; color:var(--accent); font-size:17px;}
+
+  .glossary dt{font-family:"JetBrains Mono",monospace; font-weight:700; color:var(--ink); margin-top:14px;}
+  .glossary dd{margin:2px 0 0; color:var(--sub);}
+
+  footer{padding:60px 32px 40px; text-align:center; color:var(--sub); font-size:13px; font-family:"JetBrains Mono",monospace;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap" style="padding:0;">
+    <div class="eyebrow">devops bootcamp — hands-on lab</div>
+    <h1 class="title">kind Hands-On Lab: Finish Class 1, Start to End</h1>
+    <p class="subtitle">A guided, typed-out walkthrough of everything demoed in your first Kubernetes class — pod, deployment, service, endpoints, DNS — rebuilt as a completable exercise, with the parts that didn't quite land in class (DNS resolution, reaching a pod from your browser) fixed and explained properly.</p>
+    <div class="meta-row">
+      <span>Companion to: <b>DevOps Bootcamp — Kubernetes Module, Class 1</b></span>
+      <span>Pairs with: <b>Linux/Docker Namespaces &amp; CNI reference doc</b></span>
+      <span>Time: <b>60–90 min</b>, hands-on</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#setup">0 · Before you start — install &amp; sanity check</a></li>
+    <li><a href="#ex1">Exercise 1 — Create your first kind cluster</a></li>
+    <li><a href="#ex2">Exercise 2 — Tour the control plane</a></li>
+    <li><a href="#ex3">Exercise 3 — A bare pod (and why it won't self-heal)</a></li>
+    <li><a href="#ex4">Exercise 4 — Deployments &amp; real self-healing</a></li>
+    <li><a href="#ex5">Exercise 5 — Reaching a pod's IP (the docker exec detour)</a></li>
+    <li><a href="#ex6">Exercise 6 — Writing Deployment + Service YAML from scratch</a></li>
+    <li><a href="#ex7">Exercise 7 — Endpoints &amp; the self-updating Service</a></li>
+    <li><a href="#ex8">Exercise 8 — DNS resolution, done right</a></li>
+    <li><a href="#ex9">Exercise 9 — Reach nginx from your actual browser</a></li>
+    <li><a href="#gaps">What class 1 didn't cover (but you should know)</a></li>
+    <li><a href="#cheatsheet">Full command cheat-sheet for class 1</a></li>
+    <li><a href="#cleanup">Cleanup &amp; homework checklist</a></li>
+    <li><a href="#glossary">Glossary</a></li>
+  </ol>
+</nav>
+
+<section id="setup">
+  <div class="kicker">Before you begin</div>
+  <h2><span class="num">00</span>Install &amp; sanity check</h2>
+  <p class="lede">If you've already been through the companion namespaces/CNI document, this will be quick. If not, here's the minimum to get moving — the deep "why" for each tool lives in that other document, this one is about doing.</p>
+
+  <pre><code><span class="c"># 1. Docker Desktop (or Docker Engine on Linux) must be running — kind needs it.</span>
+<span class="k">docker</span> version
+
+<span class="c"># 2. Install kind</span>
+<span class="c">#   macOS:</span>
+<span class="k">brew install</span> kind
+<span class="c">#   Linux:</span>
+<span class="k">curl</span> -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64 &amp;&amp; <span class="k">chmod</span> +x ./kind &amp;&amp; <span class="k">sudo mv</span> ./kind /usr/local/bin/kind
+<span class="c">#   Windows (admin PowerShell):</span>
+<span class="k">choco install</span> kind
+
+<span class="c"># 3. Install kubectl</span>
+<span class="c">#   macOS:</span>
+<span class="k">brew install</span> kubectl
+<span class="c">#   Linux:</span>
+<span class="k">curl</span> -LO <span class="s">"https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"</span> &amp;&amp; <span class="k">chmod</span> +x kubectl &amp;&amp; <span class="k">sudo mv</span> kubectl /usr/local/bin/
+
+<span class="c"># 4. Confirm both are on your PATH and talking sense</span>
+<span class="k">kind</span> version
+<span class="k">kubectl</span> version --client</code></pre>
+
+  <p>Optional but recommended: install <strong>Freelens</strong> too (covered fully in the companion doc) so you can watch these exercises happen visually alongside the terminal. Not required for anything below.</p>
+
+  <div class="callout">
+    <b>A note on how to use this document</b>
+    Every exercise below is something your instructor actually did live in Class 1 — reconstructed here so you can type it yourself, at your own pace, and actually see the output rather than just watch it happen. Wherever the class demo hit a snag (the DNS lookup that didn't work, not being able to <code>curl</code> a pod IP from the laptop), this guide explains exactly why, and shows the working version.
+  </div>
+</section>
+
+<hr class="div">
+
+<section id="ex1">
+  <div class="kicker">Exercise 1</div>
+  <h2><span class="num">01</span>Create your first kind cluster</h2>
+
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: stand up a real, working Kubernetes cluster in under a minute.</p>
+    <pre><code><span class="k">kind create cluster</span>
+<span class="out">Creating cluster "kind" ...
+ ✓ Ensuring node image (kindest/node:v1.31.0) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-kind"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-kind</span></code></pre>
+    <p>Notice the two lines called out above: <strong>"Installing CNI"</strong> and <strong>"Installing StorageClass"</strong> — kind does these for you automatically. On a raw <code>kubeadm</code> cluster you'd have to install a CNI plugin yourself before any node reaches <code>Ready</code>, exactly as covered in the CNI reference document.</p>
+
+    <pre><code><span class="k">kubectl cluster-info</span>
+<span class="out">Kubernetes control plane is running at https://127.0.0.1:xxxxx
+CoreDNS is running at https://127.0.0.1:xxxxx/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy</span>
+
+<span class="k">kind get clusters</span>
+<span class="out">kind</span></code></pre>
+  </div>
+
+  <div class="callout fix">
+    <b>What kind create cluster actually did, in namespace/CNI terms</b>
+    It pulled a <code>kindest/node</code> image, started it as a Docker container named <code>kind-control-plane</code>, and — inside that container — ran <code>kubeadm init</code>-equivalent bootstrapping, then applied <code>kindnetd</code> (the default CNI) so nodes reach <code>Ready</code> without a manual step. Your <code>~/.kube/config</code> was updated automatically with a new context named <code>kind-kind</code>.
+  </div>
+</section>
+
+<section id="ex2">
+  <h2><span class="num">02</span>Tour the control plane</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: see the control-plane components — API server, etcd, scheduler, controller-manager — running as ordinary pods, exactly as described in the architecture analogy from class.</p>
+    <pre><code><span class="k">kubectl get pods -A</span>
+<span class="out">NAMESPACE            NAME                                         READY   STATUS    RESTARTS   AGE
+kube-system           coredns-...                                  1/1     Running   0          70s
+kube-system           coredns-...                                  1/1     Running   0          70s
+kube-system           etcd-kind-control-plane                      1/1     Running   0          85s
+kube-system           kindnet-...                                   1/1     Running   0          70s
+kube-system           kube-apiserver-kind-control-plane              1/1     Running   0          85s
+kube-system           kube-controller-manager-kind-control-plane    1/1     Running   0          85s
+kube-system           kube-proxy-...                                1/1     Running   0          70s
+kube-system           kube-scheduler-kind-control-plane              1/1     Running   0          85s
+local-path-storage    local-path-provisioner-...                    1/1     Running   0          70s</span></code></pre>
+    <p>Match these to the "company" analogy from class: <code>kube-apiserver</code> is the receptionist, <code>etcd</code> is the database, <code>kube-scheduler</code> is the HR assignment person, <code>kube-controller-manager</code> is the manager keeping desired-state promises. <code>kindnet</code> is the CNI plugin agent (one per node), and <code>kube-proxy</code> is the iptables-rule-writer covered in depth in the networking document.</p>
+
+    <pre><code><span class="k">kubectl get nodes</span>
+<span class="out">NAME                 STATUS   ROLES           AGE   VERSION
+kind-control-plane   Ready    control-plane   2m    v1.31.0</span>
+
+<span class="k">kubectl get namespaces</span>
+<span class="out">NAME                 STATUS   AGE
+default              Active   2m
+kube-node-lease      Active   2m
+kube-public          Active   2m
+kube-system          Active   2m
+local-path-storage   Active   2m</span></code></pre>
+    <p>Notice this single node shows as both <code>control-plane</code> <em>and</em> is schedulable for regular workloads — that's specific to kind's single-node default and is <strong>not</strong> how real clusters behave (see the callout in Exercise 4).</p>
+  </div>
+</section>
+
+<section id="ex3">
+  <h2><span class="num">03</span>A bare pod — and why it won't self-heal</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: prove, hands-on, that a pod created directly (imperatively) has nobody watching over it.</p>
+    <pre><code><span class="k">kubectl run</span> my-pod --image=nginx
+<span class="out">pod/my-pod created</span>
+
+<span class="k">kubectl get pod</span>
+<span class="out">NAME     READY   STATUS    RESTARTS   AGE
+my-pod   1/1     Running   0          8s</span>
+
+<span class="k">kubectl get pod -o wide</span>
+<span class="out">NAME     READY   STATUS    RESTARTS   AGE   IP           NODE
+my-pod   1/1     Running   0          15s   10.244.0.5   kind-control-plane</span></code></pre>
+    <p>Now kill it and watch what (doesn't) happen:</p>
+    <pre><code><span class="k">kubectl delete pod</span> my-pod
+<span class="out">pod "my-pod" deleted</span>
+
+<span class="k">kubectl get pod</span>
+<span class="out">No resources found in default namespace.</span></code></pre>
+    <div class="callout warn">
+      <b>The point of this exercise</b>
+      Nothing came back. A bare pod has no controller behind it — <code>kubectl run</code> is an imperative, one-off command real teams rarely use for anything beyond quick throwaway testing. Kubernetes' famous "self-healing" promise is a property of <strong>controllers</strong> (Deployments, ReplicaSets, StatefulSets, DaemonSets, Jobs) — not of pods themselves. This is exactly why the next exercise switches to a Deployment.
+    </div>
+  </div>
+</section>
+
+<section id="ex4">
+  <h2><span class="num">04</span>Deployments &amp; real self-healing</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: create a Deployment, understand the Deployment → ReplicaSet → Pod naming chain, and prove self-healing actually works this time.</p>
+    <pre><code><span class="k">kubectl create deployment</span> my-deploy --image=nginx --replicas=3
+<span class="out">deployment.apps/my-deploy created</span>
+
+<span class="k">kubectl get pods</span>
+<span class="out">NAME                         READY   STATUS    RESTARTS   AGE
+my-deploy-6d7f8c9b5-4x2kq    1/1     Running   0          12s
+my-deploy-6d7f8c9b5-8pqvz    1/1     Running   0          12s
+my-deploy-6d7f8c9b5-wj3rl    1/1     Running   0          12s</span></code></pre>
+    <p>Read the pod names left to right: <code>my-deploy</code> (the Deployment) → <code>6d7f8c9b5</code> (a hash identifying the ReplicaSet) → <code>4x2kq</code> (a random suffix for this individual pod). Confirm the middle layer exists:</p>
+    <pre><code><span class="k">kubectl get replicaset</span>
+<span class="out">NAME                    DESIRED   CURRENT   READY   AGE
+my-deploy-6d7f8c9b5     3         3         3       40s</span>
+
+<span class="k">kubectl get deployment</span>
+<span class="out">NAME        READY   UP-TO-DATE   AVAILABLE   AGE
+my-deploy   3/3     3            3           45s</span></code></pre>
+    <p>Now delete one pod and immediately re-check:</p>
+    <pre><code><span class="k">kubectl delete pod</span> my-deploy-6d7f8c9b5-4x2kq
+<span class="out">pod "my-deploy-6d7f8c9b5-4x2kq" deleted</span>
+
+<span class="k">kubectl get pods</span>
+<span class="out">NAME                         READY   STATUS    RESTARTS   AGE
+my-deploy-6d7f8c9b5-8pqvz    1/1     Running   0          58s
+my-deploy-6d7f8c9b5-wj3rl    1/1     Running   0          58s
+my-deploy-6d7f8c9b5-9f7mc    1/1     Running   0          3s     ← brand new pod, new IP</span></code></pre>
+    <div class="callout">
+      <b>What just happened, mechanically</b>
+      The ReplicaSet's controller loop noticed <code>current (2) ≠ desired (3)</code> and immediately asked the scheduler for one more pod. This is the "control loop" pattern from class: continuously compare desired state to actual state and reconcile the difference — the exact same reconciliation model that etcd/controller-manager implement for every resource type in Kubernetes, not just Deployments.
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <b>Gap in the class demo, worth flagging</b>
+    On a real cluster (EKS, kubeadm, etc.), the control-plane node is normally <strong>tainted</strong> (<code>node-role.kubernetes.io/control-plane:NoSchedule</code>) so ordinary workloads never land on it — only the control-plane's own system pods run there. kind's single-node default cluster removes that taint so your one node can run everything, purely for local-dev convenience. Don't take "my pod got scheduled onto the control-plane node" as normal cluster behavior — it's a kind-specific simplification. If you want a topology that behaves like production, use the multi-node config from Exercise 4 of the companion document (one control-plane + two workers) and you'll see this taint enforced correctly.
+  </div>
+</section>
+
+<section id="ex5">
+  <h2><span class="num">05</span>Reaching a pod's IP — the docker exec detour</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: reproduce (and understand) exactly why <code>curl</code>-ing a pod IP from your own laptop terminal fails, and what actually works.</p>
+    <pre><code><span class="c"># get a pod's IP</span>
+<span class="k">kubectl get pods -o wide</span>
+<span class="out">NAME                         READY   STATUS    IP            NODE
+my-deploy-6d7f8c9b5-8pqvz    1/1     Running   10.244.0.6    kind-control-plane</span>
+
+<span class="c"># try it directly from your laptop shell — this will hang or fail:</span>
+<span class="k">curl</span> 10.244.0.6
+<span class="out">curl: (28) Failed to connect to 10.244.0.6 port 80: Connection timed out</span></code></pre>
+    <p>This fails because <code>10.244.0.6</code> is a pod IP on the CNI's internal bridge network, which exists <em>inside</em> the <code>kind-control-plane</code> Docker container — one layer of network isolation deeper than your host, exactly as covered in the nested-container discussion. Your laptop's network stack has no route to it at all.</p>
+    <p>The fix demonstrated in class — get inside the node container first:</p>
+    <pre><code><span class="k">docker ps</span>
+<span class="out">CONTAINER ID   IMAGE                  NAMES
+a1b2c3d4e5f6   kindest/node:v1.31.0   kind-control-plane</span>
+
+<span class="k">docker exec -it</span> kind-control-plane bash
+<span class="c"># now you are INSIDE the node container's shell</span>
+root@kind-control-plane:/# <span class="k">curl</span> 10.244.0.6
+<span class="out">&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;&lt;title&gt;Welcome to nginx!&lt;/title&gt;&lt;/head&gt;
+...</span></code></pre>
+  </div>
+
+  <div class="callout fix">
+    <b>The "3 pods but only 1 container in docker ps" question</b>
+    If you've been through this document's earlier discussion: this is the same nesting. <code>docker ps</code> on your host only ever shows Docker containers your <em>host's</em> Docker daemon created — that's one entry per kind node, never per pod. The 3 nginx pods are containers managed by the <strong>containerd running inside</strong> <code>kind-control-plane</code>, which your host's Docker daemon cannot see at all. From inside the node shell, the tool that lists those is <code>crictl</code> (talks to containerd's CRI socket directly), not <code>docker ps</code> — kind nodes don't run a nested Docker daemon, only containerd:
+    <pre style="margin-top:10px;"><code>root@kind-control-plane:/# <span class="k">crictl ps</span>
+<span class="out">CONTAINER ID   IMAGE          STATE       NAME    POD ID
+9f8e7d6c5b4a   nginx:latest   Running     nginx   ...
+7a6b5c4d3e2f   nginx:latest   Running     nginx   ...
+5c4b3a2d1e0f   nginx:latest   Running     nginx   ...</span></code></pre>
+  </div>
+
+  <div class="callout warn">
+    <b>Why this whole detour is a debugging technique, not a workflow</b>
+    <code>docker exec</code>-ing into a node to curl a raw pod IP is useful for exactly what it was used for in class: proving pod IPs are real and reachable at the network level. It is <strong>not</strong> how you access an application day-to-day. Exercises 7 and 9 below show the two real methods: a stable Service, and <code>kubectl port-forward</code> / NodePort for reaching things from your actual host browser.
+  </div>
+</section>
+
+<section id="ex6">
+  <h2><span class="num">06</span>Writing Deployment + Service YAML from scratch</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: move from imperative commands to real manifests, and deliberately hit (then fix) the label-mismatch bug from class so it sticks.</p>
+
+    <p>Clean up first so you're starting fresh:</p>
+    <pre><code><span class="k">kubectl delete deployment</span> my-deploy</code></pre>
+
+    <p>Create a folder and a Deployment manifest:</p>
+    <pre><code><span class="k">mkdir</span> ~/k8s-lab &amp;&amp; <span class="k">cd</span> ~/k8s-lab</code></pre>
+    <pre><code><span class="c"># deployment.yaml</span>
+<span class="k">apiVersion:</span> apps/v1
+<span class="k">kind:</span> Deployment
+<span class="k">metadata:</span>
+  name: my-deploy
+  labels:
+    app: nginx
+<span class="k">spec:</span>
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          ports:
+            - containerPort: 80</code></pre>
+
+    <div class="callout warn">
+      <b>The exact bug hit live in class — reproduce it on purpose</b>
+      If your Service's <code>selector</code> doesn't say <code>app: nginx</code> to match the pod template's label <em>exactly</em>, the Service will show 0 endpoints and silently fail to route anywhere — no error, just nothing works. In class, the Service was first written with <code>name: my-app</code> as its selector while the pods were labeled <code>app: nginx</code> — a mismatch that took a moment to spot. Try writing <code>service.yaml</code> below with a deliberately wrong selector first (e.g. <code>name: nginx</code> instead of <code>app: nginx</code>), apply it, run <code>kubectl get endpoints</code> and see it come back empty — then fix the selector and watch endpoints populate. This is the single most common real-world Service bug, and deliberately breaking it once here will save you hours later.
+    </div>
+
+    <pre><code><span class="c"># service.yaml — selector MUST match the pod template's labels above</span>
+<span class="k">apiVersion:</span> v1
+<span class="k">kind:</span> Service
+<span class="k">metadata:</span>
+  name: my-service
+<span class="k">spec:</span>
+  selector:
+    app: nginx
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 80</code></pre>
+
+    <pre><code><span class="k">kubectl apply -f</span> deployment.yaml
+<span class="k">kubectl apply -f</span> service.yaml
+<span class="out">deployment.apps/my-deploy created
+service/my-service created</span>
+
+<span class="k">kubectl get svc</span>
+<span class="out">NAME          TYPE        CLUSTER-IP     PORT(S)
+my-service    ClusterIP   10.96.45.112   8080/TCP</span></code></pre>
+  </div>
+</section>
+
+<section id="ex7">
+  <h2><span class="num">07</span>Endpoints &amp; the self-updating Service</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: prove the ClusterIP is "not real" (no interface) and watch kube-proxy keep it in sync automatically as pods die and are replaced — the exact demo from class, done fully.</p>
+
+    <pre><code><span class="k">kubectl get endpoints</span> my-service
+<span class="out">NAME         ENDPOINTS
+my-service   10.244.0.7:80,10.244.0.8:80,10.244.0.9:80</span></code></pre>
+
+    <p>Confirm it round-robins across all three pods (from inside the node, same detour as Exercise 5):</p>
+    <pre><code><span class="k">docker exec -it</span> kind-control-plane bash
+root@kind-control-plane:/# <span class="k">for</span> i in 1 2 3 4; <span class="k">do curl</span> -s 10.96.45.112:8080 | <span class="k">grep</span> -o "Welcome to nginx"; <span class="k">done</span></code></pre>
+    <p>Now kill one backing pod and watch endpoints update themselves within seconds, with zero manual action:</p>
+    <pre><code><span class="k">kubectl delete pod</span> my-deploy-6d7f8c9b5-8pqvz
+<span class="k">kubectl get endpoints</span> my-service
+<span class="out">NAME         ENDPOINTS
+my-service   10.244.0.7:80,10.244.0.9:80,10.244.0.11:80   ← .8 is gone, .11 is the replacement</span></code></pre>
+    <div class="callout">
+      <b>Tie this back to the networking document</b>
+      <code>10.96.45.112:8080</code> never had a network interface — it only ever existed as an iptables/IPVS DNAT rule that kube-proxy maintains by watching this exact Endpoints object. The moment the Endpoints list changed, kube-proxy rewrote the rule set on every node, in real time, with no restart of anything. This is the mechanism behind the "self-healing service" behavior demoed in class.
+    </div>
+  </div>
+</section>
+
+<section id="ex8">
+  <h2><span class="num">08</span>DNS resolution, done right</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this — fixes the part that didn't work in class</span>
+    <p class="goal">Goal: actually get <code>my-service.default.svc.cluster.local</code> to resolve, and understand precisely why the in-class attempt (running <code>nslookup</code> from inside the <code>docker exec</code> node shell) didn't.</p>
+
+    <div class="callout warn">
+      <b>Why it failed in class — the real reason</b>
+      Every pod gets its <code>/etc/resolv.conf</code> written by kubelet at pod-creation time, pointing at CoreDNS's ClusterIP (typically something like <code>10.96.0.10</code>) with search domains like <code>default.svc.cluster.local</code>. That file is injected into the <strong>pod's own network namespace</strong>. The node's <em>root</em> network namespace — which is exactly where you land after <code>docker exec -it kind-control-plane bash</code> — has its own separate <code>/etc/resolv.conf</code>, usually just pointing at whatever DNS your Docker host uses. It was never configured to know about CoreDNS or the <code>.svc.cluster.local</code> suffix at all. Running <code>nslookup</code>/<code>curl &lt;service-name&gt;</code> from that shell was, structurally, never going to resolve a cluster DNS name — it wasn't a CoreDNS bug, it was asking DNS resolution from the wrong network namespace entirely.
+    </div>
+
+    <p>The fix: run the DNS lookup from <em>inside a pod</em>, where the correct <code>resolv.conf</code> actually exists. Spin up a disposable debug pod with working DNS tools:</p>
+    <pre><code><span class="k">kubectl run</span> dnsutils --image=busybox:1.28 --restart=Never -it -- sh
+<span class="c"># you're now inside a pod's shell, in the pod's own network namespace</span>
+/ # <span class="k">cat</span> /etc/resolv.conf
+<span class="out">nameserver 10.96.0.10
+search default.svc.cluster.local svc.cluster.local cluster.local
+options ndots:5</span>
+
+/ # <span class="k">nslookup</span> my-service
+<span class="out">Server:    10.96.0.10
+Address 1: 10.96.0.10 kube-dns.kube-system.svc.cluster.local
+
+Name:      my-service
+Address 1: 10.96.45.112 my-service.default.svc.cluster.local</span>
+
+/ # <span class="k">wget</span> -qO- my-service:8080 | <span class="k">head</span> -5
+<span class="out">&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;&lt;title&gt;Welcome to nginx!&lt;/title&gt;&lt;/head&gt;</span>
+
+/ # <span class="k">exit</span></code></pre>
+    <pre><code><span class="c"># clean up the debug pod when done</span>
+<span class="k">kubectl delete pod</span> dnsutils</code></pre>
+
+    <div class="callout myth">
+      <b>Small but real gotcha: image choice matters</b>
+      Newer <code>busybox:latest</code> images have a well-known, intermittent <code>nslookup</code> bug (musl libc's resolver sometimes reports "can't resolve" even when the record exists, then succeeds on retry). Pinning <code>busybox:1.28</code> as used above avoids it. If you want a more full-featured debug image instead, <code>nicolaka/netshoot</code> or the official <code>registry.k8s.io/e2e-test-images/jessie-dnsutils</code> image both ship <code>dig</code>, <code>nslookup</code>, and <code>curl</code> with no quirks.
+    </div>
+
+    <p>Notice you didn't even need the full name — just <code>my-service</code> resolved correctly. That's the <code>search</code> line in <code>resolv.conf</code> doing its job: Kubernetes appends <code>.default.svc.cluster.local</code> (and other suffixes) automatically until one resolves, exactly as covered in the DNS documentation.</p>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 940 340" xmlns="http://www.w3.org/2000/svg">
+      <text x="470" y="26" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#1b2027" font-weight="700">Why the class's DNS lookup failed — two different resolv.conf files</text>
+
+      <rect x="20" y="46" width="900" height="270" rx="12" fill="#faf8f3" stroke="#b8562f" stroke-width="1.5" stroke-dasharray="5,4"/>
+      <text x="40" y="70" font-family="JetBrains Mono, monospace" font-size="12" fill="#b8562f" font-weight="700">NODE (kind-control-plane container)</text>
+
+      <rect x="60" y="90" width="380" height="200" rx="10" fill="#f7ece5" stroke="#b8562f" stroke-width="1.6"/>
+      <text x="80" y="114" font-family="JetBrains Mono, monospace" font-size="12" fill="#b8562f" font-weight="700">ROOT netns (docker exec lands here)</text>
+      <rect x="80" y="130" width="320" height="66" rx="6" fill="#fff" stroke="#b8562f"/>
+      <text x="90" y="150" font-family="JetBrains Mono, monospace" font-size="10.5">/etc/resolv.conf:</text>
+      <text x="90" y="168" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">nameserver 192.168.65.x</text>
+      <text x="90" y="184" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">(no cluster.local knowledge!)</text>
+      <text x="90" y="230" font-family="JetBrains Mono, monospace" font-size="11" fill="#b8562f">✗ nslookup my-service</text>
+      <text x="90" y="250" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#b8562f">→ NXDOMAIN / can't resolve</text>
+
+      <rect x="500" y="90" width="380" height="200" rx="10" fill="#eef3f2" stroke="#2e6f6a" stroke-width="1.6"/>
+      <text x="520" y="114" font-family="JetBrains Mono, monospace" font-size="12" fill="#2e6f6a" font-weight="700">POD netns (kubectl run dnsutils)</text>
+      <rect x="520" y="130" width="320" height="76" rx="6" fill="#fff" stroke="#2e6f6a"/>
+      <text x="530" y="150" font-family="JetBrains Mono, monospace" font-size="10.5">/etc/resolv.conf:</text>
+      <text x="530" y="168" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">nameserver 10.96.0.10 (CoreDNS)</text>
+      <text x="530" y="184" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">search default.svc.cluster.local ...</text>
+      <text x="530" y="200" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#4b5563">injected by kubelet at pod creation</text>
+      <text x="530" y="240" font-family="JetBrains Mono, monospace" font-size="11" fill="#2e6f6a">✓ nslookup my-service</text>
+      <text x="530" y="260" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#2e6f6a">→ 10.96.45.112, resolved</text>
+    </svg>
+    <figcaption>FIG. A — Same physical node, two different network namespaces, two completely different resolv.conf files. Only the pod's namespace knows how to reach CoreDNS.</figcaption>
+  </figure>
+</section>
+
+<section id="ex9">
+  <h2><span class="num">09</span>Reach nginx from your actual browser</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this — the payoff exercise</span>
+    <p class="goal">Goal: the thing the class demo never quite got to — actually opening the nginx page in your host machine's browser, the two proper ways.</p>
+
+    <h4>Method A — kubectl port-forward (fastest, zero config)</h4>
+    <pre><code><span class="k">kubectl port-forward</span> svc/my-service 8080:8080
+<span class="out">Forwarding from 127.0.0.1:8080 -> 80
+Forwarding from [::1]:8080 -> 80</span></code></pre>
+    <p>Leave that running, then open <code>http://localhost:8080</code> in your actual browser — you should see the "Welcome to nginx!" page. Press <code>Ctrl+C</code> in the terminal to stop forwarding when done.</p>
+    <p>This works because <code>kubectl port-forward</code> opens an authenticated tunnel <em>through the API server</em> straight to the pod/service — it doesn't rely on any Docker-level port mapping at all, which is why it works even though you never configured one.</p>
+
+    <h4>Method B — NodePort + kind's extraPortMappings (closer to how real clusters expose things)</h4>
+    <p>Port-forward is great for quick checks but isn't how a real, always-on app gets exposed. Recreate your cluster with a config file that maps a container port through to your host:</p>
+    <pre><code><span class="c"># kind-config.yaml</span>
+<span class="k">kind:</span> Cluster
+<span class="k">apiVersion:</span> kind.x-k8s.io/v1alpha4
+<span class="k">nodes:</span>
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 8080
+        protocol: TCP</code></pre>
+    <pre><code><span class="k">kind delete cluster</span>
+<span class="k">kind create cluster</span> --config kind-config.yaml
+<span class="k">kubectl apply -f</span> deployment.yaml</code></pre>
+    <p>Change the Service to type <code>NodePort</code>, pinning the exact node port to match the mapping above:</p>
+    <pre><code><span class="c"># service-nodeport.yaml</span>
+<span class="k">apiVersion:</span> v1
+<span class="k">kind:</span> Service
+<span class="k">metadata:</span>
+  name: my-service-nodeport
+<span class="k">spec:</span>
+  type: NodePort
+  selector:
+    app: nginx
+  ports:
+    - port: 8080
+      targetPort: 80
+      nodePort: 30080</code></pre>
+    <pre><code><span class="k">kubectl apply -f</span> service-nodeport.yaml
+<span class="k">kubectl get svc</span>
+<span class="out">NAME                   TYPE       CLUSTER-IP     PORT(S)
+my-service-nodeport    NodePort   10.96.88.20    8080:30080/TCP</span></code></pre>
+    <p>Now open <code>http://localhost:8080</code> — no <code>kubectl port-forward</code> process needs to stay running this time.</p>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 940 220" xmlns="http://www.w3.org/2000/svg">
+      <text x="470" y="24" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#1b2027" font-weight="700">The full hop chain for Method B — browser to pod</text>
+      <g font-family="JetBrains Mono, monospace" font-size="11" fill="#1b2027">
+        <rect x="20" y="70" width="150" height="60" rx="8" fill="#eef3f2" stroke="#2e6f6a" stroke-width="1.6"/>
+        <text x="95" y="95" text-anchor="middle">Your browser</text>
+        <text x="95" y="112" text-anchor="middle" font-size="10" fill="#4b5563">localhost:8080</text>
+
+        <rect x="220" y="70" width="180" height="60" rx="8" fill="#e9eef7" stroke="#3a5ba0" stroke-width="1.6"/>
+        <text x="310" y="90" text-anchor="middle">Docker (kind)</text>
+        <text x="310" y="106" text-anchor="middle" font-size="10" fill="#4b5563">extraPortMappings</text>
+        <text x="310" y="120" text-anchor="middle" font-size="10" fill="#4b5563">8080 → 30080</text>
+
+        <rect x="450" y="70" width="180" height="60" rx="8" fill="#f7ece5" stroke="#b8562f" stroke-width="1.6"/>
+        <text x="540" y="90" text-anchor="middle">Service NodePort</text>
+        <text x="540" y="106" text-anchor="middle" font-size="10" fill="#4b5563">:30080 → :8080</text>
+        <text x="540" y="120" text-anchor="middle" font-size="10" fill="#4b5563">(iptables DNAT)</text>
+
+        <rect x="680" y="70" width="230" height="60" rx="8" fill="#eef3f2" stroke="#2e6f6a" stroke-width="1.6"/>
+        <text x="795" y="90" text-anchor="middle">nginx Pod</text>
+        <text x="795" y="106" text-anchor="middle" font-size="10" fill="#4b5563">containerPort 80</text>
+      </g>
+      <line x1="170" y1="100" x2="220" y2="100" stroke="#4b5563" stroke-width="2" marker-end="url(#a4)"/>
+      <line x1="400" y1="100" x2="450" y2="100" stroke="#4b5563" stroke-width="2" marker-end="url(#a4)"/>
+      <line x1="630" y1="100" x2="680" y2="100" stroke="#4b5563" stroke-width="2" marker-end="url(#a4)"/>
+      <defs><marker id="a4" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#4b5563"/></marker></defs>
+    </svg>
+    <figcaption>FIG. B — Every hop between your browser and the running container, spelled out.</figcaption>
+  </figure>
+</section>
+
+<hr class="div">
+
+<section id="gaps">
+  <div class="kicker">Filling the gaps</div>
+  <h2><span class="num">10</span>What class 1 didn't cover (but you should know now)</h2>
+
+  <h3>1. Resource requests &amp; limits</h3>
+  <p>Class 1 never set CPU/memory requests or limits on the nginx containers — meaning they could use unlimited resources on the node. In any real manifest, add this under each container:</p>
+  <pre><code>resources:
+  requests:
+    cpu: "100m"
+    memory: "64Mi"
+  limits:
+    cpu: "250m"
+    memory: "128Mi"</code></pre>
+  <p><code>requests</code> is what the scheduler uses to decide which node has room for this pod. <code>limits</code> is a hard ceiling — exceed the memory limit and the container gets OOM-killed; exceed the CPU limit and it just gets throttled, not killed.</p>
+
+  <h3>2. Readiness &amp; liveness probes</h3>
+  <p>Without these, Kubernetes considers a container "ready" the instant its process starts — even if the app inside is still booting. A basic pair for nginx:</p>
+  <pre><code>readinessProbe:
+  httpGet:
+    path: /
+    port: 80
+  initialDelaySeconds: 2
+  periodSeconds: 5
+livenessProbe:
+  httpGet:
+    path: /
+    port: 80
+  initialDelaySeconds: 5
+  periodSeconds: 10</code></pre>
+  <p>A failing <strong>readiness</strong> probe removes the pod from Service endpoints (traffic stops routing to it) without killing it. A failing <strong>liveness</strong> probe restarts the container. This is the mechanism that makes rolling deployments actually safe.</p>
+
+  <h3>3. metrics-server (needed for <code>kubectl top</code>)</h3>
+  <p>The class demo hit "metrics API not available" when running <code>kubectl top pod</code>. Fix it on kind with:</p>
+  <pre><code><span class="k">kubectl apply -f</span> https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+<span class="c"># kind's kubelet certs are usually self-signed and untrusted by default, so metrics-server needs one extra flag:</span>
+<span class="k">kubectl patch deployment</span> metrics-server -n kube-system --type=<span class="s">'json'</span> \
+  -p=<span class="s">'[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'</span>
+
+<span class="k">kubectl top nodes</span>
+<span class="k">kubectl top pods</span></code></pre>
+
+  <h3>4. Kubernetes Namespaces vs. Linux namespaces — don't conflate them</h3>
+  <p>Class 1 used the word "namespace" for both the Kubernetes organizational concept (<code>default</code>, <code>kube-system</code>, etc.) and, in the companion doc, the Linux kernel isolation primitive. They are <strong>unrelated concepts that happen to share a name</strong>. A Kubernetes Namespace is a way of scoping API objects (RBAC, quotas, names) — it has nothing to do with a container's network/PID/mount namespace at the kernel level.</p>
+
+  <h3>5. Multi-container pods — a working example</h3>
+  <p>Class 1 explained sidecars conceptually but never wrote one. Here's a minimal working example — a sidecar that tails and reformats nginx's logs:</p>
+  <pre><code>spec:
+  containers:
+    - name: nginx
+      image: nginx:latest
+    - name: log-sidecar
+      image: busybox:1.28
+      command: ["sh", "-c", "tail -F /var/log/nginx/access.log"]
+      volumeMounts:
+        - name: shared-logs
+          mountPath: /var/log/nginx
+  volumes:
+    - name: shared-logs
+      emptyDir: {}</code></pre>
+  <p>Both containers share the pod's network namespace (hence <code>localhost</code> works between them) and, here, an explicitly shared <code>emptyDir</code> volume for files.</p>
+
+  <h3>6. Context switching between multiple clusters</h3>
+  <pre><code><span class="k">kubectl config get-contexts</span>
+<span class="k">kubectl config use-context</span> kind-kind
+<span class="k">kubectl config set-context --current --namespace=default</span></code></pre>
+
+  <h3>7. imagePullPolicy — a common source of confusion</h3>
+  <p>Using <code>image: nginx:latest</code> as the class did means Kubernetes' default <code>imagePullPolicy: Always</code> kicks in for the <code>:latest</code> tag — every pod creation re-pulls the image, even if it's already cached locally. Pin real versions (<code>nginx:1.27</code>) in anything beyond a quick demo, both for reproducibility and to avoid unnecessary pulls.</p>
+</section>
+
+<section id="cheatsheet">
+  <div class="kicker">Quick reference</div>
+  <h2><span class="num">11</span>Full command cheat-sheet for Class 1</h2>
+  <table>
+    <tr><th>Step</th><th>Command</th></tr>
+    <tr><td>Create cluster</td><td><code>kind create cluster</code></td></tr>
+    <tr><td>List all pods, all namespaces</td><td><code>kubectl get pods -A</code></td></tr>
+    <tr><td>Nodes</td><td><code>kubectl get nodes</code></td></tr>
+    <tr><td>Quick pod (imperative, demo-only)</td><td><code>kubectl run my-pod --image=nginx</code></td></tr>
+    <tr><td>Pod detail + Events</td><td><code>kubectl describe pod &lt;name&gt;</code></td></tr>
+    <tr><td>Deployment (self-healing)</td><td><code>kubectl create deployment my-deploy --image=nginx --replicas=3</code></td></tr>
+    <tr><td>Apply manifests</td><td><code>kubectl apply -f deployment.yaml</code></td></tr>
+    <tr><td>ReplicaSets / Deployments</td><td><code>kubectl get replicaset</code> / <code>kubectl get deployment</code></td></tr>
+    <tr><td>Services</td><td><code>kubectl get svc</code></td></tr>
+    <tr><td>Endpoints behind a Service</td><td><code>kubectl get endpoints &lt;svc&gt;</code></td></tr>
+    <tr><td>Shell into a node</td><td><code>docker exec -it kind-control-plane bash</code></td></tr>
+    <tr><td>List containerd containers (inside node)</td><td><code>crictl ps</code></td></tr>
+    <tr><td>DNS test pod</td><td><code>kubectl run dnsutils --image=busybox:1.28 --restart=Never -it -- sh</code></td></tr>
+    <tr><td>Reach a Service from your browser</td><td><code>kubectl port-forward svc/my-service 8080:8080</code></td></tr>
+    <tr><td>Delete a resource</td><td><code>kubectl delete pod/deployment/service &lt;name&gt;</code></td></tr>
+    <tr><td>Tear the whole cluster down</td><td><code>kind delete cluster</code></td></tr>
+  </table>
+</section>
+
+<section id="cleanup">
+  <div class="kicker">Wrap-up</div>
+  <h2><span class="num">12</span>Cleanup &amp; homework checklist</h2>
+  <pre><code><span class="k">kubectl delete -f</span> service-nodeport.yaml --ignore-not-found
+<span class="k">kubectl delete -f</span> service.yaml --ignore-not-found
+<span class="k">kubectl delete -f</span> deployment.yaml --ignore-not-found
+<span class="k">kind delete cluster</span></code></pre>
+
+  <p>Mirroring exactly what your instructor asked for at the end of Class 1:</p>
+  <ul class="checklist">
+    <li>kind, kubectl (and optionally Freelens) installed and verified working</li>
+    <li>Comfortable creating and deleting a kind cluster from memory</li>
+    <li>Can explain, out loud, why a bare pod doesn't self-heal but a Deployment does</li>
+    <li>Can read a pod name and identify its Deployment and ReplicaSet from the name alone</li>
+    <li>Can explain why a Service's ClusterIP "isn't real"</li>
+    <li>Successfully resolved a Service by name from inside a pod (not from a node shell)</li>
+    <li>Opened the nginx welcome page in an actual browser via port-forward <em>and</em> NodePort</li>
+    <li>Watched a random YouTube Kubernetes intro video or two, as suggested in class, to reinforce this from a second angle</li>
+  </ul>
+</section>
+
+<section id="glossary">
+  <div class="kicker">Reference</div>
+  <h2><span class="num">13</span>Glossary (lab-specific terms)</h2>
+  <dl class="glossary">
+    <dt>Imperative command</dt><dd>A one-shot <code>kubectl</code> command (<code>run</code>, <code>create deployment</code> without <code>-f</code>) that creates a resource directly, with no YAML file and no easy way to reproduce it later. Fine for quick tests, avoided in real workflows.</dd>
+    <dt>Declarative manifest</dt><dd>A YAML file applied with <code>kubectl apply -f</code> — the standard, repeatable, version-controllable way to manage resources.</dd>
+    <dt>Selector / label mismatch</dt><dd>The single most common Service bug: the Service's <code>spec.selector</code> doesn't exactly match the pod template's <code>metadata.labels</code>, so the Service has zero endpoints and silently routes nowhere.</dd>
+    <dt>crictl</dt><dd>The CLI for talking directly to a CRI-compatible container runtime (containerd, CRI-O) — the "docker ps" equivalent to run from inside a node, since node-level containerd is invisible to your host's Docker.</dd>
+    <dt>resolv.conf (pod-scoped)</dt><dd>Kubelet writes a fresh one into every pod's network namespace at creation time, pointing at CoreDNS. It does not exist, and is not inherited, in the node's root network namespace.</dd>
+    <dt>NodePort</dt><dd>A Service type that opens the same port on every node in the cluster, forwarding to the Service. Combined with kind's <code>extraPortMappings</code>, this is how you expose something to your host machine without leaving a <code>kubectl port-forward</code> process running.</dd>
+    <dt>kubectl port-forward</dt><dd>Opens an authenticated tunnel through the API server directly to a pod or Service — works regardless of any Docker-level port mapping, ideal for quick local checks.</dd>
+  </dl>
+</section>
+
+</div>
+
+<footer>Hands-on companion to DevOps Bootcamp Kubernetes Class 1 · reconstructs the live exercise, fixes the DNS &amp; browser-access steps, and fills gaps in resource limits, probes, and metrics-server · researched and compiled Aug 2026</footer>
+
+<a href="#" class="backtotop" title="Back to top">↑</a>
+
+</body>
+</html>

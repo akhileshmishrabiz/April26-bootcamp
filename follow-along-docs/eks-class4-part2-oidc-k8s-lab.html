@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EKS via Terraform, Properly: Class 4 — Part 2 (OIDC, ECR Pipeline &amp; K8s Deploy)</title>
+<style>
+  :root{
+    --ink:#1b2027; --sub:#4b5563; --bg:#fbfaf7; --panel:#ffffff; --line:#e4e1d8;
+    --accent:#2e6f6a; --accent2:#b8562f; --accent3:#3a5ba0;
+    --mono-bg:#12161c; --mono-ink:#d7e0e8; --mono-accent:#7fd0c4; --code-inline-bg:#eef0eb;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:"Iowan Old Style","Palatino Linotype",Georgia,"Noto Serif",serif; line-height:1.65; font-size:17px;}
+  .wrap{max-width:960px; margin:0 auto; padding:0 32px 120px;}
+  header.hero{padding:70px 32px 50px; border-bottom:1px solid var(--line); background: linear-gradient(180deg, rgba(46,111,106,0.06), rgba(46,111,106,0) 60%);}
+  header.hero .eyebrow{font-family:"JetBrains Mono","SF Mono",Consolas,monospace; letter-spacing:.14em; text-transform:uppercase; font-size:12.5px; color:var(--accent); margin-bottom:14px; display:flex; gap:10px; align-items:center;}
+  header.hero .eyebrow::before{content:"//"; color:var(--accent2);}
+  h1.title{font-size:clamp(30px,4.2vw,46px); line-height:1.12; margin:0 0 14px; max-width:820px; letter-spacing:-0.01em;}
+  .subtitle{color:var(--sub); font-size:18px; max-width:700px; margin:0 0 26px;}
+  .meta-row{display:flex; gap:22px; flex-wrap:wrap; font-family:"JetBrains Mono",monospace; font-size:12.5px; color:var(--sub);}
+  .meta-row span b{color:var(--ink);}
+  nav.toc{margin:36px auto 0; max-width:960px; padding:22px 32px 26px; border:1px solid var(--line); border-radius:10px; background:var(--panel);}
+  nav.toc h2{font-family:"JetBrains Mono",monospace; font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 14px;}
+  nav.toc ol{columns:2; column-gap:36px; margin:0; padding-left:20px;}
+  nav.toc li{break-inside:avoid; margin-bottom:8px; font-size:15px;}
+  nav.toc a{color:var(--ink); text-decoration:none; border-bottom:1px dotted var(--line);}
+  nav.toc a:hover{color:var(--accent); border-color:var(--accent);}
+  @media (max-width:640px){nav.toc ol{columns:1;}}
+  section{padding-top:56px;}
+  section > .kicker{font-family:"JetBrains Mono",monospace; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent2); margin-bottom:8px;}
+  h2{font-size:30px; margin:0 0 6px; letter-spacing:-0.01em; scroll-margin-top:20px;}
+  h2 .num{color:var(--accent); font-family:"JetBrains Mono",monospace; font-size:19px; margin-right:10px;}
+  h3{font-size:21px; margin:34px 0 10px; scroll-margin-top:20px; color:#20262c;}
+  h4{font-size:16.5px; margin:22px 0 8px; color:#20262c; font-family:"JetBrains Mono",monospace; letter-spacing:.02em;}
+  p{margin:0 0 15px;}
+  ul,ol{margin:0 0 16px; padding-left:22px;}
+  li{margin-bottom:6px;}
+  strong{color:#10161c;}
+  .lede{font-size:18.5px; color:#2b323a;}
+  code, .code-inline{font-family:"JetBrains Mono","SF Mono",Consolas,monospace; font-size:0.86em; background:var(--code-inline-bg); padding:1px 6px; border-radius:4px; color:#3a2f1f;}
+  pre{background:var(--mono-bg); color:var(--mono-ink); padding:18px 20px; border-radius:10px; overflow-x:auto; font-family:"JetBrains Mono","SF Mono",Consolas,monospace; font-size:13.5px; line-height:1.55; margin:16px 0 22px;}
+  pre code{background:none; padding:0; color:inherit; font-size:1em;}
+  pre .c{color:#7f8b98;} pre .k{color:var(--mono-accent);} pre .s{color:#e2b872;} pre .out{color:#9aa3ad;} pre .bad{color:#e58b8b;}
+  .callout{border-left:3px solid var(--accent); background:#eef3f2; padding:14px 18px; border-radius:0 8px 8px 0; margin:18px 0; font-size:15.5px;}
+  .callout.warn{border-left-color:var(--accent2); background:#f7ece5;}
+  .callout.myth{border-left-color:#8a3f8a; background:#f3ecf3;}
+  .callout.fix{border-left-color:#3a5ba0; background:#e9eef7;}
+  .callout.bug{border-left-color:#c0392b; background:#fbe9e7;}
+  .callout b{display:block; font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px;}
+  .callout.warn b{color:var(--accent2);} .callout.myth b{color:#8a3f8a;} .callout.fix b{color:#3a5ba0;} .callout.bug b{color:#c0392b;}
+  .callout:not(.warn):not(.myth):not(.fix):not(.bug) b{color:var(--accent);}
+  table{width:100%; border-collapse:collapse; margin:18px 0 26px; font-size:15px;}
+  th{text-align:left; font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--sub); border-bottom:2px solid var(--ink); padding:8px 12px;}
+  td{border-bottom:1px solid var(--line); padding:10px 12px; vertical-align:top;}
+  tr:hover td{background:#f5f3ee;}
+  td code{white-space:nowrap;}
+  hr.div{border:none; border-top:1px solid var(--line); margin:56px 0;}
+  .backtotop{position:fixed; right:24px; bottom:24px; background:var(--ink); color:#fff; width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; text-decoration:none; font-size:18px; opacity:.85; box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  .backtotop:hover{opacity:1;}
+  .step-list{counter-reset:step; list-style:none; padding-left:0;}
+  .step-list li{counter-increment:step; padding-left:38px; position:relative; margin-bottom:16px;}
+  .step-list li::before{content:counter(step); position:absolute; left:0; top:0; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; font-family:"JetBrains Mono",monospace; font-size:13px; display:flex; align-items:center; justify-content:center;}
+  .exercise{border:1.5px solid var(--accent); border-radius:12px; padding:22px 26px; margin:28px 0; background:#fcfdfc;}
+  .exercise .ex-label{font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:#fff; background:var(--accent); display:inline-block; padding:4px 10px; border-radius:5px; margin-bottom:10px;}
+  .exercise h3{margin-top:0;}
+  .goal{font-size:14.5px; color:var(--sub); font-style:italic; margin-top:-4px; margin-bottom:16px;}
+  .yourturn{border:1.5px dashed var(--accent2); border-radius:12px; padding:20px 24px; margin:22px 0; background:#fffaf6;}
+  .yourturn .yt-label{font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:#fff; background:var(--accent2); display:inline-block; padding:4px 10px; border-radius:5px; margin-bottom:10px;}
+  .checklist{list-style:none; padding-left:0;}
+  .checklist li{padding-left:30px; position:relative; margin-bottom:10px;}
+  .checklist li::before{content:"☐"; position:absolute; left:0; top:0; color:var(--accent); font-size:17px;}
+  .glossary dt{font-family:"JetBrains Mono",monospace; font-weight:700; color:var(--ink); margin-top:14px;}
+  .glossary dd{margin:2px 0 0; color:var(--sub);}
+  footer{padding:60px 32px 40px; text-align:center; color:var(--sub); font-size:13px; font-family:"JetBrains Mono",monospace;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap" style="padding:0;">
+    <div class="eyebrow">devops bootcamp — hands-on lab · follow-along series</div>
+    <h1 class="title">EKS via Terraform, Properly: Class 4 — Part 2 (OIDC, ECR Pipeline &amp; K8s Deploy)</h1>
+    <p class="subtitle">Part 1 built the cluster. Part 2 gets an app onto it: short-lived GitHub↔AWS trust via OIDC, a parallel image-build pipeline, and the 3-tier app's Kubernetes resources defined in Terraform instead of raw YAML — with every live bug the class actually hit kept in as a teaching moment, not smoothed over.</p>
+    <div class="meta-row">
+      <span>Companion to: <b>DevOps Bootcamp — EKS Module, Class 4 Part 2 (Aug 16, 2026)</b></span>
+      <span>Instructor: <b>Akhilesh Mishra</b></span>
+      <span>Builds on: <b>eks-core-infra/</b> from Part 1 (cluster must be applied and reachable)</span>
+      <span>Pairs with: <b>aws-github-oidc/</b> and <b>3-tier-app/</b> in your Archive.zip</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#howto">0 · How we're going to work through this</a></li>
+    <li><a href="#ex1">Exercise 1 — Why short-lived OIDC beats static AWS keys</a></li>
+    <li><a href="#ex2">Exercise 2 — The three pieces of trust: provider, role, conditions</a></li>
+    <li><a href="#ex3">Exercise 3 — Templating the trust policy for N repos, dynamically</a></li>
+    <li><a href="#ex4">Exercise 4 — Wire the role into a GitHub Actions workflow</a></li>
+    <li><a href="#ex5">Exercise 5 — Matrix builds: parallel, not sequential</a></li>
+    <li><a href="#ex6">Exercise 6 — The registry-path bug (a real live-class postmortem)</a></li>
+    <li><a href="#ex7">Exercise 7 — Namespace, Secrets, and ConfigMaps in Terraform</a></li>
+    <li><a href="#ex8">Exercise 8 — Resource requests &amp; limits (the double-ratio pattern)</a></li>
+    <li><a href="#ex9">Exercise 9 — Readiness, liveness, and startup probes</a></li>
+    <li><a href="#ex10">Exercise 10 — Cluster-internal DNS: how frontend finds backend</a></li>
+    <li><a href="#ex11">Exercise 11 — Namespace scope vs. cluster scope, for real</a></li>
+    <li><a href="#ex12">Exercise 12 — Authenticating Terraform's kubernetes provider (and the gap left open)</a></li>
+    <li><a href="#ex13">Exercise 13 — Debugging with a throwaway pod: nslookup, dig, psql</a></li>
+    <li><a href="#clinic">Code Review Clinic — every bug the class hit live, and why</a></li>
+    <li><a href="#tfvshelm">Terraform vs. Helm — why the class chose Terraform for K8s config</a></li>
+    <li><a href="#nextup">What's next (Part 3 preview)</a></li>
+    <li><a href="#glossary">Glossary</a></li>
+  </ol>
+</nav>
+
+<section id="howto">
+  <div class="kicker">Before you begin</div>
+  <h2><span class="num">00</span>How we're going to work through this</h2>
+  <p class="lede">Same format as Part 1: concept, then skeleton, then a <span class="code-inline">Your turn</span> box telling you exactly what to write in your own repos — <code>aws-github-oidc/</code> and <code>3-tier-app/infra/</code>. Your <code>Archive.zip</code> already has working versions of both; treat those as the answer key to self-check against <strong>after</strong> you've written your own, same as Part 1's Code Review Clinic.</p>
+  <div class="callout">
+    <b>What's genuinely new here vs. Part 1</b>
+    Part 1 was all AWS-native Terraform (VPC, EKS). Part 2 introduces two new trust boundaries — GitHub talking to AWS, and Terraform talking to Kubernetes itself via the <code>kubernetes</code> provider — plus your first real exposure to the <code>kubernetes_*</code> Terraform resources as an alternative to raw YAML manifests.
+  </div>
+</section>
+
+<section id="ex1">
+  <div class="kicker">Exercise 1</div>
+  <h2><span class="num">01</span>Why short-lived OIDC beats static AWS keys</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: be able to explain, in an interview, why nobody should paste an AWS access key/secret into a GitHub Actions secret anymore.</p>
+    <p>Any time compute or a third party needs to call AWS, the answer is a role, never a long-lived credential. Inside AWS, this is trivial — attach an IAM role to an EC2 instance or EKS node (exactly what you relied on in Part 1 for ECR pulls). GitHub is <strong>not</strong> inside AWS — it's a third party — so it can't just "have" an IAM role. The bridge is <strong>OIDC (OpenID Connect)</strong>: GitHub proves its identity via a signed token, AWS's <strong>STS (Security Token Service)</strong> verifies that token and hands back a short-lived, scoped credential, and the credential expires automatically when the job ends. No secret ever sits in a GitHub repo waiting to be leaked.</p>
+    <p>The same exact problem — and the same fix — applies one layer down: your Kubernetes pods (frontend, backend) also need to talk to AWS sometimes, and Kubernetes is conceptually a third party to AWS too, even though it's running <em>inside</em> EKS. (That's IRSA/Pod Identity — mentioned in class as a "later" topic, not built yet in this session.)</p>
+  </div>
+  <div class="callout myth">
+    <b>Don't mix these up</b>
+    An IAM <strong>role</strong> and a Kubernetes <strong>service account</strong> are two unrelated concepts that happen to rhyme. A role is AWS-side identity. A service account is Kubernetes-side identity. IRSA/Pod Identity is the mechanism that links them — but that's a future class, not this one.
+  </div>
+</section>
+
+<section id="ex2">
+  <div class="kicker">Exercise 2</div>
+  <h2><span class="num">02</span>The three pieces of trust: provider, role, conditions</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: know the exact three AWS objects OIDC federation needs, and what each one is for.</p>
+    <ol class="step-list">
+      <li><strong>An IAM OIDC identity provider</strong> — registers GitHub's own OIDC endpoint (<code>token.actions.githubusercontent.com</code>) with AWS. Without this, AWS has no idea what "GitHub" even is; you're explicitly telling IAM to trust tokens signed by that issuer.</li>
+      <li><strong>An IAM role</strong> whose trust policy's <code>Principal</code> is <code>Federated</code> (pointing at the provider from step 1), and whose <code>Action</code> is <code>sts:AssumeRoleWithWebIdentity</code> — not the plain <code>sts:AssumeRole</code> you'd use for an EC2-to-role trust.</li>
+      <li><strong>Conditions on that trust policy</strong> — this is the part people skip and regret. Without conditions, <em>any</em> GitHub repository anywhere could assume your role. Conditions restrict by <code>sub</code> (subject — encodes org/repo/branch/tag) and <code>aud</code> (audience — always <code>sts.amazonaws.com</code> for this use case).</li>
+    </ol>
+    <p>The <code>sub</code> claim's format is worth memorizing since you'll hand-build these patterns:</p>
+    <pre><code><span class="c"># pin to one branch:</span>
+repo:OWNER/REPO:ref:refs/heads/main
+
+<span class="c"># allow any ref (any branch, tag, environment — wide open):</span>
+repo:OWNER/REPO:*
+
+<span class="c"># pin to a tag pattern, e.g. v1.x.x releases only:</span>
+repo:OWNER/REPO:ref:refs/tags/v*</code></pre>
+  </div>
+  <div class="callout warn">
+    <b>The mafia analogy, translated to IAM terms</b>
+    Your instructor's framing, minus the color: <strong>federation</strong> establishes that GitHub-as-an-entity is allowed to talk to AWS at all. <strong>Conditions</strong> establish that <em>this specific repository, on this specific branch</em> is the one allowed to actually use the role. Skipping conditions is the equivalent of authenticating the whole organization instead of one named person — technically works, catastrophically over-permissioned.
+  </div>
+  <div class="yourturn">
+    <span class="yt-label">Your turn</span>
+    <p>In a new <code>aws-github-oidc/</code> repo (separate Terraform state — same "different lifecycle, different blast radius" reasoning from Part 1's Exercise 6), write <code>main.tf</code> with an <code>aws_iam_openid_connect_provider</code> resource pointed at GitHub's endpoint, and an <code>aws_iam_role</code> whose trust policy uses <code>Federated</code> + <code>sts:AssumeRoleWithWebIdentity</code> + a <code>StringLike</code> condition on <code>sub</code> and <code>aud</code>. Hardcode one repo/branch for now — you'll make it dynamic in Exercise 3.</p>
+  </div>
+</section>
+
+<section id="ex3">
+  <div class="kicker">Exercise 3</div>
+  <h2><span class="num">03</span>Templating the trust policy for N repos, dynamically</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: make the trust policy extend to new repos/branches without anyone rewriting the resource block.</p>
+    <p>The pattern: define a plain list of maps (repo, owner, branch), then use a Terraform <code>for</code> expression to transform that list into the exact <code>sub</code> string format each entry needs, wrapped in <code>distinct()</code> to de-duplicate. This is the same "map transformation" technique referenced from earlier ECS material — worth being fluent in it, since it's a very common senior-level Terraform pattern (config-as-data, not config-as-code-you-edit-every-time).</p>
+    <pre><code>locals {
+  github_repo = [
+    { user = "yourhandle", repo = "your-repo-1", branch = "main" },
+    { user = "yourhandle", repo = "your-repo-2", branch = "*" },
+  ]
+
+  github_oidc_subjects = distinct([
+    for r in local.github_repo :
+    r.branch == "*" ?
+    "repo:${r.user}/${r.repo}:*" :
+    "repo:${r.user}/${r.repo}:ref:refs/heads/${r.branch}"
+  ])
+}</code></pre>
+    <p>That <code>github_oidc_subjects</code> list is what plugs directly into the trust policy's <code>StringLike</code> condition from Exercise 2.</p>
+  </div>
+  <div class="callout fix">
+    <b>Design principle worth internalizing</b>
+    Your instructor drew a real distinction here: the <em>template</em> (the <code>for</code> expression, the resource block) should stay boring and simple, since other engineers — who may not know advanced Terraform — need to extend it just by adding a line to the <code>github_repo</code> list. Cleverness belongs in the template's construction, not in what a day-to-day contributor has to touch.
+  </div>
+  <div class="yourturn">
+    <span class="yt-label">Your turn</span>
+    <p>Refactor Exercise 2's hardcoded repo/branch into this <code>locals</code> + <code>for</code> pattern. Add a second fake repo entry to prove the loop actually scales without touching the resource block. Output the role ARN (<code>output "aws_iam_role_arn"</code>) — your GitHub Actions workflow will need it next.</p>
+  </div>
+</section>
+
+<section id="ex4">
+  <div class="kicker">Exercise 4</div>
+  <h2><span class="num">04</span>Wire the role into a GitHub Actions workflow</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: understand the two things a workflow needs before OIDC will even attempt to authenticate.</p>
+    <ol class="step-list">
+      <li><strong>Job-level permission</strong> — without <code>permissions: id-token: write</code> on the job, GitHub simply won't mint the OIDC token in the first place. This trips up almost everyone the first time; the symptom is a generic auth failure with no obvious cause.</li>
+      <li><strong>The role ARN itself</strong>, passed to <code>aws-actions/configure-aws-credentials</code> (or equivalent) as <code>role-to-assume</code>. Note there's no access key, no secret key anywhere in this step — just the ARN and a region.</li>
+    </ol>
+    <pre><code>permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: <span class="s">arn:aws:iam::&lt;account-id&gt;:role/aws-github-oidc-aug26</span>
+          aws-region: <span class="s">us-east-1</span></code></pre>
+  </div>
+  <div class="yourturn">
+    <span class="yt-label">Your turn</span>
+    <p>Add the <code>permissions</code> block and the credentials step to a workflow file in your app repo. Don't build the image build/push steps yet — just confirm this step alone succeeds (check the job log for "assumed role with web identity") before adding anything else.</p>
+  </div>
+</section>
+
+<section id="ex5">
+  <div class="kicker">Exercise 5</div>
+  <h2><span class="num">05</span>Matrix builds: parallel, not sequential</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: build frontend and backend images at the same time, from one job definition, not two copy-pasted jobs.</p>
+    <p>GitHub Actions' <code>strategy.matrix</code> takes a list and spins up one parallel job instance per entry — same job definition, different input each time. For a 2-service app this feels like overkill; the real payoff shows up at 20–30 microservices, where sequential builds would make every pipeline run take unacceptably long.</p>
+    <pre><code>strategy:
+  matrix:
+    services:
+      - name: frontend
+        path: 3-tier-app/src/frontend
+        ecr_repo: augk8s26-frontend
+      - name: backend
+        path: 3-tier-app/src/backend
+        ecr_repo: augk8s26-backend
+
+steps:
+  - name: Build and push
+    run: |
+      docker buildx build \
+        --platform linux/amd64 \
+        --cache-from type=registry,ref=<span class="s">${{ matrix.services.ecr_repo }}</span>:buildcache \
+        --cache-to type=registry,ref=<span class="s">${{ matrix.services.ecr_repo }}</span>:buildcache \
+        -t <span class="s">${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ matrix.services.ecr_repo }}:${{ github.sha }}</span> \
+        --push \
+        <span class="s">${{ matrix.services.path }}</span></code></pre>
+    <p>Two more things worth knowing: <code>docker buildx</code> (not plain <code>docker build</code>) is what enables registry-based build caching on ephemeral GitHub-hosted runners — a fresh runner has no local Docker layer cache, so without <code>--cache-from</code>/<code>--cache-to type=registry</code>, every build starts from zero. And the commit SHA (<code>github.sha</code>) as the image tag isn't decoration — it's the traceability link between "this exact image in ECR" and "this exact code state," used later for manual/automated deploys.</p>
+  </div>
+  <div class="yourturn">
+    <span class="yt-label">Your turn</span>
+    <p>Add the matrix strategy and the <code>docker buildx build --push</code> step to your workflow. Run it and confirm the Actions UI shows two parallel jobs (<code>build (frontend, ...)</code> and <code>build (backend, ...)</code>), not one sequential job doing both.</p>
+  </div>
+</section>
+
+<section id="ex6">
+  <div class="kicker">Exercise 6</div>
+  <h2><span class="num">06</span>The registry-path bug — a real live-class postmortem</h2>
+  <div class="exercise">
+    <span class="ex-label">What actually happened</span>
+    <p class="goal">Goal: recognize this exact failure signature yourself, because it's genuinely easy to reproduce by accident.</p>
+    <p>The class's pipeline failed at the push step with:</p>
+    <pre><code><span class="bad">ERROR: failed to push augk8s26-backend:sha... failed to authorize: failed to fetch
+oauth token: unexpected status from GET request to
+https://auth.docker.io/token?scope=repository%3Alibrary%2Faugk8s26-backend...
+401 Unauthorized: access token has insufficient scopes</span></code></pre>
+    <p>The debugging trail is worth following, because it's a realistic interview-style "walk me through how you'd debug this":</p>
+    <ol class="step-list">
+      <li>First hypothesis (Jasleen): the IAM policy ARN on the role attachment was missing the AWS account ID. Plausible-sounding, but <strong>wrong</strong> — <code>arn:aws:iam::aws:policy/AdministratorAccess</code> is an AWS-managed policy, and AWS-managed policy ARNs use the literal string <code>aws</code> in the account-ID segment, not a real account number. That ARN was correct all along.</li>
+      <li>Second clue: OIDC login itself had already succeeded (visible earlier in the job log) — so the authentication layer was fine. The failure was specifically at the <em>push</em> step, later in the pipeline.</li>
+      <li>Root cause, found by re-reading the actual error: <code>auth.docker.io</code> — <strong>Docker Hub's</strong> auth endpoint — was being contacted, not ECR's. The image tag was missing the full ECR registry hostname, so Docker's client silently assumed <code>docker.io/library/&lt;name&gt;</code> instead of failing loudly with "no registry specified."</li>
+    </ol>
+    <table>
+      <tr><th>Tag written</th><th>What Docker assumes</th></tr>
+      <tr><td><code>augk8s26-backend:${{ github.sha }}</code></td><td>Docker Hub — <code>docker.io/library/augk8s26-backend</code> (wrong)</td></tr>
+      <tr><td><code>&lt;account&gt;.dkr.ecr.&lt;region&gt;.amazonaws.com/augk8s26-backend:${{ github.sha }}</code></td><td>Your private ECR repo (correct)</td></tr>
+    </table>
+  </div>
+  <div class="callout bug">
+    <b>The actual fix</b>
+    Always use the fully-qualified ECR URI in both the image tag <em>and</em> the buildx cache references — a Docker image tag with no registry hostname is not an error, it's a silent default to Docker Hub. This is precisely why Exercise 5's skeleton above already has the full <code>&lt;account&gt;.dkr.ecr.&lt;region&gt;.amazonaws.com/</code> prefix baked in — write yours the same way from the start rather than hitting this live.
+  </div>
+  <div class="callout fix">
+    <b>Interview-grade takeaway</b>
+    "ECR login succeeded but the push failed with a Docker Hub auth error" is a specific, memorable failure signature — a wrong/missing registry hostname in the tag, not an OIDC or IAM permissions problem, even though the symptom (401 Unauthorized) looks identical to a permissions issue at first glance. Knowing to check the hostname in the error URL, not just the status code, is the actual debugging skill here.
+  </div>
+</section>
+
+<section id="ex7">
+  <div class="kicker">Exercise 7</div>
+  <h2><span class="num">07</span>Namespace, Secrets, and ConfigMaps in Terraform</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: define Kubernetes objects as Terraform resources instead of YAML, specifically for anything holding dynamic/sensitive values.</p>
+    <p>The <code>kubernetes</code> Terraform provider gives you <code>kubernetes_namespace</code>, <code>kubernetes_secret</code>, <code>kubernetes_config_map</code>, etc. — same objects you'd write in YAML, just expressed as HCL, which means they can reference <em>other</em> Terraform resources directly (your RDS instance's address, a freshly generated <code>random_password</code>) with zero copy-pasting of values between systems.</p>
+    <pre><code>resource "kubernetes_namespace" "devopsdozo" {
+  metadata {
+    name   = "devopsdozo"
+    labels = { name = "devopsdozo" }
+  }
+}
+
+resource "kubernetes_secret" "backend_secret" {
+  metadata {
+    name      = "backend-secret"
+    namespace = kubernetes_namespace.devopsdozo.metadata[0].name
+  }
+  data = {
+    DB_LINK     = aws_secretsmanager_secret_version.dbs_secret_val.secret_string
+    SECRET_KEY  = random_password.backend_secret_key.result
+    DB_USERNAME = aws_db_instance.postgres.username
+    DB_PASSWORD = random_password.db_password.result
+  }
+  type = "Opaque"
+}
+
+resource "kubernetes_config_map" "backend_config" {
+  metadata {
+    name      = "backend-config"
+    namespace = kubernetes_namespace.devopsdozo.metadata[0].name
+  }
+  data = {
+    DB_HOST         = aws_db_instance.postgres.address
+    DB_PORT         = aws_db_instance.postgres.port
+    DB_NAME         = aws_db_instance.postgres.db_name
+    ALLOWED_ORIGINS = "http://localhost:3000,http://localhost:80"
+  }
+}</code></pre>
+    <p>The <strong>rule of thumb the class used to split secret vs. config-map</strong>: sensitive values (credentials, tokens, anything you wouldn't want in `kubectl describe` output in plain text) go in the Secret; everything else — hostnames, ports, feature flags — goes in the ConfigMap. Note Kubernetes Secrets are base64-encoded, not encrypted, at this layer — "sensitive" here means "don't put in a ConfigMap," not "cryptographically protected."</p>
+  </div>
+  <div class="callout">
+    <b>Why the deployments themselves stay in YAML</b>
+    Notice the pattern: <strong>Namespace, Secret, ConfigMap, Service</strong> went into Terraform (static-ish, changes rarely, benefits from referencing other TF resources) — but the <strong>Deployment</strong> (which changes on every image push) stayed in plain YAML, applied separately with <code>kubectl apply</code>. This mirrors Part 1's "separate what changes on a different lifecycle" principle from state-management, just applied one layer down inside a single app.
+  </div>
+  <div class="yourturn">
+    <span class="yt-label">Your turn</span>
+    <p>In <code>3-tier-app/infra/k8s.tf</code>, write the namespace, backend secret, backend config map, frontend config map, and both `kubernetes_service` resources (ClusterIP, ports 8000 and 3000 per the app's own <code>docker-compose.yml</code>). Reference your RDS outputs and a `random_password` resource — don't hardcode any credential.</p>
+  </div>
+</section>
+
+<section id="ex8">
+  <div class="kicker">Exercise 8</div>
+  <h2><span class="num">08</span>Resource requests &amp; limits — the double-ratio pattern</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: know what number to reach for by default, and be able to justify it, not just recite it.</p>
+    <p><strong>Requests</strong> = the minimum a pod needs to be scheduled at all. The scheduler will not place a pod on a node that can't satisfy its request — set it too low and the pod may crash-loop on startup with an OOM (out-of-memory) event before it even finishes booting; set it unrealistically high and pods sit <code>Pending</code> forever because no node has that much free capacity.</p>
+    <p><strong>Limits</strong> = the ceiling a pod is allowed to consume before Kubernetes kills and restarts it. Skip limits entirely and a single pod with a memory leak can consume an entire node's memory, starving every other pod on that node — a "noisy neighbor" failure mode that's entirely avoidable.</p>
+    <table>
+      <tr><th>Workload type</th><th>Starting point (class's stated numbers)</th></tr>
+      <tr><td>General-purpose lab/demo baseline</td><td>request: 128Mi / 0.25 CPU</td></tr>
+      <tr><td>General-purpose <em>production</em> baseline (never go below this in prod)</td><td>request: 256Mi / 0.5 CPU</td></tr>
+      <tr><td>AI/ML workloads</td><td>request: ~2Gi RAM, 1–2 CPU (often GPU too)</td></tr>
+      <tr><td>Databases</td><td>fixed allocation sized to real projected capacity — don't expect these to autoscale the way stateless app pods do</td></tr>
+    </table>
+    <p><strong>The double-ratio pattern:</strong> set <code>limits</code> to roughly double whatever you set for <code>requests</code>. This isn't arbitrary — it gives a pod headroom to absorb real traffic spikes and helps the Horizontal Pod Autoscaler (HPA) actually function, since HPA scales based on observed CPU/memory usage <em>relative to requests</em>; with no limit set, usage can't cleanly cross a threshold that triggers scaling, because there's nothing bounding it.</p>
+    <pre><code>resources:
+  requests:
+    memory: "256Mi"
+    cpu: "250m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"</code></pre>
+  </div>
+  <div class="callout warn">
+    <b>Two distinct OOM causes — don't conflate them in an interview answer</b>
+    (1) <strong>Startup OOM</strong> — request set too low, the app can't even finish initializing within its allotted memory, dies immediately, repeats (`CrashLoopBackOff`). (2) <strong>Runtime OOM</strong> — the app started fine but a memory leak (or genuine traffic growth) causes usage to climb past the <em>limit</em> over time, at which point Kubernetes kills the process and a fresh pod replaces it. The limit is what turns an unbounded leak into a bounded, self-healing restart instead of an entire node going down.
+  </div>
+  <div class="yourturn">
+    <span class="yt-label">Your turn</span>
+    <p>Add <code>resources.requests</code> and <code>resources.limits</code> to both the backend and frontend Deployment YAML, using the production baseline (256Mi/0.5 CPU request) and the double-ratio rule for limits. Be ready to explain, out loud, why you didn't use the 128Mi lab-default number.</p>
+  </div>
+</section>
+
+<section id="ex9">
+  <div class="kicker">Exercise 9</div>
+  <h2><span class="num">09</span>Readiness, liveness, and startup probes</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: cleanly distinguish all three probe types — this is one of the most commonly confused topics in Kubernetes interviews, per your instructor's own experience.</p>
+    <table>
+      <tr><th>Probe</th><th>Question it answers</th><th>What happens on failure</th></tr>
+      <tr><td><strong>Readiness</strong></td><td>"Is this pod ready to receive traffic <em>right now</em>?"</td><td>Pod is pulled out of the Service's routing (removed from the endpoint list) — it stays <code>Running</code> but gets zero traffic until it passes.</td></tr>
+      <tr><td><strong>Liveness</strong></td><td>"Is this already-running, already-serving pod still healthy?"</td><td>Kubernetes kills the pod and a replacement is scheduled — this is the "circuit breaker" your instructor described.</td></tr>
+      <tr><td><strong>Startup</strong></td><td>"Has this slow-booting app finished initializing yet?"</td><td>Delays when readiness/liveness even begin checking — prevents a legitimately-slow-starting app (stateful sets can take up to ~20 minutes) from being killed by liveness before it ever had a chance to start.</td></tr>
+    </table>
+    <p>The concrete failure readiness probes prevent: without one, a brand-new pod gets an IP and is immediately added to the Service's routing table the instant it's <code>Running</code> — even if the app inside hasn't finished connecting to its database yet. Real requests get routed there and fail. A readiness probe is the gate that withholds traffic until an HTTP check (or command) actually succeeds.</p>
+    <pre><code>readinessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 20
+  periodSeconds: 15
+  timeoutSeconds: 3
+  failureThreshold: 3</code></pre>
+  </div>
+  <div class="callout bug">
+    <b>The exact bug the class hit live — worth memorizing the symptom</b>
+    The backend pods entered a restart loop (readiness failing repeatedly) because the probe's <code>path</code> pointed at <code>/health</code> while the actual application endpoint was <code>/healthy</code> — a one-word mismatch. The failure mode looked alarming (`Pending`, then restarts) but the fix was a single string in the YAML/config map. <strong>Lesson:</strong> before assuming a networking, IAM, or database problem, verify the probe path against the app's actual exposed route — this class of bug is extremely common and extremely cheap to fix once found.
+  </div>
+  <div class="yourturn">
+    <span class="yt-label">Your turn</span>
+    <p>Add a <code>readinessProbe</code> and <code>livenessProbe</code> to the backend Deployment, pointed at whatever health endpoint your app's source code actually exposes (check <code>src/backend</code> — don't assume). Confirm you understand: what would you add, and why, if this backend were instead a StatefulSet that took 15 minutes to boot?</p>
+  </div>
+</section>
+
+<section id="ex10">
+  <div class="kicker">Exercise 10</div>
+  <h2><span class="num">10</span>Cluster-internal DNS: how frontend finds backend</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: know the exact DNS naming convention CoreDNS generates automatically, and why it's needed at all.</p>
+    <p>Service names aren't globally unique across a cluster — two different namespaces can both have a service called <code>backend-service</code>, the same way two different companies can both have an employee named "Sam." CoreDNS (running as a DaemonSet on every node — you saw it back in Part 1's <code>kube-system</code> pods) solves this by auto-generating a fully-qualified, cluster-unique DNS name for every Service the instant it's created:</p>
+    <pre><code>&lt;service-name&gt;.&lt;namespace&gt;.svc.cluster.local
+
+<span class="c"># concretely, for this app:</span>
+backend-service.devopsdozo.svc.cluster.local
+frontend-service.devopsdozo.svc.cluster.local</code></pre>
+    <p>This is the value you put in the frontend's <code>BACKEND_URL</code> config-map entry — never a pod IP (those change on every restart) and never <code>localhost</code> (that only works inside a single pod's own network namespace, not across pods).</p>
+  </div>
+  <div class="yourturn">
+    <span class="yt-label">Your turn</span>
+    <p>Set the frontend's <code>BACKEND_URL</code> config-map value to the full DNS name for the backend service, including port (<code>backend-service.devopsdozo.svc.cluster.local:8000</code>). Then move to Exercise 13 to actually prove this resolves.</p>
+  </div>
+</section>
+
+<section id="ex11">
+  <div class="kicker">Exercise 11</div>
+  <h2><span class="num">11</span>Namespace scope vs. cluster scope, for real</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: be able to state, without hesitating, which common Kubernetes objects live inside a namespace and which don't.</p>
+    <table>
+      <tr><th>Namespace-scoped (bound to one namespace)</th><th>Cluster-scoped (no namespace)</th></tr>
+      <tr><td>Secrets, ConfigMaps, Deployments, Services, Pods, Ingress</td><td>Nodes, PersistentVolumes, StorageClasses, ClusterRoles</td></tr>
+    </table>
+    <p>Why the split: namespaces are a <strong>logical</strong> organizing layer, not a physical one. A Deployment referencing a Secret in a <em>different</em> namespace simply fails — namespaces enforce that kind of local grouping. But storage (which physical disk backs a volume) and networking (how packets actually flow between nodes, via the CNI) operate at the node/cluster level regardless of which namespace a pod happens to live in — which is exactly why cross-namespace communication needs the DNS mechanism from Exercise 10 rather than some namespace-aware shortcut.</p>
+  </div>
+</section>
+
+<section id="ex12">
+  <div class="kicker">Exercise 12</div>
+  <h2><span class="num">12</span>Authenticating Terraform's kubernetes provider — and the gap left open</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept, honestly framed</span>
+    <p class="goal">Goal: understand what the class actually did here, and why it's explicitly <strong>not</strong> the final answer.</p>
+    <p>Once you add <code>kubernetes_*</code> resources to Terraform, the provider block needs a way to authenticate to the cluster's API — the same "AWS access ≠ Kubernetes access" boundary from Part 1 applies here too, just at the Terraform-execution layer instead of your own <code>kubectl</code>.</p>
+    <pre><code>provider "kubernetes" {
+  config_path = "~/.kube/config"   <span class="c"># reads your local kubeconfig — laptop-only</span>
+}</code></pre>
+  </div>
+  <div class="callout warn">
+    <b>This is a deliberate shortcut, not the recommended pattern — the class said so live</b>
+    <code>config_path</code> pointing at a local kubeconfig file only works because it's <em>your laptop's</em> file, with your personal IAM identity's cached credentials. It will not work inside a GitHub Actions runner — there's no kubeconfig there, and no persistent identity to generate one from. Your instructor flagged this explicitly as "a bad way, I'll do the better way" and did not build the fix in this session — the real answer (likely <code>aws eks get-token</code> via a data source, or an EKS-specific exec-based auth block) is unresolved as of this class and is fair game to ask about, or look into yourself, before Part 3.
+  </div>
+  <div class="yourturn">
+    <span class="yt-label">Your turn</span>
+    <p>Add the <code>kubernetes</code> provider block using <code>config_path</code> for now — it's fine for local <code>terraform apply</code> runs while you're building this out. But don't wire your GitHub Actions workflow to run <code>terraform apply</code> against the <code>kubernetes_*</code> resources yet; that authentication gap is real and unresolved. Flag it as a known TODO in your repo's README.</p>
+  </div>
+</section>
+
+<section id="ex13">
+  <div class="kicker">Exercise 13</div>
+  <h2><span class="num">13</span>Debugging with a throwaway pod: nslookup, dig, psql</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: prove DNS resolution and database connectivity actually work, using disposable debug pods — a technique you'll reuse constantly in real cluster work.</p>
+    <pre><code><span class="c"># DNS resolution check — confirms CoreDNS is mapping the service name correctly</span>
+<span class="k">kubectl run</span> dns-test --rm -it \
+  --image=busybox:1.36 \
+  --restart=Never \
+  -- nslookup backend-service.devopsdozo.svc.cluster.local
+
+<span class="out">Server:    172.20.0.10
+Address:   172.20.0.10:53
+Name:      backend-service.devopsdozo.svc.cluster.local
+Address:   172.20.149.129</span>
+
+<span class="c"># database connectivity check — confirms nodes can actually reach RDS on port 5432</span>
+<span class="k">kubectl run</span> pg-test --rm -it \
+  --image=postgres:16 \
+  --restart=Never \
+  -- psql "postgresql://&lt;user&gt;:&lt;pass&gt;@&lt;rds-endpoint&gt;:5432/&lt;dbname&gt;" -c "SELECT 1;"</code></pre>
+    <p>Both commands follow the same shape: spin up a minimal, purpose-built image (<code>busybox</code> has <code>nslookup</code>/<code>dig</code> built in; the official <code>postgres</code> image ships <code>psql</code>), run one command, <code>--rm</code> deletes the pod immediately after. This isolates the test — if DNS resolves here but your app still can't reach the backend, the bug is in your app's own config, not the cluster's networking.</p>
+  </div>
+  <div class="callout fix">
+    <b>Why this matters more than it looks</b>
+    This is the "is it DNS?" instinct made concrete — instead of guessing whether a connectivity failure is your app's code, its config map, cluster networking, or the database's security group, each of these throwaway-pod tests isolates exactly one link in that chain. The class used this exact technique to rule out "database unreachable" as the cause of the backend's actual failure (which turned out to be the <code>/health</code> vs <code>/healthy</code> bug from Exercise 9) — a wasted hypothesis check, but a legitimately good habit: verify infrastructure-level connectivity before assuming application-level bugs, or vice versa.
+  </div>
+</section>
+
+<hr class="div">
+
+<section id="clinic">
+  <div class="kicker">Code Review Clinic</div>
+  <h2>Every bug the class hit live, and why</h2>
+  <p class="lede">Unlike Part 1's clinic (which compared your repo against static class code), these are bugs the instructor and students hit <strong>live, on camera, in this exact session</strong> — arguably more valuable, since you get the full debugging trail, not just the fixed version.</p>
+
+  <div class="callout bug">
+    <b>Bug 1 — Docker image tag missing the ECR registry hostname</b>
+    Covered in full in Exercise 6. Symptom: 401 from <code>auth.docker.io</code>, not ECR. Root cause: tag was <code>&lt;ecr-repo-name&gt;:&lt;sha&gt;</code> instead of <code>&lt;account&gt;.dkr.ecr.&lt;region&gt;.amazonaws.com/&lt;ecr-repo-name&gt;:&lt;sha&gt;</code>. Fix: always fully-qualify the registry in both the tag and the buildx cache refs.
+  </div>
+
+  <div class="callout bug">
+    <b>Bug 2 — Readiness probe path didn't match the app's real health endpoint</b>
+    Covered in full in Exercise 9. <code>/health</code> configured, <code>/healthy</code> actually exposed. Symptom: backend stuck restarting, no useful application logs (logs only appear if the app itself is configured to emit them — a pod restart loop from a failed probe doesn't automatically produce log output explaining why).
+  </div>
+
+  <div class="callout bug">
+    <b>Bug 3 — Kubernetes ConfigMap key with invalid characters</b>
+    Applying the frontend config map failed with a validation error: ConfigMap/Secret <strong>keys</strong> must be lowercase alphanumeric plus <code>-</code>, <code>_</code>, or <code>.</code> only — no uppercase, and the specific value that broke it here came from a key that didn't follow that pattern. Fix was reformatting the key name in the Terraform-defined config map. Worth internalizing as a rule, not just a one-off fix: keys in K8s object metadata/data maps follow this pattern everywhere, not just ConfigMaps.
+  </div>
+
+  <div class="callout bug">
+    <b>Bug 4 — Frontend deployment missing the backend URL environment variable entirely</b>
+    The frontend pods failed readiness not because of a wrong value, but because the environment variable pointing at the backend wasn't wired into the Deployment's <code>envFrom</code>/<code>env</code> section at all — it existed in the config map (Exercise 10) but the Deployment spec never referenced it. A reminder that defining a ConfigMap value and actually consuming it in a pod spec are two separate steps; Terraform/YAML won't catch a config map key you forgot to map into a container's env block.
+  </div>
+
+  <div class="callout fix">
+    <b>Meta-lesson across all four</b>
+    None of these were exotic failures — a missing hostname, a typo'd path, an invalid character, a forgotten env reference. Your instructor's own framing, almost verbatim: <em>"in the real world your AI will not be that helpful no matter how good it is — I had to manually look up and fix this myself."</em> The debugging skill (read the actual error, check the actual endpoint, verify the actual key) is the transferable interview-relevant skill here, more than any individual fix.
+  </div>
+</section>
+
+<hr class="div">
+
+<section id="tfvshelm">
+  <div class="kicker">Direct from the Q&amp;A</div>
+  <h2>Terraform vs. Helm — why the class chose Terraform for K8s config</h2>
+  <p>Deepak asked the question worth having a real answer for in an interview: <em>why Terraform instead of Helm charts for Kubernetes configuration?</em> The instructor's answer, condensed:</p>
+  <ul>
+    <li><strong>Static credentials never belong in a Helm chart</strong>, full stop — if you're managing databases, secrets, or anything dynamic via Terraform anyway, keeping Kubernetes config in the same tool avoids ever having to copy a live credential out of Terraform state into a chart's values file.</li>
+    <li>This is a genuine <strong>production pattern</strong>, not a bootcamp simplification — the instructor's own team runs a full-Terraform approach for infra, with plans to layer in HashiCorp Vault + External Secrets Operator for credential management as microservices scale up.</li>
+    <li>The dividing line that emerged through the session: <strong>dynamic infra state → Terraform</strong> (namespace, secrets, config maps, services — things that reference other Terraform-managed resources), <strong>fast-moving deploy state → plain YAML</strong> applied via <code>kubectl</code> (Deployments, since the image tag changes on every push and you don't want to run a full Terraform plan/apply cycle just to roll a new image).</li>
+    <li>Alternatives exist and are valid — Vault, External Secrets Operator — but "never put secrets directly in a Helm chart" was stated as a near-universal rule regardless of which tool you pick for the dynamic side.</li>
+  </ul>
+</section>
+
+<hr class="div">
+
+<section id="nextup">
+  <div class="kicker">Looking ahead</div>
+  <h2>What's next (Part 3 preview)</h2>
+  <p>The instructor closed the session by naming two concrete next steps — and per your own notes, a Part 3 session has already happened covering at least some of this, so treat this list as what to expect once those materials arrive:</p>
+  <ul>
+    <li><strong>Database migrations</strong> — the backend is running but has no data; migrations need to run before the app is meaningfully testable end-to-end.</li>
+    <li><strong>A real domain name</strong> for the app, which implies the next infra layer: <strong>Ingress</strong>, managed via Terraform per the instructor's stated plan — automating the ALB creation, domain mapping, and TLS certificate configuration together rather than as separate manual steps.</li>
+    <li><strong>The unresolved gap from Exercise 12</strong> — Terraform's <code>kubernetes</code> provider authenticating via a local kubeconfig won't survive a move to CI/CD; expect this to get a proper fix before Kubernetes-provider Terraform runs from a pipeline instead of a laptop.</li>
+  </ul>
+</section>
+
+<hr class="div">
+
+<section id="glossary">
+  <div class="kicker">Reference</div>
+  <h2>Glossary</h2>
+  <dl class="glossary">
+    <dt>OIDC (OpenID Connect)</dt><dd>An identity federation protocol that lets a third party (GitHub) prove its identity to AWS via a signed token, without a static credential.</dd>
+    <dt>STS (Security Token Service)</dt><dd>The AWS service that verifies OIDC tokens and issues short-lived, scoped credentials in response — the actual mechanism behind <code>AssumeRoleWithWebIdentity</code>.</dd>
+    <dt>Federated principal</dt><dd>An IAM trust-policy principal type for external identity providers, as opposed to an AWS-native principal like an EC2 service or another AWS account.</dd>
+    <dt>Matrix strategy</dt><dd>A GitHub Actions feature that runs one job definition once per entry in a list, in parallel, instead of requiring separate copy-pasted job blocks.</dd>
+    <dt>Buildx registry cache</dt><dd>Docker Buildx's mechanism for persisting build-layer cache in a remote registry, needed because ephemeral CI runners have no local disk cache between runs.</dd>
+    <dt>Readiness probe</dt><dd>A per-pod health check that gates whether a pod receives traffic from its Service — failing it removes the pod from routing without killing it.</dd>
+    <dt>Liveness probe</dt><dd>A per-pod health check that, on failure, causes Kubernetes to kill and replace the pod — a circuit breaker for already-running-but-unhealthy pods.</dd>
+    <dt>Startup probe</dt><dd>A delay mechanism for slow-booting apps that postpones readiness/liveness checking until initialization has had time to complete.</dd>
+    <dt>Requests (resources)</dt><dd>The minimum CPU/memory a pod needs to be scheduled onto a node at all.</dd>
+    <dt>Limits (resources)</dt><dd>The maximum CPU/memory a pod may consume before Kubernetes throttles (CPU) or kills (memory) it.</dd>
+    <dt>CoreDNS</dt><dd>The cluster-internal DNS service that auto-generates a <code>&lt;service&gt;.&lt;namespace&gt;.svc.cluster.local</code> endpoint for every Kubernetes Service.</dd>
+    <dt>Namespace-scoped vs. cluster-scoped</dt><dd>Whether a Kubernetes object type is bound to one namespace (Secrets, Deployments, Services) or exists cluster-wide (Nodes, PersistentVolumes, StorageClasses).</dd>
+  </dl>
+</section>
+
+</div>
+
+<a href="#" class="backtotop">↑</a>
+
+<footer>
+  Follow-along series · DevOps Bootcamp April 2026 · Class 4, Part 2 — generated from class notes, transcript, and your Archive.zip reference code
+</footer>
+
+</body>
+</html>

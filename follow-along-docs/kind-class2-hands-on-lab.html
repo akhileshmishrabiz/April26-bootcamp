@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>kind Hands-On Lab — Class 2 (Multi-Node, Secrets &amp; Rolling Updates)</title>
+<style>
+  :root{
+    --ink:#1b2027;
+    --sub:#4b5563;
+    --bg:#fbfaf7;
+    --panel:#ffffff;
+    --line:#e4e1d8;
+    --accent:#2e6f6a;
+    --accent2:#b8562f;
+    --accent3:#3a5ba0;
+    --mono-bg:#12161c;
+    --mono-ink:#d7e0e8;
+    --mono-accent:#7fd0c4;
+    --code-inline-bg:#eef0eb;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Georgia,"Noto Serif",serif;
+    line-height:1.65; font-size:17px;
+  }
+  .wrap{max-width:960px; margin:0 auto; padding:0 32px 120px;}
+  header.hero{
+    padding:70px 32px 50px; text-align:left; border-bottom:1px solid var(--line);
+    background: linear-gradient(180deg, rgba(46,111,106,0.06), rgba(46,111,106,0) 60%);
+  }
+  header.hero .eyebrow{
+    font-family:"JetBrains Mono","SF Mono",Consolas,monospace;
+    letter-spacing:.14em; text-transform:uppercase; font-size:12.5px;
+    color:var(--accent); margin-bottom:14px; display:flex; gap:10px; align-items:center;
+  }
+  header.hero .eyebrow::before{content:"//"; color:var(--accent2);}
+  h1.title{font-size:clamp(30px,4.2vw,46px); line-height:1.12; margin:0 0 14px; max-width:820px; letter-spacing:-0.01em;}
+  .subtitle{color:var(--sub); font-size:18px; max-width:700px; margin:0 0 26px;}
+  .meta-row{display:flex; gap:22px; flex-wrap:wrap; font-family:"JetBrains Mono",monospace; font-size:12.5px; color:var(--sub);}
+  .meta-row span b{color:var(--ink);}
+
+  nav.toc{margin:36px auto 0; max-width:960px; padding:22px 32px 26px; border:1px solid var(--line); border-radius:10px; background:var(--panel);}
+  nav.toc h2{font-family:"JetBrains Mono",monospace; font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 14px;}
+  nav.toc ol{columns:2; column-gap:36px; margin:0; padding-left:20px;}
+  nav.toc li{break-inside:avoid; margin-bottom:8px; font-size:15px;}
+  nav.toc a{color:var(--ink); text-decoration:none; border-bottom:1px dotted var(--line);}
+  nav.toc a:hover{color:var(--accent); border-color:var(--accent);}
+  @media (max-width:640px){nav.toc ol{columns:1;}}
+
+  section{padding-top:56px;}
+  section > .kicker{font-family:"JetBrains Mono",monospace; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent2); margin-bottom:8px;}
+  h2{font-size:30px; margin:0 0 6px; letter-spacing:-0.01em; scroll-margin-top:20px;}
+  h2 .num{color:var(--accent); font-family:"JetBrains Mono",monospace; font-size:19px; margin-right:10px;}
+  h3{font-size:21px; margin:34px 0 10px; scroll-margin-top:20px; color:#20262c;}
+  h4{font-size:16.5px; margin:22px 0 8px; color:#20262c; font-family:"JetBrains Mono",monospace; letter-spacing:.02em;}
+  p{margin:0 0 15px;}
+  ul,ol{margin:0 0 16px; padding-left:22px;}
+  li{margin-bottom:6px;}
+  strong{color:#10161c;}
+  .lede{font-size:18.5px; color:#2b323a;}
+
+  code, .code-inline{font-family:"JetBrains Mono","SF Mono",Consolas,monospace; font-size:0.86em; background:var(--code-inline-bg); padding:1px 6px; border-radius:4px; color:#3a2f1f;}
+  pre{background:var(--mono-bg); color:var(--mono-ink); padding:18px 20px; border-radius:10px; overflow-x:auto; font-family:"JetBrains Mono","SF Mono",Consolas,monospace; font-size:13.5px; line-height:1.55; margin:16px 0 22px;}
+  pre code{background:none; padding:0; color:inherit; font-size:1em;}
+  pre .c{color:#7f8b98;}
+  pre .k{color:var(--mono-accent);}
+  pre .s{color:#e2b872;}
+  pre .out{color:#9aa3ad;}
+
+  .callout{border-left:3px solid var(--accent); background:#eef3f2; padding:14px 18px; border-radius:0 8px 8px 0; margin:18px 0; font-size:15.5px;}
+  .callout.warn{border-left-color:var(--accent2); background:#f7ece5;}
+  .callout.myth{border-left-color:#8a3f8a; background:#f3ecf3;}
+  .callout.fix{border-left-color:#3a5ba0; background:#e9eef7;}
+  .callout b{display:block; font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px;}
+  .callout.warn b{color:var(--accent2);}
+  .callout.myth b{color:#8a3f8a;}
+  .callout.fix b{color:#3a5ba0;}
+  .callout:not(.warn):not(.myth):not(.fix) b{color:var(--accent);}
+
+  figure{margin:22px 0 30px; padding:18px; background:var(--panel); border:1px solid var(--line); border-radius:12px;}
+  figure svg{width:100%; height:auto; display:block;}
+  figcaption{font-size:13px; color:var(--sub); margin-top:12px; text-align:center; font-family:"JetBrains Mono",monospace;}
+
+  table{width:100%; border-collapse:collapse; margin:18px 0 26px; font-size:15px;}
+  th{text-align:left; font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--sub); border-bottom:2px solid var(--ink); padding:8px 12px;}
+  td{border-bottom:1px solid var(--line); padding:10px 12px; vertical-align:top;}
+  tr:hover td{background:#f5f3ee;}
+  td code{white-space:nowrap;}
+
+  hr.div{border:none; border-top:1px solid var(--line); margin:56px 0;}
+
+  .backtotop{position:fixed; right:24px; bottom:24px; background:var(--ink); color:#fff; width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; text-decoration:none; font-size:18px; opacity:.85; box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  .backtotop:hover{opacity:1;}
+
+  .step-list{counter-reset:step; list-style:none; padding-left:0;}
+  .step-list li{counter-increment:step; padding-left:38px; position:relative; margin-bottom:16px;}
+  .step-list li::before{content:counter(step); position:absolute; left:0; top:0; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; font-family:"JetBrains Mono",monospace; font-size:13px; display:flex; align-items:center; justify-content:center;}
+
+  .exercise{border:1.5px solid var(--accent); border-radius:12px; padding:22px 26px; margin:28px 0; background:#fcfdfc;}
+  .exercise .ex-label{font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:#fff; background:var(--accent); display:inline-block; padding:4px 10px; border-radius:5px; margin-bottom:10px;}
+  .exercise h3{margin-top:0;}
+  .goal{font-size:14.5px; color:var(--sub); font-style:italic; margin-top:-4px; margin-bottom:16px;}
+
+  .checklist{list-style:none; padding-left:0;}
+  .checklist li{padding-left:30px; position:relative; margin-bottom:10px;}
+  .checklist li::before{content:"☐"; position:absolute; left:0; top:0; color:var(--accent); font-size:17px;}
+
+  .glossary dt{font-family:"JetBrains Mono",monospace; font-weight:700; color:var(--ink); margin-top:14px;}
+  .glossary dd{margin:2px 0 0; color:var(--sub);}
+
+  footer{padding:60px 32px 40px; text-align:center; color:var(--sub); font-size:13px; font-family:"JetBrains Mono",monospace;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap" style="padding:0;">
+    <div class="eyebrow">devops bootcamp — hands-on lab</div>
+    <h1 class="title">kind Hands-On Lab: Class 2, Multi-Node, Secrets &amp; Rolling Updates</h1>
+    <p class="subtitle">A guided, typed-out walkthrough of everything demoed in Class 2 — multi-node clusters, contexts, DaemonSets, private-image auth, ConfigMaps and Secrets, and rolling-update tuning — reconstructed as completable exercises, including the four real failures hit live (naming regex, ImagePullBackOff, architecture mismatch, port mismatch) with the actual fix for each.</p>
+    <div class="meta-row">
+      <span>Companion to: <b>DevOps Bootcamp — Kubernetes Module, Class 2</b></span>
+      <span>Follows: <b>kind Hands-On Lab — Class 1</b></span>
+      <span>Time: <b>90–120 min</b>, hands-on</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#setup">0 · Starting state — Class 1 left no cluster running</a></li>
+    <li><a href="#ex1">Exercise 1 — A real multi-node cluster</a></li>
+    <li><a href="#ex2">Exercise 2 — Contexts, made real by a second cluster</a></li>
+    <li><a href="#ex3">Exercise 3 — Freelens, first hands-on use</a></li>
+    <li><a href="#ex4">Exercise 4 — DaemonSets, proven live</a></li>
+    <li><a href="#ex5">Exercise 5 — ConfigMap vs Secret, and what SPC/ESO are (not built yet)</a></li>
+    <li><a href="#ex6">Exercise 6 — RDS, and the Deployment+Service file</a></li>
+    <li><a href="#ex7">Exercise 7 — Failure #1: the naming regex error</a></li>
+    <li><a href="#ex8">Exercise 8 — Failure #2: ImagePullBackOff and imagePullSecrets</a></li>
+    <li><a href="#ex9">Exercise 9 — Failure #3: architecture mismatch</a></li>
+    <li><a href="#ex10">Exercise 10 — Failure #4: the port-5000-vs-8000 mystery</a></li>
+    <li><a href="#ex11">Exercise 11 — The Opaque Secret, and the echo -n trap</a></li>
+    <li><a href="#ex12">Exercise 12 — Wiring Secret/ConfigMap values via *KeyRef</a></li>
+    <li><a href="#ex13">Exercise 13 — The dependency-ordering pending-pod bug</a></li>
+    <li><a href="#ex14">Exercise 14 — Rolling updates at three speeds</a></li>
+    <li><a href="#ex15">Exercise 15 — Pod Disruption Budgets (concept only)</a></li>
+    <li><a href="#gaps">What Class 2 didn't finish (carried to Class 3)</a></li>
+    <li><a href="#cheatsheet">Full command cheat-sheet for Class 2</a></li>
+    <li><a href="#cleanup">Cleanup &amp; homework checklist</a></li>
+    <li><a href="#glossary">Glossary</a></li>
+  </ol>
+</nav>
+
+<section id="setup">
+  <div class="kicker">Before you begin</div>
+  <h2><span class="num">00</span>Starting state</h2>
+  <p class="lede">Class 1 ended with <code>kind delete cluster</code> — verified via <code>kind get clusters</code> (empty) and <code>docker ps -a</code> (no <code>kind-control-plane</code> container). Nothing is running. Everything below starts from zero.</p>
+  <pre><code><span class="k">kind get clusters</span>
+<span class="out">No kind clusters found.</span>
+
+<span class="k">docker ps -a</span>
+<span class="out">CONTAINER ID   IMAGE   COMMAND   ...   (empty, or unrelated containers only)</span></code></pre>
+  <div class="callout">
+    <b>A note on how to use this document</b>
+    Same format as Class 1's companion: every exercise below is something the instructor actually did live, reconstructed so you can type it yourself. Four real, unscripted failures happened this class — a naming validation error, two rounds of image-pull failures, and a port mismatch that took several people debugging together to resolve. Each is reproduced here as its own exercise, with the actual fix, not a cleaned-up version that skips the debugging.
+  </div>
+</section>
+
+<hr class="div">
+
+<section id="ex1">
+  <div class="kicker">Exercise 1</div>
+  <h2><span class="num">01</span>A real multi-node cluster</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: move past the single-node default and stand up a cluster shaped like a real one — one control-plane, two workers.</p>
+    <pre><code><span class="c"># kind-config.yaml</span>
+<span class="k">kind:</span> Cluster
+<span class="k">apiVersion:</span> kind.x-k8s.io/v1alpha4
+<span class="k">nodes:</span>
+  - role: control-plane
+  - role: worker
+  - role: worker</code></pre>
+    <pre><code><span class="k">kind create cluster --config</span> kind-config.yaml
+<span class="out">Creating cluster "kind" ...
+ ✓ Ensuring node image (kindest/node:v1.31.0) 🖼
+ ✓ Preparing nodes 📦 📦 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+ ✓ Joining worker nodes 🚜
+Set kubectl context to "kind-kind"</span>
+
+<span class="k">kubectl get nodes</span>
+<span class="out">NAME                 STATUS   ROLES           AGE   VERSION
+kind-control-plane   Ready    control-plane   45s   v1.31.0
+kind-worker          Ready    &lt;none&gt;          30s   v1.31.0
+kind-worker2         Ready    &lt;none&gt;          30s   v1.31.0</span></code></pre>
+    <p>The config file's own <code>kind:</code>/<code>apiVersion:</code> fields are <strong>kind-the-tool's</strong> local schema — read once by the <code>kind</code> binary before any cluster or API server exists, never touched by <code>kubectl apply</code>. It looks similar to a Kubernetes manifest by coincidence, not by relation. Node count and role are all it controls; actual workload distribution across those three nodes is ordinary Kubernetes scheduling from here on.</p>
+  </div>
+</section>
+
+<section id="ex2">
+  <div class="kicker">Exercise 2</div>
+  <h2><span class="num">02</span>Contexts, made real by a second cluster</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: contexts are invisible with one cluster. Create a second one specifically to make the ambiguity — and the risk — concrete.</p>
+    <pre><code><span class="k">kind create cluster --name</span> extra-one
+<span class="k">kubectl get node</span>
+<span class="out">NAME                       STATUS   ROLES           AGE
+extra-one-control-plane    Ready    control-plane   20s</span>
+<span class="c"># only 1 node — this is extra-one, NOT your 3-node cluster, even though you didn't ask to switch</span></code></pre>
+    <div class="callout warn">
+      <b>The exact trap demonstrated live</b>
+      Creating <code>extra-one</code> silently made it the current context. Running <code>kubectl get node</code> right after returned <strong>1 node</strong> — correct for <code>extra-one</code>, but easy to mistake for "my multi-node cluster only has 1 node ready," if you weren't watching which cluster you were actually talking to. This is the mechanism the instructor warned about directly: run a destructive command without checking context first, and you can wipe the wrong environment.
+    </div>
+    <pre><code><span class="k">kubectl config get-contexts</span>
+<span class="out">CURRENT   NAME              CLUSTER           NAMESPACE
+*         kind-extra-one    kind-extra-one
+          kind-kind         kind-kind</span>
+
+<span class="k">kubectl config use-context</span> kind-kind
+<span class="out">Switched to context "kind-kind".</span>
+
+<span class="k">kubectl get node</span>
+<span class="out">NAME                 STATUS   ROLES           AGE
+kind-control-plane   Ready    control-plane   4m
+kind-worker          Ready    &lt;none&gt;          4m
+kind-worker2         Ready    &lt;none&gt;          4m</span></code></pre>
+    <p>In <code>~/.kube/config</code>, each cluster contributes a <strong>cluster</strong> entry (name, endpoint, cert data), a <strong>user</strong> entry, and a <strong>context</strong> entry that pairs the two under a name you can switch by — the context name is independently renameable and is what <code>current-context</code> actually points at.</p>
+    <p>Clean up the throwaway cluster once you've seen the switch work:</p>
+    <pre><code><span class="k">kind delete cluster --name</span> extra-one</code></pre>
+  </div>
+</section>
+
+<section id="ex3">
+  <div class="kicker">Exercise 3</div>
+  <h2><span class="num">03</span>Freelens, first hands-on use</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: connect Freelens to the real 3-node cluster and use it as your default lookup tool for the rest of this lab, instead of typing <code>kubectl get</code>/<code>describe</code> repeatedly.</p>
+    <ol class="step-list">
+      <li><strong>Connect it.</strong> With the Exercise 1 cluster running, open Freelens — it reads <code>~/.kube/config</code> automatically and lists every context, including <code>kind-kind</code>, on its catalog screen. Click the tile to connect.</li>
+      <li><strong>Orient in the left sidebar.</strong> It mirrors the API resource groups: <em>Nodes</em> (≈ <code>kubectl get nodes -o wide</code> — confirm all 3 show <code>Ready</code> here), <em>Workloads</em> (Pods, Deployments, DaemonSets), <em>Config</em> (ConfigMaps, Secrets — relevant from Exercise 5 on), <em>Network</em> (Services, Endpoints).</li>
+      <li><strong>Use it for Exercise 4's proof</strong> below — browse to Workloads → Pods, filter <code>kindnet</code>, and count entries visually instead of running a CLI filter.</li>
+      <li><strong>Try logs and exec once</strong> — right-click any running pod → <em>Logs</em>, then separately → <em>Exec/Shell</em>. This replaces <code>kubectl logs</code> and <code>kubectl exec -it ... -- sh</code>, both of which get used repeatedly in the debugging exercises ahead (8, 9, 10).</li>
+    </ol>
+  </div>
+</section>
+
+<section id="ex4">
+  <div class="kicker">Exercise 4</div>
+  <h2><span class="num">04</span>DaemonSets, proven live</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: see, not just hear, why some workloads need "exactly one pod per node" — a guarantee Deployments don't provide.</p>
+    <pre><code><span class="k">kubectl get pods -A -o wide | grep kindnet</span>
+<span class="out">kube-system   kindnet-4x2kq   1/1   Running   kind-control-plane
+kube-system   kindnet-8pqvz   1/1   Running   kind-worker
+kube-system   kindnet-wj3rl   1/1   Running   kind-worker2</span>
+<span class="c"># 3 pods, 3 nodes — one each. In Class 1's single-node cluster this was always exactly 1.</span>
+
+<span class="k">kubectl get daemonset -A</span>
+<span class="out">NAMESPACE     NAME         DESIRED   CURRENT   READY   NODE SELECTOR
+kube-system   kindnet      3         3         3       &lt;none&gt;
+kube-system   kube-proxy   3         3         3       &lt;none&gt;</span></code></pre>
+    <div class="callout fix">
+      <b>Why not just use a Deployment with replicas: 3?</b>
+      A Deployment's replica count is a <strong>cluster-wide total</strong> — the scheduler is free to put all 3 on one node, 2-and-1, whatever satisfies the number. Nothing about Deployment ties a replica to a specific node. A DaemonSet's contract is different: by default, exactly one pod <em>per node</em>, automatically extended to any node added later. That's why CNI plugins (<code>kindnet</code>), <code>kube-proxy</code>, and node-level observability agents (e.g. OpenTelemetry collectors) are DaemonSets — each node needs its own copy to function at all, not just "3 copies somewhere."
+    </div>
+  </div>
+</section>
+
+<section id="ex5">
+  <div class="kicker">Exercise 5</div>
+  <h2><span class="num">05</span>ConfigMap vs Secret — and what SPC/ESO are (not built yet)</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept only — no manifest yet</span>
+    <p class="goal">Goal: understand the two object types and the env-var-vs-volume-mount tradeoff before writing either, since Exercises 6–13 build both for real.</p>
+    <table>
+      <tr><th>Object</th><th>Holds</th><th>Env var mount</th><th>Volume mount</th></tr>
+      <tr><td><code>ConfigMap</code></td><td>Non-sensitive config, key-value</td><td>Set at pod start; needs a restart to pick up changes</td><td>Updates live, no restart, needs app-side path handling</td></tr>
+      <tr><td><code>Secret</code></td><td>Credentials, key-value, base64-encoded at rest</td><td>Same as above</td><td>Same as above</td></tr>
+    </table>
+    <div class="callout myth">
+      <b>Question raised in class — Secret vs. Secret Provider Class (SPC)</b>
+      <code>ConfigMap</code> and <code>Secret</code> are <strong>native Kubernetes objects</strong>. An SPC is a completely different mechanism — used when the actual secret material should live <em>outside</em> the cluster, in something like AWS Secrets Manager or Vault, and get pulled in via a CSI driver, the <strong>External Secrets Operator (ESO)</strong>, or a Vault injector. The instructor named ESO specifically as what he plans to teach, explicitly deferring it — not covered in this lab. Worth remembering as the answer to "isn't storing a base64 value in YAML insecure?" — yes, and SPC/ESO is the real answer to that, just not today's.
+    </div>
+  </div>
+</section>
+
+<section id="ex6">
+  <div class="kicker">Exercise 6</div>
+  <h2><span class="num">06</span>RDS, and the Deployment + Service file</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: stand up an external dependency (RDS Postgres) and write the Deployment+Service manifest for the app that needs it — same multi-object-per-file pattern as Class 1's Exercise 6, one new field (container port).</p>
+    <pre><code><span class="c"># create a public RDS instance — TEMPORARY, for this demo only, delete when done (see Cleanup)</span>
+<span class="k">aws rds create-db-instance</span> \
+  --db-instance-identifier tiny-pg \
+  --engine postgres \
+  --publicly-accessible \
+  --master-username appuser \
+  --master-user-password <span class="s">'&lt;password&gt;'</span> \
+  --db-instance-class db.t3.micro \
+  --allocated-storage 20</code></pre>
+    <div class="callout warn">
+      <b>This instance is intentionally insecure — track it</b>
+      Public accessibility was chosen purely so the class demo could reach it without VPC/networking setup. Note the endpoint and credentials down now (you'll need them in Exercise 11), and put a reminder in front of yourself to delete this instance the moment the hands-on is done — see the Cleanup checklist.
+    </div>
+    <pre><code><span class="c"># deployment.yaml + service.yaml, same file, --- separated</span>
+<span class="k">apiVersion:</span> apps/v1
+<span class="k">kind:</span> Deployment
+<span class="k">metadata:</span>
+  name: flask
+<span class="k">spec:</span>
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flask
+  template:
+    metadata:
+      labels:
+        app: flask
+    spec:
+      containers:
+        - name: flask
+          image: &lt;placeholder — set in Exercise 7&gt;
+          ports:
+            - containerPort: 8000
+---
+<span class="k">apiVersion:</span> v1
+<span class="k">kind:</span> Service
+<span class="k">metadata:</span>
+  name: flask-svc
+<span class="k">spec:</span>
+  selector:
+    app: flask
+  ports:
+    - port: 80
+      targetPort: 8000</code></pre>
+    <p>Same label-matching discipline as Class 1: the Service's <code>selector</code> must match <code>template.metadata.labels</code> exactly, and <code>targetPort</code> must match the container's real listening port (8000 here, confirmed against the app's actual requirement, not assumed).</p>
+  </div>
+</section>
+
+<section id="ex7">
+  <div class="kicker">Exercise 7 — Failure #1</div>
+  <h2><span class="num">07</span>The naming regex error</h2>
+  <div class="exercise">
+    <span class="ex-label">Reproduce this on purpose</span>
+    <p class="goal">Goal: hit the exact validation error from class, read what it's actually telling you, and fix it by understanding the pattern rather than guessing.</p>
+    <pre><code><span class="k">kubectl apply -f</span> deployment.yaml
+<span class="out">error: metadata.name: Invalid value: "2TF": a lowercase RFC 1123 subdomain must consist
+of lower case alphanumeric characters, '-' or '.', and must start and end with an
+alphanumeric character (e.g. 'example.com', regex used for validation is
+'[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')</span></code></pre>
+    <div class="callout warn">
+      <b>Reading the regex, not just obeying it</b>
+      <code>[a-z0-9]([-a-z0-9]*[a-z0-9])?</code> says: start with a lowercase letter or digit, then any run of lowercase letters/digits/hyphens, ending on a letter or digit — no uppercase, no underscores, no leading/trailing hyphen. This is the same rule behind every Kubernetes object name, not something specific to Deployments. Class-assigned homework: two YouTube videos on regex fundamentals (Python and Linux), worth doing since this exact pattern-reading skill comes up constantly in Kubernetes and CI configs.
+    </div>
+    <pre><code><span class="c"># fix: name -> flask (already lowercase in the manifest above if you copied it as-is)</span>
+<span class="k">kubectl apply -f</span> deployment.yaml
+<span class="out">deployment.apps/flask created</span></code></pre>
+  </div>
+</section>
+
+<section id="ex8">
+  <div class="kicker">Exercise 8 — Failure #2</div>
+  <h2><span class="num">08</span>ImagePullBackOff and imagePullSecrets</h2>
+  <div class="exercise">
+    <span class="ex-label">Reproduce, then fix</span>
+    <p class="goal">Goal: hit a real private-registry auth failure, understand the full token chain behind it, then wire the fix correctly — at the pod level, not the container level.</p>
+    <pre><code><span class="k">kubectl get pods</span>
+<span class="out">NAME                     READY   STATUS             RESTARTS   AGE
+flask-6d7f8c9b5-4x2kq    0/1     ImagePullBackOff   0          45s</span>
+
+<span class="k">kubectl describe pod</span> flask-6d7f8c9b5-4x2kq
+<span class="out">Events:
+  Warning  Failed     kubelet  Failed to pull image: no basic auth credentials
+  Warning  BackOff    kubelet  Back-off pulling image "&lt;ecr-repo&gt;:1.0"</span></code></pre>
+    <div class="callout fix">
+      <b>The full auth chain, before the fix</b>
+      <code>aws ecr get-login-password</code> generates a temporary token → passed to <code>docker login</code>, which authenticates and stores a credential <em>locally</em> (in <code>~/.docker/config.json</code> on Linux; not visible the same way on Mac). That local credential exists on your laptop only — the cluster has no copy of it, which is exactly why kubelet can't pull the private image. The fix is giving the cluster its own copy of equivalent auth data, as a Secret.
+    </div>
+    <pre><code><span class="k">aws ecr get-login-password --region</span> &lt;region&gt; &gt; /tmp/ecr-token
+
+<span class="k">kubectl create secret docker-registry</span> ecr-secret \
+  --docker-server=<span class="s">&lt;account-id&gt;.dkr.ecr.&lt;region&gt;.amazonaws.com</span> \
+  --docker-username=AWS \
+  --docker-password=<span class="s">"$(cat /tmp/ecr-token)"</span>
+<span class="out">secret/ecr-secret created</span></code></pre>
+    <pre><code><span class="c"># deployment.yaml — note imagePullSecrets is a POD-level field, not container-level</span>
+<span class="k">spec:</span>
+  template:
+    spec:
+      imagePullSecrets:
+        - name: ecr-secret
+      containers:
+        - name: flask
+          image: &lt;ecr-repo&gt;:1.0
+          imagePullPolicy: Always</code></pre>
+    <table>
+      <tr><th><code>imagePullPolicy</code></th><th>When</th></tr>
+      <tr><td><code>Always</code></td><td>Re-pull every time — used here, since the image lives in ECR and should always be current</td></tr>
+      <tr><td><code>IfNotPresent</code></td><td>Pull only if missing locally — the common default</td></tr>
+      <tr><td><code>Never</code></td><td>Only ever use a locally-built image — relevant later when building images directly inside kind</td></tr>
+    </table>
+    <pre><code><span class="k">kubectl apply -f</span> deployment.yaml
+<span class="k">kubectl get pods</span>
+<span class="out">NAME                     READY   STATUS             RESTARTS   AGE
+flask-6d7f8c9b5-9f7mc    0/1     ImagePullBackOff   0          10s</span>
+<span class="c"># still failing — but with DIFFERENT error text now. That's Exercise 9.</span></code></pre>
+  </div>
+</section>
+
+<section id="ex9">
+  <div class="kicker">Exercise 9 — Failure #3</div>
+  <h2><span class="num">09</span>Architecture mismatch</h2>
+  <div class="exercise">
+    <span class="ex-label">Reproduce, then fix</span>
+    <p class="goal">Goal: recognize a genuinely different failure signature from Exercise 8's, and understand why it's specific to newer Apple Silicon Macs.</p>
+    <pre><code><span class="k">kubectl describe pod</span> flask-6d7f8c9b5-9f7mc
+<span class="out">Events:
+  Warning  Failed   kubelet   exec format error / no matching manifest for linux/arm64</span>
+<span class="c"># different error than Exercise 8 — auth now works, but the image binary is for the wrong CPU architecture</span></code></pre>
+    <div class="callout warn">
+      <b>Why this one's Mac-specific</b>
+      The image was originally built for <code>linux/amd64</code> and is being run on Apple Silicon (M1/M2/M3/M4), which is <code>arm64</code>. Windows users in the same class didn't hit this at all. The fix is rebuilding <strong>without</strong> forcing a <code>--platform</code> override, letting Docker default to the host's native architecture.
+    </div>
+    <pre><code><span class="k">docker build -t</span> &lt;ecr-repo&gt;:2.0 .
+<span class="c"># no --platform flag this time — defaults to your Mac's native arch</span>
+<span class="k">docker push</span> &lt;ecr-repo&gt;:2.0
+<span class="c"># update deployment.yaml image tag to :2.0, then:</span>
+<span class="k">kubectl apply -f</span> deployment.yaml
+<span class="out">deployment.apps/flask configured</span>
+
+<span class="k">kubectl get pods -w</span>
+<span class="out">flask-7a1b2c3d4-p9q8r    1/1     Running   0          8s</span>
+<span class="c"># this apply is also your first live rolling update — see Exercise 14 for the mechanics</span></code></pre>
+  </div>
+</section>
+
+<section id="ex10">
+  <div class="kicker">Exercise 10 — Failure #4</div>
+  <h2><span class="num">10</span>The port-5000-vs-8000 mystery</h2>
+  <div class="exercise">
+    <span class="ex-label">Reproduce, then fix</span>
+    <p class="goal">Goal: work an actual multi-step debugging sequence — logs, exec, and dropping to the node level — for a bug whose cause turned out to be a stale image, not a code bug.</p>
+    <pre><code><span class="k">kubectl port-forward svc/flask-svc</span> 9090:80
+<span class="c"># tunnel opens, but the app doesn't respond correctly at localhost:9090</span>
+
+<span class="k">kubectl logs</span> flask-7a1b2c3d4-p9q8r
+<span class="out">Starting gunicorn... Listening at: http://0.0.0.0:5000</span>
+<span class="c"># unexpected — app code, run.py, run.sh, and gunicorn_conf.py all specify 8000</span></code></pre>
+    <div class="callout myth">
+      <b>The checks that ruled out a code bug</b>
+      <code>run.py</code>, <code>run.sh</code>, and <code>gunicorn_conf.py</code> were all checked directly and all correctly said 8000 — so the source wasn't wrong. Confirmed live inside the container too:
+    </div>
+    <pre><code><span class="k">kubectl exec -it</span> flask-7a1b2c3d4-p9q8r -- sh
+/ # <span class="k">netstat -tlnp</span>
+<span class="out">tcp   0.0.0.0:5000   LISTEN</span>
+<span class="c"># still 5000 — so drop to the node level and test the image directly, bypassing k8s entirely</span>
+
+<span class="k">docker exec -it</span> kind-control-plane bash
+root@kind-control-plane:/# <span class="k">docker run --rm -it</span> &lt;ecr-repo&gt;:3.0
+<span class="out">Listening at: http://0.0.0.0:8000</span>
+<span class="c"># a freshly-rebuilt image (3.0) is correct — the previously deployed image was stale/mismatched</span></code></pre>
+    <pre><code><span class="c"># push the confirmed-correct 3.0 image, update the deployment, re-apply</span>
+<span class="k">docker push</span> &lt;ecr-repo&gt;:3.0
+<span class="k">kubectl apply -f</span> deployment.yaml
+<span class="k">kubectl logs</span> &lt;new-pod&gt;
+<span class="out">Listening at: http://0.0.0.0:8000</span>
+
+<span class="k">kubectl port-forward svc/flask-svc</span> 9090:80
+<span class="c"># now http://localhost:9090 responds correctly</span></code></pre>
+  </div>
+</section>
+
+<section id="ex11">
+  <div class="kicker">Exercise 11</div>
+  <h2><span class="num">11</span>The Opaque Secret, and the echo -n trap</h2>
+  <div class="exercise">
+    <span class="ex-label">Reproduce the encoding bug, then fix it</span>
+    <p class="goal">Goal: build the DB-link Secret properly, and hit the exact base64 newline trap that caused real confusion in class before two separate causes got untangled.</p>
+    <pre><code><span class="c"># the trap — try this first, exactly as done live:</span>
+<span class="k">echo</span> <span class="s">"postgresql://appuser:pw@tiny-pg.xxxx.rds.amazonaws.com:5432/appdb"</span> | <span class="k">base64</span>
+<span class="out">cG9zdGdyZXNxbDovL2FwcHVzZXI6cHdAdGlueS1wZy54eHh4LnJkcy5hbWF6b25hd3MuY29tOjU0MzIvYXBwZGIK</span>
+<span class="c"># that trailing "K" segment encodes a newline echo silently appended — invisible until you decode it back</span>
+
+<span class="k">echo</span> <span class="s">"postgresql://appuser:pw@tiny-pg.xxxx.rds.amazonaws.com:5432/appdb"</span> | <span class="k">base64</span> | <span class="k">base64 --decode</span>
+<span class="out">postgresql://appuser:pw@tiny-pg.xxxx.rds.amazonaws.com:5432/appdb
+</span>
+<span class="c">↑ that blank line after appdb IS the bug — a real newline baked into the "decoded" value</span></code></pre>
+    <div class="callout warn">
+      <b>The fix — and a second, unrelated error that looked related</b>
+      <code>echo -n</code> suppresses the trailing newline <code>echo</code> adds by default — always use it when piping into <code>base64</code> for a Secret value. A second error ("unknown field DB_LINK") surfaced separately during the same debugging and was actually a YAML <strong>indentation</strong> problem under <code>data:</code>, not an encoding problem — worth distinguishing the two rather than assuming one fix covers both.
+    </div>
+    <pre><code><span class="k">echo -n</span> <span class="s">"postgresql://appuser:pw@tiny-pg.xxxx.rds.amazonaws.com:5432/appdb"</span> | <span class="k">base64</span>
+<span class="out">cG9zdGdyZXNxbDovL2FwcHVzZXI6cHdAdGlueS1wZy54eHh4LnJkcy5hbWF6b25hd3MuY29tOjU0MzIvYXBwZGI=</span>
+<span class="c"># no trailing newline this time — verify:</span>
+<span class="k">echo -n</span> <span class="s">"..."</span> | <span class="k">base64</span> | <span class="k">base64 --decode</span>
+<span class="out">postgresql://appuser:pw@tiny-pg.xxxx.rds.amazonaws.com:5432/appdb</span>
+<span class="c"># no blank line — correct</span></code></pre>
+    <pre><code><span class="c"># secret.yaml — mind the indentation under `data:`</span>
+<span class="k">apiVersion:</span> v1
+<span class="k">kind:</span> Secret
+<span class="k">metadata:</span>
+  name: db-secret
+<span class="k">type:</span> Opaque
+<span class="k">data:</span>
+  DB_LINK: cG9zdGdyZXNxbDovL2FwcHVzZXI6cHdAdGlueS1wZy54eHh4LnJkcy5hbWF6b25hd3MuY29tOjU0MzIvYXBwZGI=</code></pre>
+    <pre><code><span class="k">kubectl apply -f</span> secret.yaml
+<span class="out">secret/db-secret created</span></code></pre>
+  </div>
+</section>
+
+<section id="ex12">
+  <div class="kicker">Exercise 12</div>
+  <h2><span class="num">12</span>Wiring Secret/ConfigMap values via *KeyRef</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this</span>
+    <p class="goal">Goal: replace the hardcoded DB-link value from Exercise 6 with a real reference into the Secret built in Exercise 11.</p>
+    <pre><code><span class="c"># deployment.yaml, inside the container spec</span>
+<span class="k">env:</span>
+  - name: DB_LINK
+    valueFrom:
+      secretKeyRef:
+        name: db-secret
+        key: DB_LINK</code></pre>
+    <p>The ConfigMap equivalent is identical in shape, swapping <code>secretKeyRef</code> for <code>configMapKeyRef</code>:</p>
+    <pre><code><span class="k">env:</span>
+  - name: APP_MODE
+    valueFrom:
+      configMapKeyRef:
+        name: app-config
+        key: APP_MODE</code></pre>
+    <pre><code><span class="k">kubectl apply -f</span> deployment.yaml
+<span class="k">kubectl logs</span> &lt;pod&gt;
+<span class="c"># confirm the app is reading the real DB_LINK value now, not the hardcoded one from Exercise 6</span></code></pre>
+  </div>
+</section>
+
+<section id="ex13">
+  <div class="kicker">Exercise 13</div>
+  <h2><span class="num">13</span>The dependency-ordering pending-pod bug</h2>
+  <div class="exercise">
+    <span class="ex-label">Reproduce this on purpose</span>
+    <p class="goal">Goal: trigger the third of three canonical "why is my pod Pending" interview causes — a missing ConfigMap dependency — by applying the Deployment before the ConfigMap exists.</p>
+    <pre><code><span class="k">kubectl apply -f</span> deployment.yaml
+<span class="c"># configmap.yaml NOT applied yet — deliberately</span>
+
+<span class="k">kubectl get pods</span>
+<span class="out">NAME                     READY   STATUS    RESTARTS   AGE
+flask-8a1b2c3d-m4n5p     0/1     Pending   0          20s</span>
+
+<span class="k">kubectl describe pod</span> flask-8a1b2c3d-m4n5p
+<span class="out">Events:
+  Warning  FailedMount   kubelet   configmap "app-config" not found</span></code></pre>
+    <div class="callout fix">
+      <b>The three canonical Pending-pod causes from this class</b>
+      1) A bad resource name (Exercise 7) — but this actually blocks <code>apply</code> itself, so the pod never gets created at all. 2) Missing <code>imagePullSecrets</code> (Exercise 8) — pod exists but can't pull its image. 3) A missing ConfigMap/Secret dependency (here) — pod exists but can't mount what it needs. All three are worth being able to name cold in an interview.
+    </div>
+    <pre><code><span class="k">kubectl apply -f</span> configmap.yaml
+<span class="out">configmap/app-config created</span>
+
+<span class="k">kubectl get pods</span>
+<span class="out">NAME                     READY   STATUS    RESTARTS   AGE
+flask-8a1b2c3d-m4n5p     1/1     Running   0          45s</span>
+<span class="c"># recovers on its own — no need to re-apply the deployment itself</span></code></pre>
+  </div>
+</section>
+
+<section id="ex14">
+  <div class="kicker">Exercise 14</div>
+  <h2><span class="num">14</span>Rolling updates at three speeds</h2>
+  <div class="exercise">
+    <span class="ex-label">Do this — the live comparison from class</span>
+    <p class="goal">Goal: see <code>maxSurge</code>/<code>maxUnavailable</code> actually change rollout behavior, not just read about them. Scale up first so the differences are visible.</p>
+    <pre><code><span class="k">kubectl scale deployment flask --replicas=10</span>
+<span class="k">kubectl get pods -w</span>
+<span class="c"># wait for all 10 to reach Running before continuing</span></code></pre>
+    <h4>Speed 1 — default (no strategy block set)</h4>
+    <pre><code><span class="c"># bump the image tag, then:</span>
+<span class="k">kubectl apply -f</span> deployment.yaml
+<span class="k">kubectl get pods -w</span>
+<span class="out">flask-...-new1   0/1   ContainerCreating
+flask-...-old1   1/1   Terminating       ← only ONE at a time, old first replaced before next starts</span></code></pre>
+    <h4>Speed 2 — fast (maxSurge: 4, maxUnavailable: 4)</h4>
+    <pre><code><span class="k">spec:</span>
+  strategy:
+    rollingUpdate:
+      maxSurge: 4
+      maxUnavailable: 4</code></pre>
+    <pre><code><span class="k">kubectl apply -f</span> deployment.yaml
+<span class="out"># up to 4 old pods terminated and 4 new pods created simultaneously — visibly faster</span></code></pre>
+    <h4>Speed 3 — slow (maxSurge: 1, maxUnavailable: 1)</h4>
+    <pre><code><span class="k">spec:</span>
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1</code></pre>
+    <pre><code><span class="k">kubectl apply -f</span> deployment.yaml
+<span class="out"># visibly the slowest of the three, one pod replaced at a time again but explicit this time</span></code></pre>
+    <div class="callout">
+      <b>The takeaway stated explicitly in class</b>
+      Rolling update is the <strong>default</strong> Deployment strategy — the very first image bump in Exercise 9 already used it, with no <code>strategy</code> field set at all. Real-world tuning tends to use <strong>percentage-based</strong> values (e.g. <code>maxUnavailable: 10%</code>) rather than raw counts, to balance rollout speed against availability risk at real scale — with 100 replicas, you don't want 50 down simultaneously. This document doesn't have a live percentage-syntax demo to show, since the class discussed it but didn't run one — worth trying yourself as a follow-up.
+    </div>
+  </div>
+</section>
+
+<section id="ex15">
+  <div class="kicker">Exercise 15</div>
+  <h2><span class="num">15</span>Pod Disruption Budgets — concept only</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept only — not built this class</span>
+    <p class="goal">Goal: understand what a PDB constrains, and how it differs from rolling-update tuning, before building one in a future class.</p>
+    <p>Rolling-update settings (Exercise 14) govern disruption <strong>you trigger</strong> — deploying a new image version. A <code>PodDisruptionBudget</code> governs disruption <strong>the cluster/infra triggers</strong> — node drains, node upgrades, maintenance events. It sets a floor (count or percentage) on how many pods must stay available; Kubernetes will reschedule pods elsewhere first rather than violate that floor when draining a node.</p>
+    <pre><code><span class="c"># shape only — not applied in this class</span>
+<span class="k">apiVersion:</span> policy/v1
+<span class="k">kind:</span> PodDisruptionBudget
+<span class="k">metadata:</span>
+  name: flask-pdb
+<span class="k">spec:</span>
+  minAvailable: 8
+  selector:
+    matchLabels:
+      app: flask</code></pre>
+    <div class="callout">
+      <b>Explicitly deferred by the instructor</b>
+      "We'll discuss this more when we have more data about our setup" — treat this exercise as a concept checkpoint, not a gap in your hands-on. No manifest was applied live.
+    </div>
+  </div>
+</section>
+
+<hr class="div">
+
+<section id="gaps">
+  <div class="kicker">Filling the gaps</div>
+  <h2><span class="num">16</span>What Class 2 didn't finish (carried to Class 3)</h2>
+  <ul>
+    <li><strong>The public RDS instance</strong> (<code>tiny-pg</code>) — must be deleted, was public for the demo only. See Cleanup below.</li>
+    <li><strong>ESO / Secret Provider Classes</strong> — named twice as future material (Exercise 5), never built.</li>
+    <li><strong>Percentage-based <code>maxUnavailable</code>/<code>maxSurge</code></strong> — discussed as the real-world approach (Exercise 14) but never demonstrated live with actual percentage syntax.</li>
+    <li><strong>Pod Disruption Budget hands-on</strong> — concept only (Exercise 15), no manifest applied, no node-drain scenario tested.</li>
+    <li><strong>Regex fundamentals</strong> — assigned as homework video links (Exercise 7), not taught directly in class.</li>
+  </ul>
+</section>
+
+<section id="cheatsheet">
+  <div class="kicker">Quick reference</div>
+  <h2><span class="num">17</span>Full command cheat-sheet for Class 2</h2>
+  <table>
+    <tr><th>Step</th><th>Command</th></tr>
+    <tr><td>Multi-node cluster from config</td><td><code>kind create cluster --config kind-config.yaml</code></td></tr>
+    <tr><td>List/switch context</td><td><code>kubectl config get-contexts</code> / <code>kubectl config use-context &lt;name&gt;</code></td></tr>
+    <tr><td>DaemonSets</td><td><code>kubectl get daemonset -A</code></td></tr>
+    <tr><td>Create docker-registry secret</td><td><code>kubectl create secret docker-registry &lt;name&gt; --docker-server=... --docker-username=... --docker-password=...</code></td></tr>
+    <tr><td>Base64-encode without trailing newline</td><td><code>echo -n "value" | base64</code></td></tr>
+    <tr><td>Decode and verify a secret value</td><td><code>echo "&lt;value&gt;" | base64 --decode</code></td></tr>
+    <tr><td>Scale a deployment</td><td><code>kubectl scale deployment &lt;name&gt; --replicas=N</code></td></tr>
+    <tr><td>Watch rollout live</td><td><code>kubectl get pods -w</code></td></tr>
+    <tr><td>Pod logs / shell</td><td><code>kubectl logs &lt;pod&gt;</code> / <code>kubectl exec -it &lt;pod&gt; -- sh</code></td></tr>
+    <tr><td>Shell into a node (for image/network debugging)</td><td><code>docker exec -it kind-control-plane bash</code></td></tr>
+    <tr><td>Delete a resource</td><td><code>kubectl delete pod/deployment/service/secret/configmap &lt;name&gt;</code></td></tr>
+    <tr><td>Tear the whole cluster down</td><td><code>kind delete cluster</code></td></tr>
+  </table>
+</section>
+
+<section id="cleanup">
+  <div class="kicker">Wrap-up</div>
+  <h2><span class="num">18</span>Cleanup &amp; homework checklist</h2>
+  <pre><code><span class="c"># delete the public RDS instance FIRST — do not leave it running</span>
+<span class="k">aws rds delete-db-instance</span> --db-instance-identifier tiny-pg --skip-final-snapshot
+
+<span class="k">kubectl delete -f</span> secret.yaml --ignore-not-found
+<span class="k">kubectl delete -f</span> configmap.yaml --ignore-not-found
+<span class="k">kubectl delete -f</span> deployment.yaml --ignore-not-found
+<span class="k">kind delete cluster</span></code></pre>
+  <ul class="checklist">
+    <li>Public RDS instance deleted (do this before anything else in cleanup)</li>
+    <li>Comfortable writing a multi-node kind config from memory</li>
+    <li>Can explain, out loud, why a Deployment can't guarantee one-pod-per-node but a DaemonSet can</li>
+    <li>Can name all three canonical "pod stuck Pending" causes hit this class</li>
+    <li>Know the <code>echo -n</code> rule cold — and why plain <code>echo</code> silently breaks a base64 secret</li>
+    <li>Can explain the difference between rolling-update tuning and a Pod Disruption Budget</li>
+    <li>Watched the assigned regex videos</li>
+  </ul>
+</section>
+
+<section id="glossary">
+  <div class="kicker">Reference</div>
+  <h2><span class="num">19</span>Glossary (lab-specific terms)</h2>
+  <dl class="glossary">
+    <dt>Context</dt><dd>A named pairing of cluster + user in <code>~/.kube/config</code>. <code>current-context</code> decides which cluster a bare <code>kubectl</code> command targets.</dd>
+    <dt>DaemonSet</dt><dd>A controller guaranteeing exactly one pod per node (by default), unlike Deployment's cluster-wide replica total. Used for CNI plugins, kube-proxy, and per-node agents.</dd>
+    <dt>imagePullSecrets</dt><dd>A pod-level (not container-level) field listing Secrets containing registry auth data, needed to pull private images.</dd>
+    <dt>Opaque Secret</dt><dd>The generic Secret type for arbitrary key-value credential data, as opposed to the more structured <code>docker-registry</code> or <code>tls</code> types.</dd>
+    <dt>secretKeyRef / configMapKeyRef</dt><dd>Fields under <code>env[].valueFrom</code> that pull a single key's value from an existing Secret or ConfigMap into an environment variable, rather than hardcoding it.</dd>
+    <dt>Secret Provider Class (SPC)</dt><dd>Not a native Kubernetes object — a mechanism (via CSI driver or ESO) for backing a mounted volume with a secret stored in an external system like AWS Secrets Manager or Vault.</dd>
+    <dt>maxSurge / maxUnavailable</dt><dd>RollingUpdate strategy fields controlling how many extra pods can be created / how many can be unavailable simultaneously during a Deployment update.</dd>
+    <dt>PodDisruptionBudget (PDB)</dt><dd>Sets a floor on available replicas during voluntary disruptions (node drains/upgrades) — distinct from rolling-update tuning, which governs deployment-triggered replacement.</dd>
+  </dl>
+</section>
+
+</div>
+
+<footer>Hands-on companion to DevOps Bootcamp Kubernetes Class 2 · reconstructs the live exercise including all four real debugging failures, and fills the RDS/ESO/PDB gaps flagged for Class 3 · researched and compiled Aug 2026</footer>
+
+<a href="#" class="backtotop" title="Back to top">↑</a>
+
+</body>
+</html>

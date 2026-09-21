@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EKS via Terraform, Properly: Class 4 — Part 4 (The Infra Pipeline, Approval Gates &amp; the GitOps Problem)</title>
+<style>
+  :root{
+    --ink:#1b2027; --sub:#4b5563; --bg:#fbfaf7; --panel:#ffffff; --line:#e4e1d8;
+    --accent:#2e6f6a; --accent2:#b8562f; --accent3:#3a5ba0;
+    --mono-bg:#12161c; --mono-ink:#d7e0e8; --mono-accent:#7fd0c4; --code-inline-bg:#eef0eb;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:"Iowan Old Style","Palatino Linotype",Georgia,"Noto Serif",serif; line-height:1.65; font-size:17px;}
+  .wrap{max-width:960px; margin:0 auto; padding:0 32px 120px;}
+  header.hero{padding:70px 32px 50px; border-bottom:1px solid var(--line); background: linear-gradient(180deg, rgba(46,111,106,0.06), rgba(46,111,106,0) 60%);}
+  header.hero .eyebrow{font-family:"JetBrains Mono","SF Mono",Consolas,monospace; letter-spacing:.14em; text-transform:uppercase; font-size:12.5px; color:var(--accent); margin-bottom:14px; display:flex; gap:10px; align-items:center;}
+  header.hero .eyebrow::before{content:"//"; color:var(--accent2);}
+  h1.title{font-size:clamp(30px,4.2vw,46px); line-height:1.12; margin:0 0 14px; max-width:820px; letter-spacing:-0.01em;}
+  .subtitle{color:var(--sub); font-size:18px; max-width:700px; margin:0 0 26px;}
+  .meta-row{display:flex; gap:22px; flex-wrap:wrap; font-family:"JetBrains Mono",monospace; font-size:12.5px; color:var(--sub);}
+  .meta-row span b{color:var(--ink);}
+  nav.toc{margin:36px auto 0; max-width:960px; padding:22px 32px 26px; border:1px solid var(--line); border-radius:10px; background:var(--panel);}
+  nav.toc h2{font-family:"JetBrains Mono",monospace; font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 14px;}
+  nav.toc ol{columns:2; column-gap:36px; margin:0; padding-left:20px;}
+  nav.toc li{break-inside:avoid; margin-bottom:8px; font-size:15px;}
+  nav.toc a{color:var(--ink); text-decoration:none; border-bottom:1px dotted var(--line);}
+  nav.toc a:hover{color:var(--accent); border-color:var(--accent);}
+  @media (max-width:640px){nav.toc ol{columns:1;}}
+  section{padding-top:56px;}
+  section > .kicker{font-family:"JetBrains Mono",monospace; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent2); margin-bottom:8px;}
+  h2{font-size:30px; margin:0 0 6px; letter-spacing:-0.01em; scroll-margin-top:20px;}
+  h2 .num{color:var(--accent); font-family:"JetBrains Mono",monospace; font-size:19px; margin-right:10px;}
+  h3{font-size:21px; margin:34px 0 10px; scroll-margin-top:20px; color:#20262c;}
+  h4{font-size:16.5px; margin:22px 0 8px; color:#20262c; font-family:"JetBrains Mono",monospace; letter-spacing:.02em;}
+  p{margin:0 0 15px;}
+  ul,ol{margin:0 0 16px; padding-left:22px;}
+  li{margin-bottom:6px;}
+  strong{color:#10161c;}
+  .lede{font-size:18.5px; color:#2b323a;}
+  code, .code-inline{font-family:"JetBrains Mono","SF Mono",Consolas,monospace; font-size:0.86em; background:var(--code-inline-bg); padding:1px 6px; border-radius:4px; color:#3a2f1f;}
+  pre{background:var(--mono-bg); color:var(--mono-ink); padding:18px 20px; border-radius:10px; overflow-x:auto; font-family:"JetBrains Mono","SF Mono",Consolas,monospace; font-size:13.5px; line-height:1.55; margin:16px 0 22px;}
+  pre code{background:none; padding:0; color:inherit; font-size:1em;}
+  pre .c{color:#7f8b98;} pre .k{color:var(--mono-accent);} pre .s{color:#e2b872;} pre .out{color:#9aa3ad;} pre .bad{color:#e58b8b;}
+  .callout{border-left:3px solid var(--accent); background:#eef3f2; padding:14px 18px; border-radius:0 8px 8px 0; margin:18px 0; font-size:15.5px;}
+  .callout.warn{border-left-color:var(--accent2); background:#f7ece5;}
+  .callout.myth{border-left-color:#8a3f8a; background:#f3ecf3;}
+  .callout.fix{border-left-color:#3a5ba0; background:#e9eef7;}
+  .callout.bug{border-left-color:#c0392b; background:#fbe9e7;}
+  .callout b{display:block; font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px;}
+  .callout.warn b{color:var(--accent2);} .callout.myth b{color:#8a3f8a;} .callout.fix b{color:#3a5ba0;} .callout.bug b{color:#c0392b;}
+  .callout:not(.warn):not(.myth):not(.fix):not(.bug) b{color:var(--accent);}
+  table{width:100%; border-collapse:collapse; margin:18px 0 26px; font-size:15px;}
+  th{text-align:left; font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--sub); border-bottom:2px solid var(--ink); padding:8px 12px;}
+  td{border-bottom:1px solid var(--line); padding:10px 12px; vertical-align:top;}
+  tr:hover td{background:#f5f3ee;}
+  td code{white-space:nowrap;}
+  hr.div{border:none; border-top:1px solid var(--line); margin:56px 0;}
+  .backtotop{position:fixed; right:24px; bottom:24px; background:var(--ink); color:#fff; width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; text-decoration:none; font-size:18px; opacity:.85; box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  .backtotop:hover{opacity:1;}
+  .step-list{counter-reset:step; list-style:none; padding-left:0;}
+  .step-list li{counter-increment:step; padding-left:38px; position:relative; margin-bottom:16px;}
+  .step-list li::before{content:counter(step); position:absolute; left:0; top:0; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; font-family:"JetBrains Mono",monospace; font-size:13px; display:flex; align-items:center; justify-content:center;}
+  .exercise{border:1.5px solid var(--accent); border-radius:12px; padding:22px 26px; margin:28px 0; background:#fcfdfc;}
+  .exercise .ex-label{font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:#fff; background:var(--accent); display:inline-block; padding:4px 10px; border-radius:5px; margin-bottom:10px;}
+  .exercise h3{margin-top:0;}
+  .goal{font-size:14.5px; color:var(--sub); font-style:italic; margin-top:-4px; margin-bottom:16px;}
+  .yourturn{border:1.5px dashed var(--accent2); border-radius:12px; padding:20px 24px; margin:22px 0; background:#fffaf6;}
+  .yourturn .yt-label{font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:#fff; background:var(--accent2); display:inline-block; padding:4px 10px; border-radius:5px; margin-bottom:10px;}
+  .checklist{list-style:none; padding-left:0;}
+  .checklist li{padding-left:30px; position:relative; margin-bottom:10px;}
+  .checklist li::before{content:"☐"; position:absolute; left:0; top:0; color:var(--accent); font-size:17px;}
+  .glossary dt{font-family:"JetBrains Mono",monospace; font-weight:700; color:var(--ink); margin-top:14px;}
+  .glossary dd{margin:2px 0 0; color:var(--sub);}
+  footer{padding:60px 32px 40px; text-align:center; color:var(--sub); font-size:13px; font-family:"JetBrains Mono",monospace;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap" style="padding:0;">
+    <div class="eyebrow">devops bootcamp — hands-on lab · follow-along series</div>
+    <h1 class="title">EKS via Terraform, Properly: Class 4 — Part 4 (The Infra Pipeline, Approval Gates &amp; the GitOps Problem)</h1>
+    <p class="subtitle">Part 3 got Ingress, the ALB, and the migration Job working by hand from your own laptop. Part 4 stops doing anything by hand: a real GitHub Actions pipeline for infrastructure, manual approval gates modeled on how actual companies run production changes, HTTPS wired end-to-end through Terraform, and — with five minutes left on the clock — the exact problem GitOps exists to solve, teed up for tomorrow's class.</p>
+    <div class="meta-row">
+      <span>Instructor: <b>Akhilesh Mishra</b></span>
+      <span>Builds on: <b>eks-core-infra/</b>, <b>k8s-services/</b>, <b>app-infra/</b> from Parts 1–3</span>
+      <span>Class date: <b>Aug 29, 2026</b></span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#howto">0 · How we're going to work through this</a></li>
+    <li><a href="#ex1">Exercise 1 — One flexible pipeline, not one per action</a></li>
+    <li><a href="#ex2">Exercise 2 — Reusing OIDC: the same trust, a new workflow</a></li>
+    <li><a href="#ex3">Exercise 3 — Multi-environment code without duplicating anything</a></li>
+    <li><a href="#ex4">Exercise 4 — GitHub Environments: the real approval gate</a></li>
+    <li><a href="#ex5">Exercise 5 — Two things named "environment," and they are not the same thing</a></li>
+    <li><a href="#ex6">Exercise 6 — Splitting Plan and Apply so approval means something</a></li>
+    <li><a href="#ex7">Exercise 7 — LGTM, and the speed-vs-control trade-off</a></li>
+    <li><a href="#ex8">Exercise 8 — Where the migration job actually belongs in the pipeline</a></li>
+    <li><a href="#ex9">Exercise 9 — Secrets management: three strategies, one used today</a></li>
+    <li><a href="#ex10">Exercise 10 — Automating Ingress → ALB → Route 53 → ACM entirely from Terraform</a></li>
+    <li><a href="#ex11">Exercise 11 — The teardown trap: Secrets Manager &amp; KMS retention windows</a></li>
+    <li><a href="#clinic">Live Debugging Clinic — chasing the dynamic ALB zone ID</a></li>
+    <li><a href="#comms">Interview Communication Drill — answer precisely, then elaborate</a></li>
+    <li><a href="#gitops">Looking ahead — the GitOps problem (full pattern tomorrow)</a></li>
+    <li><a href="#openitems">Open items in your own repo</a></li>
+    <li><a href="#glossary">Glossary</a></li>
+  </ol>
+</nav>
+
+<section id="howto">
+  <div class="kicker">Before you begin</div>
+  <h2><span class="num">00</span>How we're going to work through this</h2>
+  <p class="lede">This session was different in shape from Parts 1–3. Very little new Terraform syntax was written from scratch — most of the class was the coach building a <strong>GitHub Actions pipeline live in the UI</strong>, configuring <strong>GitHub's own settings</strong> (Environments, protection rules, collaborators), and running an extended Q&amp;A on architecture trade-offs and interview communication. Treat this document as concept- and process-heavy rather than code-heavy — the actual YAML you'll want to review line-by-line is a file that exists in the coach's repo but hasn't been shared with me yet (see the callout right below). Once you paste its contents into a future session, we'll do the same close reading we did for Parts 2 and 3's Terraform.</p>
+
+  <div class="callout fix">
+    <b>Which workflow file this part covers — confirmed against the coach's real <code>eks-infra.yaml</code></b>
+    This class builds <strong><code>eks-infra.yaml</code></strong>, a <code>workflow_dispatch</code>-triggered pipeline with a <code>path_to_infra</code> <code>choice</code> input covering <strong>three</strong> directories, not two: <code>eks-core-infra</code>, <code>k8s-services</code>, and <code>3-tier-app/infra</code> — one pipeline deploys the cluster, the cluster add-ons, <em>and</em> the app-level RDS/K8s resources. It reuses the OIDC auth block from <code>eks-3tier-build-deploy.yaml</code> (the file you already gave me as <code>github-actions.yaml</code> in Part 2). <strong>Important:</strong> this is the coach's own reference version of the file, not yet your own — as of this session your repo only has one workflow (<code>k8-cluster-workflow</code>, image build only). Writing your own <code>eks-infra.yaml</code> is the actual work of this Part.
+  </div>
+  <div class="callout warn">
+    <b>What actually shipped in the coach's version vs. what was demoed live</b>
+    The plan/apply-split-with-approval-gate walked through in Exercise 6 below was built and demoed live in class — but it is <strong>not what's in the coach's committed file</strong>. In the real <code>eks-infra.yaml</code>, the entire <code>infra-plan</code> job is commented out, and <code>environment: dev</code> on the <code>infra-apply</code> job is also commented out. What actually ships is a single, ungated <code>infra-apply</code> job that runs <code>terraform apply -auto-approve</code> directly. Treat the approval-gate mechanics in Exercises 4–6 as the concept to learn and the target to build toward in your own version — not as something to assume is active if you copy the coach's file as-is.
+  </div>
+
+  <div class="callout">
+    <b>What's genuinely new here vs. Part 3</b>
+    Part 3 was "make the infrastructure work." Part 4 is "make changing the infrastructure a controlled, reviewable, auditable process" — the actual discipline that separates a lab setup from something a real company would trust in production. Everything from approval gates to plan/apply splitting to CODEOWNERS exists to answer one question: <em>who is allowed to change production, and how do we prove they looked before they did?</em>
+  </div>
+</section>
+
+<section id="ex1">
+  <div class="kicker">Exercise 1</div>
+  <h2><span class="num">01</span>One flexible pipeline, not one per action</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: understand why the coach built a single <code>workflow_dispatch</code> pipeline with a <code>choice</code> input instead of one pipeline per infra component.</p>
+    <p>The class already has one pipeline that builds and pushes application images on push to <code>main</code> (<code>eks-3tier-build-deploy.yaml</code>). Infrastructure is a different problem: you don't want <code>eks-core-infra/</code> (the cluster itself), <code>k8s-services/</code> (the AWS Load Balancer Controller and other cluster add-ons), or <code>3-tier-app/infra</code> (the app's own RDS/K8s resources) to redeploy automatically on every push — these change rarely and a mistake here is expensive. So the new pipeline is triggered manually, and the dropdown covers all three, not two:</p>
+    <pre><code>on:
+  workflow_dispatch:
+    inputs:
+      region:
+        description: 'AWS Region'
+        required: true
+        default: 'ap-south-1'
+      path_to_infra:
+        description: 'Path to Terraform infrastructure code'
+        required: true
+        type: choice
+        options:
+          - Kubernetes-world/EKS/eks-core-infra
+          - Kubernetes-world/EKS/k8s-services
+          - Kubernetes-world/3-tier-app/infra</code></pre>
+    <p>Note <code>region</code> is a plain <code>string</code> with a default, not a <code>choice</code> — only <code>path_to_infra</code> is constrained to a fixed dropdown. The job uses that choice to decide which directory to <code>cd</code> into before running <code>terraform init</code>/<code>apply</code>: <code>cd ${{ inputs.path_to_infra }} &amp;&amp; terraform init &amp;&amp; terraform apply -auto-approve</code>. One workflow file, three deployable components, zero duplicated pipeline logic.</p>
+  </div>
+  <div class="callout">
+    <b>Why <code>choice</code> and not just a free-text <code>string</code></b>
+    A <code>string</code> input lets someone typo a path and fail the run (or worse, silently point at the wrong directory). A <code>choice</code> input constrains the person to a fixed, valid set of options defined in the workflow itself — the UI simply won't let you submit anything else. This is the same instinct as an enum type in a strongly-typed language: constrain the input space to what's actually valid, don't validate free text after the fact.
+  </div>
+</section>
+
+<section id="ex2">
+  <div class="kicker">Exercise 2</div>
+  <h2><span class="num">02</span>Reusing OIDC: the same trust, a new workflow</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: recognize that OIDC trust is set up once (an IAM role), and any workflow in the repo can use it — you don't reconfigure AWS per pipeline.</p>
+    <p>The coach reuses the same AWS-auth approach from <code>eks-3tier-build-deploy.yaml</code> in the new <code>eks-infra.yaml</code>, with <code>permissions</code> set at the job level rather than the workflow level:</p>
+    <pre><code>jobs:
+  infra-apply:
+    runs-on: ubuntu-latest
+    # environment: dev
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ inputs.region }}</code></pre>
+    <p><code>id-token: write</code> is the permission that lets this specific job request a short-lived OIDC token from GitHub, which AWS then trusts (via the IAM role's trust policy) instead of a long-lived access key. Because the trust relationship lives on the AWS side (the IAM role) and not inside any one workflow file, <strong>every workflow in the repo can reuse the exact same role</strong> — there's no new AWS-side setup required just because you added a second pipeline.</p>
+  </div>
+  <div class="callout warn">
+    <b>The unresolved class bug, and a likely root cause found in your own repo's Terraform</b>
+    Mid-session the plan/apply approval flow started failing with a permissions error that hadn't shown up before — the plan job (no <code>environment:</code> attached) worked fine, but the same OIDC config under a job with <code>environment: dev</code> attached did not. That's exactly why <code>environment: dev</code> is commented out above rather than active — it was never fixed on-air. Reviewing your own <code>aws-github-oidc/oidc.tf</code>, there's a strong candidate for the actual cause: your trust policy's <code>sub</code>-claim condition only matches <code>repo:&lt;org&gt;/&lt;repo&gt;:ref:refs/heads/main</code>. GitHub's OIDC token issues a <em>different</em> <code>sub</code> shape the moment a job has <code>environment:</code> attached — <code>repo:&lt;org&gt;/&lt;repo&gt;:environment:dev</code> — which your current condition list has no entry for, so the assume-role call is silently denied. The fix, when you get to writing your own gated job, is adding that second <code>sub</code> shape to the trust policy's <code>StringLike</code> condition values alongside the existing branch-ref one. Worth testing before assuming the workflow YAML itself is wrong.
+  </div>
+</section>
+
+<section id="ex3">
+  <div class="kicker">Exercise 3</div>
+  <h2><span class="num">03</span>Multi-environment code without duplicating anything</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: internalize the principle before you ever write a <code>staging</code>/<code>prod</code> split — don't copy code per environment, branch behavior <em>inside</em> one codebase.</p>
+    <p>Explicitly stated as a rule to live by: <strong>the same Terraform codebase should be able to deploy to multiple environments</strong> (dev, staging, prod) without duplicating resource blocks. Differences between environments — instance sizes, replica counts, whether a resource exists at all — are handled with variables, conditionals, and <code>for_each</code>/map-based transformations inside the existing code, not by maintaining <code>prod/main.tf</code> and <code>staging/main.tf</code> as separately-copied files that drift apart over time.</p>
+    <pre><code><span class="c"># conceptual sketch — not literal code to copy in</span>
+variable "environment" {
+  type = string
+}
+
+locals {
+  instance_size = {
+    dev  = "db.t3.micro"
+    prod = "db.t3.medium"
+  }
+}
+
+resource "aws_db_instance" "postgres" {
+  instance_class = local.instance_size[var.environment]
+  <span class="c"># ...rest identical for every environment</span>
+}</code></pre>
+    <p>The coach pointed to his own past ECS pipeline work as a concrete example of this pattern already implemented, and flagged it as something worth reading through independently rather than re-deriving from scratch — the underlying skill (building structure that scales across environments) matters more in interviews than raw Terraform syntax speed.</p>
+  </div>
+  <div class="callout fix">
+    <b>Confirmed — this is the exact reference file</b>
+    You've since shared it: a workflow named <code>Terraform ECS 3 Tier infra</code>, pointed at <code>day13-ecs-3-tier/infra</code> — the "date 13 ECS3" file named live in class. It's a real, working illustration of one relevant piece of this exercise: a single <code>environment</code> choice input (<code>dev</code>/<code>prod</code>) feeds both <code>-backend-config=vars/${{ inputs.environment }}.tfbackend</code> and <code>-var-file=vars/${{ inputs.environment }}.tfvars</code> — one job, one codebase, environment-specific backend and variables selected by input rather than by duplicating the whole file. Worth reading in full once you write your own multi-environment setup. One thing to notice, not copy: that file's <code>environment: ${{ inputs.environment }}</code> gates the <em>entire</em> job, including the <code>plan</code> step — meaning even a read-only plan against <code>prod</code> would wait on human approval. Whether that's the right call for your own pipeline (plan-needs-approval vs. only-apply-needs-approval) is worth deciding deliberately rather than copying either way.
+  </div>
+</section>
+
+<section id="ex4">
+  <div class="kicker">Exercise 4</div>
+  <h2><span class="num">04</span>GitHub Environments: the real approval gate</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: know exactly what a GitHub "Environment" configures, and why it's the mechanism — not a script, not a Slack bot — that companies actually use to require human sign-off before a deploy.</p>
+    <p>Under repo <strong>Settings → Environments</strong>, the coach created a <code>dev</code> environment and set:</p>
+    <ul class="step-list">
+      <li><strong>Required reviewers</strong> — specific people (or teams) who must approve before a workflow run tied to this environment is allowed to proceed.</li>
+      <li><strong>Prevent self-review</strong> — if the person who triggered the run is also a required reviewer, they cannot approve their own run. This is the technical enforcement of a real governance rule: the person requesting a change and the person approving it must be different people.</li>
+      <li><strong>Wait timer</strong> — an optional forced delay before a deployment can proceed, even after approval.</li>
+      <li><strong>Allow administrators to bypass configured protection rules</strong> — an explicit escape hatch, used deliberately in this demo since the coach is the repo admin and needed to demo both the gated and ungated paths.</li>
+    </ul>
+    <p>In a real team, individual named reviewers don't scale — instead, companies define a <code>CODEOWNERS</code> file (in the repo's <code>.github/</code> folder) that maps paths in the repo to a <strong>team</strong>, not an individual username. Approval authority then belongs to a role/team, survives someone leaving the company, and doesn't require editing environment settings every time headcount changes.</p>
+  </div>
+</section>
+
+<section id="ex5">
+  <div class="kicker">Exercise 5</div>
+  <h2><span class="num">05</span>Two things named "environment," and they are not the same thing</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept — a real mistake made live, worth learning from directly</span>
+    <p class="goal">Goal: never confuse these two again — the naming collision is genuinely confusing the first time.</p>
+    <p>GitHub Actions has two completely unrelated things that both use the word "environment," and the coach caught himself starting to type the wrong one live in class:</p>
+    <table>
+      <tr><th>Keyword</th><th>Scope</th><th>Purpose</th></tr>
+      <tr><td><code>env:</code></td><td>Local to this one workflow file (job or step level)</td><td>Sets shell/step environment variables for this run — e.g. <code>env: TF_VERSION: 1.5.1</code></td></tr>
+      <tr><td><code>environment:</code></td><td>References a named Environment configured in repo Settings</td><td>Forces the job to satisfy that Environment's protection rules (required reviewers, wait timer, etc.) before running</td></tr>
+    </table>
+    <pre><code>jobs:
+  apply:
+    runs-on: ubuntu-latest
+    environment: dev   <span class="c"># ← this is what triggers the approval gate</span>
+    env:
+      TF_VERSION: 1.5.1  <span class="c"># ← this is just a plain variable, unrelated</span></code></pre>
+    <p>Putting the job-level <code>environment: dev</code> key on a job is what actually activates the protection rules configured in Exercise 4. Without it, the Environment settings exist in GitHub's UI but have zero effect on any workflow run — they're inert until a job explicitly opts in via this keyword.</p>
+  </div>
+</section>
+
+<section id="ex6">
+  <div class="kicker">Exercise 6</div>
+  <h2><span class="num">06</span>Splitting Plan and Apply so approval means something</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: understand why "approve this deploy" is meaningless unless the approver can actually see what they're approving first.</p>
+    <p>The first version of the pipeline gated the single Terraform-apply job behind approval — but a reviewer clicking "approve" with zero visibility into <em>what</em> was about to change isn't really reviewing anything; they're rubber-stamping. The fix: split into two separate jobs, <strong><code>plan</code></strong> (ungated, runs immediately, shows the diff) and <strong><code>apply</code></strong> (gated with <code>environment: dev</code>, only runs after the human sees the plan output and approves):</p>
+    <pre><code>jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - run: terraform plan   <span class="c"># no approval needed — just information</span>
+
+  apply:
+    needs: plan
+    environment: dev           <span class="c"># approval gate lives here, not on plan</span>
+    runs-on: ubuntu-latest
+    steps:
+      - run: terraform apply</code></pre>
+    <p>In real corporate/compliance-driven pipelines, this is taken further: the <code>plan</code> job writes its output to durable external storage — a GitHub Wiki page or an S3 bucket — so there's an audit trail proving exactly what was reviewed before the reviewer clicked approve, and so the <code>apply</code> job can be made to apply <em>that saved plan file</em> specifically (<code>terraform apply &lt;saved-plan-file&gt;</code>) rather than re-planning and trusting it produced the identical result. That two-step "plan-then-apply-the-saved-plan" pattern wasn't built live this session, but was named as the real-world version of what this simpler split is approximating.</p>
+  </div>
+  <div class="callout warn">
+    <b>What actually shipped is neither of these — worth knowing before you write your own</b>
+    The coach's committed <code>eks-infra.yaml</code> does not have this split active. The <code>infra-plan</code> job is present in the file but entirely commented out, and <code>environment: dev</code> on <code>infra-apply</code> is also commented out — almost certainly because of the OIDC <code>sub</code>-claim issue from Exercise 2, which was never resolved live. What ships is one ungated job running <code>terraform apply -auto-approve</code> directly. The plan/apply split above is the target pattern to build in your own version, not something you can assume is already working if you start from the coach's file as a base.</p>
+  </div>
+  <div class="yourturn">
+    <span class="yt-label">Your turn</span>
+    <p>When you write your own <code>eks-infra.yaml</code>, decide deliberately: keep it as one ungated job for now (matching what actually shipped, simplest to get working first), or build the real plan/apply split with the OIDC trust-policy fix from Exercise 2 applied first (matching what the class demoed but didn't finish). Either is a legitimate place to start — just know which one you're building and why, since "the coach's file already has this" isn't true of the gate itself.</p>
+  </div>
+</section>
+
+<section id="ex7">
+  <div class="kicker">Exercise 7</div>
+  <h2><span class="num">07</span>LGTM, and the speed-vs-control trade-off</h2>
+  <div class="exercise">
+    <span class="ex-label">Culture / interview context</span>
+    <p class="goal">Goal: know this term cold — it's assumed vocabulary the moment you join any engineering team.</p>
+    <p><strong>LGTM</strong> — "Looks Good To Me" — is the near-universal shorthand engineers use to approve a pull request or deployment. The coach was explicit that not knowing this term when he moved companies made him look inexperienced despite having the technical skills, and that a bootcamp graduate not recognizing it in an interview raises the same flag.</p>
+    <p>The deeper point behind teaching it here: approval gates are a genuine <strong>trade-off</strong>, not a free win. They add real delay (a plan that takes 5–10 minutes, a reviewer who has to notice the email, check it, and respond) in exchange for better control and a documented decision trail. Some teams — especially smaller, high-trust startups — deliberately choose to skip heavy gating and instead build a culture of ownership and accountability, where the person running a change is directly responsible for its outcome. Neither is objectively correct; which one a company chooses depends on its compliance requirements, size, and risk tolerance. Being able to articulate this trade-off — not just implement the YAML — is exactly the kind of answer this bootcamp keeps steering you toward for interviews.</p>
+  </div>
+</section>
+
+<section id="ex8">
+  <div class="kicker">Exercise 8</div>
+  <h2><span class="num">08</span>Where the migration job actually belongs in the pipeline</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept — connects directly to Part 3's migration Job</span>
+    <p class="goal">Goal: place the migration step correctly relative to build and deploy, and explain why the order is non-negotiable.</p>
+    <p>Part 3 built the migration <code>Job</code> and ran it manually. This session named where it belongs for real: <strong>after the new image is built, and before the new Deployment is applied</strong> — never after the deploy. The reasoning is a direct extension of the backward-compatibility discussion from Part 3:</p>
+    <ol class="step-list">
+      <li>Suppose you migrate <em>after</em> deploying the new app version. For the window between deploy and migration, the new code (which may already assume a changed schema) is running against the <em>old</em> schema — a guaranteed crash window.</li>
+      <li>Suppose instead the running app assumes tables that a migration is about to drop, and you migrate <em>too early</em> relative to a slow rollout. The still-running old Pods lose their tables mid-flight.</li>
+      <li>The only safe order is: <strong>build → migrate → then deploy</strong> the new Pods — and the schema change itself must be backward-compatible with whichever app version is currently serving traffic, exactly as covered in Part 3 (keep old tables/columns around for a few revisions, drop them gracefully later — never breaking-change and clean up in the same step).</li>
+    </ol>
+    <p>This is also why Terraform's actual failure behavior matters here (also from Part 3): if the migration job fails, a correctly-designed pipeline should <strong>block the deploy step entirely</strong> rather than attempt any kind of automatic rollback — Terraform itself never touches already-applied resources on a failed apply, and neither should your migration-failure handling invent a rollback that guesses at partial DB state.</p>
+  </div>
+  <div class="callout">
+    <b>Microservices and blast radius — the related architecture point raised alongside this</b>
+    A monolith with one shared database means one migration mistake can break the entire application. Microservices, each owning its own database, shrink the "blast radius" of any single migration or deploy mistake to just that one service — a real, concrete reason (beyond independent scaling) that companies choose microservices, and a good one-line answer if asked in an interview why microservices help operationally, not just architecturally.
+  </div>
+</section>
+
+<section id="ex9">
+  <div class="kicker">Exercise 9</div>
+  <h2><span class="num">09</span>Secrets management: three strategies, one used today</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: be able to name and compare all three approaches, and explain why the current setup (option 1) is a legitimate choice given the project's actual compliance needs — not a shortcut.</p>
+    <table>
+      <tr><th>Strategy</th><th>How it works</th><th>Best fit</th></tr>
+      <tr><td><strong>1 · Terraform + AWS Secrets Manager (used now)</strong></td><td><code>random_password</code> generates the DB password; <code>aws_secretsmanager_secret</code> / <code>_version</code> store the connection string; rotation can be automated via a scheduled Lambda or a forced re-apply</td><td>Single AWS account, no hard cross-account compliance requirement — exactly this project's current context</td></tr>
+      <tr><td><strong>2 · HashiCorp Vault</strong></td><td>Secrets live centrally in Vault, independent of any one AWS account; Terraform (and Kubernetes) reference Vault entries rather than owning secret values directly</td><td>Multiple AWS accounts needing one consistent rotation/audit story, rather than per-account Secrets Manager silos</td></tr>
+      <tr><td><strong>3 · Kubernetes-native secrets</strong></td><td>Secrets are created and managed directly inside the cluster, never passed through Terraform state at all</td><td>Teams wanting to avoid Terraform ever "seeing" a plaintext secret, even transiently in state</td></tr>
+    </table>
+    <p>The instructor's framing, worth repeating precisely: this is <strong>not</strong> a case of the current approach being wrong and Vault being the "correct" answer — it's a genuine trade-off decided by context (account count, compliance regime, team size). The project's real DB secret lifecycle, confirmed against the coach's actual code:</p>
+    <pre><code><span class="c"># conceptual — matches the coach's rds.tf pattern</span>
+resource "random_password" "db_password" {
+  length  = 10
+  special = false
+}
+
+resource "aws_secretsmanager_secret" "db_link" {
+  name                    = "db/&lt;app&gt;-db"
+  recovery_window_in_days = 7   <span class="c"># ← this number matters a LOT — see Exercise 11</span>
+}
+
+resource "aws_secretsmanager_secret_version" "db_secret_val" {
+  secret_id     = aws_secretsmanager_secret.db_link.id
+  secret_string = "postgresql://${var.db_user}:${random_password.db_password.result}@${aws_db_instance.postgres.address}:5432/${var.db_name}"
+}</code></pre>
+  </div>
+</section>
+
+<section id="ex10">
+  <div class="kicker">Exercise 10</div>
+  <h2><span class="num">10</span>Automating Ingress → ALB → Route 53 → ACM entirely from Terraform</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: understand the full automated chain from "Terraform apply" to "HTTPS works on a real domain," and why each link exists.</p>
+    <p>The reasoning for keeping Ingress inside Terraform (rather than plain YAML) was made explicit this session: once the <code>Ingress</code> resource creates the ALB, Terraform can read that ALB's generated DNS name straight back out and feed it into a Route 53 record — fully automating domain mapping with no manual console click. The full chain, walked through live and confirmed against the coach's current (several-classes-ahead) code:</p>
+    <ol class="step-list">
+      <li><strong>Look up the existing hosted zone</strong> for your domain — <code>data "aws_route53_zone" "main" { name = var.domain_name }</code>.</li>
+      <li><strong>Request an ACM certificate</strong> for your subdomain, DNS-validated — <code>aws_acm_certificate</code> with <code>validation_method = "DNS"</code>.</li>
+      <li><strong>Write the validation record</strong> ACM asks for automatically — <code>aws_route53_record.cert_validation</code>, looping over <code>domain_validation_options</code> — then <strong>wait for validation</strong> via <code>aws_acm_certificate_validation</code>, so <code>terraform apply</code> doesn't move on until the certificate authority confirms domain ownership. This is the CNAME-record step described in class: proving you own the domain before any CA will issue you a cert for it.</li>
+      <li><strong>Attach the validated certificate to the Ingress</strong> via annotations — the AWS Load Balancer Controller does the rest (creates the HTTPS listener on port 443, handles the TLS handshake) without you touching the ALB console:
+        <pre><code>annotations = {
+  "alb.ingress.kubernetes.io/certificate-arn" = aws_acm_certificate.app.arn
+  "alb.ingress.kubernetes.io/listen-ports"    = "[{\"HTTP\": 80}, {\"HTTPS\": 443}]"
+  "alb.ingress.kubernetes.io/ssl-redirect"    = "443"
+}</code></pre>
+      </li>
+      <li><strong>Point the subdomain at the ALB</strong> — an <code>aws_route53_record</code> alias record, whose target is the ALB's own DNS name and zone ID, both pulled dynamically (see Exercise/Clinic below on why this has to be dynamic, not hardcoded).</li>
+    </ol>
+  </div>
+  <div class="callout warn">
+    <b>Route 53 Zone ID vs. ALB Zone ID — the distinction that caused real confusion live</b>
+    These are <strong>two completely different values</strong> that happen to look similar and are easy to confuse: the <strong>Route 53 hosted-zone ID</strong> identifies <em>your domain's DNS zone</em> (one per hosted zone you own); the <strong>ALB's own zone ID</strong> is a fixed, AWS-published, per-region constant every Application Load Balancer in that region shares (needed by Route 53 to resolve an alias record correctly). Hardcoding the ALB zone ID per region works but is brittle and undocumented in your own code; the better pattern — what the coach eventually landed on — is pulling it dynamically:
+    <pre><code>data "aws_lb" "ingress" {
+  tags = {
+    Name = "${var.app_subdomain}-ingress"   <span class="c"># matched via the ALB tag set in the Ingress annotations</span>
+  }
+  depends_on = [kubernetes_ingress_v1.app_ingress_tls]
+}
+
+resource "aws_route53_record" "app" {
+  zone_id = data.aws_route53_zone.main.zone_id     <span class="c"># ← Route 53's zone ID</span>
+  name    = "${var.app_subdomain}.${var.domain_name}"
+  type    = "A"
+  alias {
+    name    = data.aws_lb.ingress.dns_name
+    zone_id = data.aws_lb.ingress.zone_id          <span class="c"># ← the ALB's own zone ID, pulled dynamically, not hardcoded</span>
+  }
+}</code></pre>
+  </div>
+  <div class="callout fix">
+    <b>Forward-looking, not yet your own pattern</b>
+    This full chain (ACM + validation + alias record + dynamic ALB lookup) is real code from the coach's current repo, several classes ahead of where your own <code>app-infra</code> stands. Treat the exercise above as the target shape to build toward once HTTPS is formally assigned as your own exercise — don't feel behind if your current Ingress doesn't have this yet.
+  </div>
+</section>
+
+<section id="ex11">
+  <div class="kicker">Exercise 11</div>
+  <h2><span class="num">11</span>The teardown trap: Secrets Manager &amp; KMS retention windows</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept — a real operational gotcha, demoed live</span>
+    <p class="goal">Goal: know this failure mode exists before it costs you 20 confused minutes the way it did in class.</p>
+    <p>When you <code>terraform destroy</code> infrastructure that included an <code>aws_secretsmanager_secret</code> (or a KMS key), AWS does not delete it immediately — by default it enters a mandatory <strong>recovery window</strong> (a minimum of 7 days, configurable up to 30) during which the secret is "scheduled for deletion" but still technically exists. If you then re-run <code>terraform apply</code> to rebuild the same infrastructure before that window elapses, the create call fails: a secret with that exact name/ID already exists in AWS's backend, even though it's invisible in the console as "deleted."</p>
+    <pre><code>aws secretsmanager delete-secret \
+  --secret-id "db/&lt;app&gt;-db" \
+  --force-delete-without-recovery</code></pre>
+    <p>This bypasses the recovery window entirely and deletes immediately — appropriate for lab/dev teardown-and-rebuild cycles, and explicitly <strong>not</strong> something to reach for casually against a real production secret, since it forfeits the safety net the recovery window exists to provide (accidental-deletion recovery).</p>
+  </div>
+</section>
+
+<section id="clinic">
+  <div class="kicker">Live Debugging Clinic</div>
+  <h2>Chasing the dynamic ALB zone ID</h2>
+  <p class="lede">One extended live-debugging arc dominated the middle of this session — worth walking through for the process, not just the fix.</p>
+  <div class="callout bug">
+    <b>Symptom: Route 53 alias record rejected — "zone ID is not valid"</b>
+    After getting the Ingress to successfully create an ALB (confirmed by seeing a real DNS name appear in the Ingress's status), the coach tried to point a Route 53 alias record at it and hit a rejected zone ID. The value being used had been typed in by hand from an earlier lookup and no longer matched — or was never the right kind of value to begin with (the classic Route-53-zone-ID-vs-ALB-zone-ID mix-up from Exercise 10).
+  </div>
+  <div class="callout bug">
+    <b>Diagnostic process — worth copying, not just the outcome</b>
+    Rather than dig through Terraform provider docs (described as slow and easy to get wrong), the coach asked ChatGPT and Cursor directly for "how to dynamically get the ALB zone ID in Terraform," giving full project context so the suggestion would actually fit the existing code rather than being generic boilerplate. The first suggestion used the ALB's ARN as a lookup key; a second attempt used a <strong>tag-based lookup</strong> instead (<code>data "aws_lb" { tags = {...} }</code>) — which is what ended up working, matching the coach's own real code shown in Exercise 10. <strong>The interview-relevant lesson stated explicitly:</strong> AI tools are genuinely useful for closing a "I know this is possible but forgot the exact syntax" gap quickly — but only when paired with enough judgment to evaluate whether the suggested approach is actually right for your specific setup, not simply accepted because it's syntactically valid and appeared instantly.
+  </div>
+  <div class="callout bug">
+    <b>Smaller bugs hit in the same stretch</b>
+    A port mismatch resurfaced (Ingress backend pointed at <code>8000</code> when the actual Service was listening on <code>8080</code> after a code change) — caught by directly checking the Service's actual port rather than assuming the Ingress config was still correct. A "not the right shape of value" error on an ALB lookup (using the ARN where a tag or name was expected) was also hit and corrected before landing on the working tag-based lookup shown in Exercise 10.
+  </div>
+  <div class="callout fix">
+    <b>Meta-lesson, consistent with Part 3's Clinic</b>
+    Every one of these was solved by inspecting the <em>actual, current, live state</em> — the real port a Service is forwarding to right now, the real DNS/zone values AWS is returning right now — rather than trusting what the code was assumed to say. The tool changed (AI assistant vs. AWS Console vs. <code>curl</code>) but the underlying discipline from Part 3's Clinic holds: verify live state, don't just re-read the code and hope.
+  </div>
+</section>
+
+<section id="comms">
+  <div class="kicker">Interview Communication Drill</div>
+  <h2>Answer precisely, then elaborate</h2>
+  <p class="lede">A significant chunk of this session was an explicit, named communication drill — not incidental class chatter. Two students answered technical questions with accurate but overly-detailed implementation-first answers, and the coach used both as live teaching moments about how to structure an interview answer.</p>
+  <div class="exercise">
+    <span class="ex-label">The pattern being taught</span>
+    <p class="goal">Goal: lead every answer with a one-line, precise summary <em>before</em> diving into implementation detail — regardless of how much detail you actually know.</p>
+    <p><strong>Question asked:</strong> "If you don't want to run your database inside RDS, what other option do you have?"</p>
+    <table>
+      <tr><th>What was said (marked as imprecise)</th><th>What the coach modeled instead</th></tr>
+      <tr><td>"We can attach the EBS CSI driver and give it a PersistentVolumeClaim and PersistentVolume."</td><td><strong>"We can run it on-prem, or on Kubernetes."</strong> — the actual top-level answer to the question asked — <em>then</em>, only if asked "how, specifically, on Kubernetes," go into StatefulSets, custom operators (e.g. CNPG for Postgres), and PVC/PV mechanics.</td></tr>
+      <tr><td>"You can run it as a container with access to a PVC where you put the data."</td><td>Same correction: a database is <strong>not just another container</strong> — it carries consistency and durability requirements a stateless container doesn't, so the precise answer names the pattern (StatefulSet, or a purpose-built operator) rather than describing it as "a container with a disk attached."</td></tr>
+    </table>
+    <p>The stated reason this matters, from the coach's own experience: giving accurate-but-unstructured, overly-detailed answers cost him a job offer despite passing every technical round — the interviewer's read was that the answers weren't <em>precise</em>, even though they were correct. Named explicitly as a common pattern among Indian engineers specifically, and something worth deliberately practicing against.</p>
+  </div>
+  <div class="exercise">
+    <span class="ex-label">Framework example — Kubernetes vs. ECS, structured properly</span>
+    <p class="goal">Goal: have a reusable structure ready for "why would you choose X over Y" questions, not just facts about X and Y.</p>
+    <p>Applied live to "when would you choose Kubernetes over ECS for microservices": don't default to Kubernetes just because a workload is "microservices" — ECS runs microservices fine. Choose Kubernetes specifically when you need one of:</p>
+    <ul>
+      <li><strong>More control</strong> over deployment behavior, configuration, and visibility than ECS's simpler abstraction offers.</li>
+      <li><strong>Existing high-quality open-source tooling</strong> that solves your specific problem and doesn't have an ECS equivalent — the concrete example given: CNPG (CloudNativePG), a mature Postgres operator with no comparably mature ECS-ecosystem equivalent, making "run Postgres reliably on Kubernetes" a solved problem in a way it isn't on ECS.</li>
+      <li><strong>An existing standard platform</strong> already built out at your company (monitoring, observability, deployment tooling already standardized on Kubernetes) — a new microservice joining an existing Kubernetes-based ecosystem is a much smaller decision than picking Kubernetes cold for a single new service.</li>
+    </ul>
+    <p>The coach was candid that his own live answer to a related question (should front-end and back-end ever share one Pod?) was <em>correct but not structured</em> — a useful, honest admission that getting the content right is necessary but not sufficient; building a repeatable answer <em>structure</em> is a separate skill worth practicing deliberately, and one he described as still actively working on himself.</p>
+  </div>
+</section>
+
+<hr class="div">
+
+<section id="gitops">
+  <div class="kicker">Looking ahead</div>
+  <h2>The GitOps problem (full pattern tomorrow)</h2>
+  <p>With about ten minutes left, the class shifted entirely to concept — no code — setting up tomorrow's Argo CD session. This is worth understanding well before that class starts, since the coach explicitly asked everyone to research it independently first.</p>
+  <div class="exercise">
+    <span class="ex-label">Concept — the actual problem, before the tool name</span>
+    <p class="goal">Goal: be able to explain <em>why</em> GitOps exists before you ever hear the words "Argo CD" — the problem is the interview-relevant part, the tool is just one implementation of the answer.</p>
+    <p>Walked through as a diagram: code is pushed to GitHub → CI builds and pushes a new image → a pipeline step runs <code>kubectl set image deployment/&lt;name&gt; &lt;container&gt;=&lt;new-image&gt;</code> to trigger the rollout. This works, but has a structural weakness: <strong>anyone with cluster credentials can run that same <code>kubectl</code> command manually, at any time, completely outside the pipeline</strong> — bypassing code review, bypassing the pipeline's record of what was deployed, bypassing everything. When that happens, what your Git history/pipeline logs say is running and what's <em>actually</em> running in the cluster silently disagree. This gap is called <strong>configuration drift</strong>, and it's the core problem GitOps exists to close.</p>
+    <p>The GitOps answer: make your Git repository the single <strong>source of truth</strong> for desired cluster state, and run a tool <em>inside the cluster</em> that continuously watches Git and reconciles the live cluster state back to match it — automatically undoing any manual, out-of-band change, and refusing to let drift persist silently.</p>
+  </div>
+  <div class="callout">
+    <b>Why this also solves a security/access problem, not just a drift problem</b>
+    Before GitOps became common (and before OIDC was widely adopted), pipelines like Jenkins needed their own long-lived, directly-provisioned Kubernetes credentials — another set of secrets to rotate and secure. Individual developers needing to run <code>kubectl</code> commands against the cluster also needed their own direct credentials and had to understand cluster-level commands just to ship a change — extra cognitive load and a wider blast radius of who has direct cluster access. A GitOps controller centralizes cluster write-access into one trusted, in-cluster component; developers interact with Git (or the GitOps tool's own UI) instead of running <code>kubectl</code> directly.
+  </div>
+  <div class="callout fix">
+    <b>Argo CD vs. Flux — named, not yet taught</b>
+    Two tools became the standard GitOps implementations: <strong>Flux</strong> and <strong>Argo CD</strong>. Both are real and still used, but Argo CD has become the dominant one industry-wide (framed simply as "the tool that got broader adoption becomes the default") — which is why tomorrow's class is built entirely around it rather than Flux.
+  </div>
+  <div class="callout warn">
+    <b>Also previewed, explicitly not taught yet — save these terms, don't research them deeply now</b>
+    Two topics were named as "coming soon, more detail tomorrow/later" and deliberately not explained in depth this session: (1) how Argo CD actually handles <strong>rollout strategies</strong> (rolling, blue-green, canary) — flagged as a much bigger topic than "how the Pod comes up," extending into how users are shifted between old/new versions and how failures are recovered from; and (2) the two core <strong>rolling-update parameters</strong>, <code>maxSurge</code> (how many new Pods can come up at once above the desired count) and <code>maxUnavailable</code> (how many existing Pods can be down at once during the rollout) — walked through with a whiteboard example (5 Pods, <code>maxSurge: 2</code>) showing new Pods entering <code>Pending</code> → <code>Running</code> → passing health checks before an old Pod is killed, one-for-one. Both topics are explicitly promised "in much more detail" in an upcoming class — don't over-research them now; the assigned homework was simply to read about GitOps and Argo CD conceptually before tomorrow.
+  </div>
+  <p><strong>Assigned before next class:</strong> research GitOps principles from a reliable source (CNCF publications specifically recommended over generic YouTube search results, which the coach noted tend to be shallow/SEO-optimized rather than foundational) and read up on Argo CD patterns and deployment strategies generally, so tomorrow's session can go deeper rather than starting from zero.</p>
+</section>
+
+<hr class="div">
+
+<section id="openitems">
+  <div class="kicker">Carried forward</div>
+  <h2>Open items in your own repo — not blocking, not urgent</h2>
+  <p>Found reviewing your actual Terraform this session. None of these are coach's-code issues — they're in your own <code>aws-github-oidc</code> and <code>k8s-services</code> modules. Listed here so they don't get lost, not as something to act on immediately.</p>
+  <ul>
+    <li><strong>OIDC trust policy likely blocks any <code>environment:</code>-gated job</strong> — see the Exercise 2 callout. Fix is adding the <code>environment:</code>-shaped <code>sub</code> claim alongside the existing branch-ref one.</li>
+    <li><strong>Role-name mismatch to verify</strong> — your Terraform creates a role named <code>github_oidc_role</code>, but your workflows authenticate as <code>aws-github-oidc-aug26</code>. Worth confirming which one is actually live in AWS (<code>aws iam get-role --role-name aws-github-oidc-aug26</code>) before trusting either the trust-policy fix above or the IAM policy scope below applies to the role your pipelines really use.</li>
+    <li><strong><code>k8s-services/versions.tf</code> has no <code>backend "s3" {}</code> block</strong> — unlike <code>eks-core-infra</code> and <code>app-infra</code>, which both have one. Without it, every CI run starts from empty local state on a throwaway runner, with no memory of the Load Balancer Controller Helm release, IAM role, or Ingress created last time.</li>
+    <li><strong>IAM policy attached to <code>gh_oidc_role</code> only grants <code>ecr:*</code> and <code>ssm:GetParameter</code></strong> — not enough to run <code>terraform apply</code> against <code>eks-core-infra</code> (EC2/VPC/EKS/IAM) or <code>app-infra</code> (RDS/Secrets Manager/KMS). Same "which role is actually live" question as above applies here.</li>
+  </ul>
+</section>
+
+<hr class="div">
+
+<section id="glossary">
+  <div class="kicker">Reference</div>
+  <h2>Glossary</h2>
+  <dl class="glossary">
+    <dt><code>workflow_dispatch</code></dt><dd>A GitHub Actions trigger that allows a workflow to be started manually from the UI (or API) rather than automatically on push/PR — used here so infra changes are never accidentally auto-deployed.</dd>
+    <dt><code>choice</code> input type</dt><dd>A <code>workflow_dispatch</code> input constrained to a fixed set of options, shown as a dropdown — prevents free-text typos from silently pointing at the wrong resource.</dd>
+    <dt>GitHub Environment</dt><dd>A named deployment target configured under repo Settings, carrying its own protection rules (required reviewers, wait timer, self-review prevention) — inert until a job references it via the <code>environment:</code> key.</dd>
+    <dt><code>environment:</code> (job-level key)</dt><dd>Attaches a job to a configured GitHub Environment, forcing that Environment's protection rules to be satisfied before the job runs. Not to be confused with <code>env:</code>.</dd>
+    <dt><code>env:</code></dt><dd>Sets plain environment variables scoped to a workflow/job/step — has no connection to GitHub Environments or approval gates.</dd>
+    <dt>CODEOWNERS</dt><dd>A file (in <code>.github/</code>) mapping paths in a repo to the team or individuals responsible for approving changes to them — the scalable alternative to naming individual usernames as required reviewers.</dd>
+    <dt>LGTM</dt><dd>"Looks Good To Me" — standard shorthand for approving a pull request or deployment; assumed vocabulary on any engineering team.</dd>
+    <dt>Terraform plan/apply split</dt><dd>Running <code>terraform plan</code> as an ungated, informational job and gating only <code>terraform apply</code> behind approval, so a human reviewer can see the actual diff before signing off — as opposed to approving a job that shows nothing.</dd>
+    <dt>Backward compatibility (schema)</dt><dd>Designing a database migration so the <em>currently running</em> app version continues to work against the new schema, typically by keeping old columns/tables for several revisions before finally dropping them — necessary because rollbacks and rolling deploys both require old and new code to briefly coexist against one database.</dd>
+    <dt>Blast radius</dt><dd>The scope of impact a single failure or mistake can cause. Microservices with per-service databases shrink blast radius versus a monolith with one shared database and one shared migration path.</dd>
+    <dt>AWS Secrets Manager recovery window</dt><dd>A mandatory minimum delay (7–30 days) before a "deleted" secret is actually purged from AWS's backend — causes name-collision errors on rapid destroy/recreate cycles unless bypassed with <code>--force-delete-without-recovery</code>.</dd>
+    <dt>ACM (AWS Certificate Manager)</dt><dd>AWS's service for issuing and managing TLS certificates; DNS-based validation proves domain ownership via a CNAME/validation record before a cert is issued.</dd>
+    <dt>Route 53 hosted-zone ID</dt><dd>Identifies a specific DNS zone (domain) you own in Route 53 — distinct from an ALB's own zone ID, a common source of confusion.</dd>
+    <dt>ALB zone ID</dt><dd>A fixed, AWS-published constant shared by every ALB in a given region, required by Route 53 to correctly resolve an alias record pointing at that ALB. Best retrieved dynamically via a <code>data "aws_lb"</code> lookup rather than hardcoded.</dd>
+    <dt>Configuration drift</dt><dd>The state where a system's actual running configuration no longer matches what its source of truth (e.g. Git, or a CI pipeline's records) claims it should be — typically caused by manual, out-of-band changes.</dd>
+    <dt>GitOps</dt><dd>An operational pattern making a Git repository the source of truth for desired system state, with an in-cluster controller continuously reconciling live state to match it — closing the configuration-drift gap and centralizing cluster write-access.</dd>
+    <dt>Argo CD</dt><dd>The most widely-adopted GitOps controller for Kubernetes; watches a Git repo and reconciles cluster state to match it. Subject of the next class.</dd>
+    <dt>Flux</dt><dd>The other major GitOps controller for Kubernetes — still actively used, but with smaller market share than Argo CD industry-wide.</dd>
+    <dt><code>maxSurge</code> / <code>maxUnavailable</code></dt><dd>The two core rolling-update parameters controlling, respectively, how many extra Pods can be created above the desired count during a rollout, and how many existing Pods can be taken down at once — previewed this session, full depth promised in an upcoming class.</dd>
+  </dl>
+</section>
+
+</div>
+
+<a href="#" class="backtotop">↑</a>
+
+<footer>
+  Follow-along series · DevOps Bootcamp April 2026 · Class 4, Part 4 — generated from class notes and transcript (Aug 29, 2026)
+</footer>
+
+</body>
+</html>
