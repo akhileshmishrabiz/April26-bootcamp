@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "follow-along-docs/**"
+      - ".github/scripts/generate-follow-along-index.py"
       - ".github/workflows/follow-along-docs-pages.yml"
   workflow_dispatch:
 
@@ -27,6 +28,9 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
+
+      - name: Generate lesson index
+        run: python3 .github/scripts/generate-follow-along-index.py
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
