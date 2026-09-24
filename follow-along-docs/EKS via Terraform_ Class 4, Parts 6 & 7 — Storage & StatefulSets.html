@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EKS via Terraform, Properly: Class 4 — Parts 6 &amp; 7 (Kubernetes Storage &amp; StatefulSets)</title>
+<style>
+  :root{
+    --ink:#1b2027; --sub:#4b5563; --bg:#fbfaf7; --panel:#ffffff; --line:#e4e1d8;
+    --accent:#2e6f6a; --accent2:#b8562f; --accent3:#3a5ba0;
+    --mono-bg:#12161c; --mono-ink:#d7e0e8; --mono-accent:#7fd0c4; --code-inline-bg:#eef0eb;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:"Iowan Old Style","Palatino Linotype",Georgia,"Noto Serif",serif; line-height:1.65; font-size:17px;}
+  .wrap{max-width:960px; margin:0 auto; padding:0 32px 120px;}
+  header.hero{padding:70px 32px 50px; border-bottom:1px solid var(--line); background: linear-gradient(180deg, rgba(46,111,106,0.06), rgba(46,111,106,0) 60%);}
+  header.hero .eyebrow{font-family:"JetBrains Mono","SF Mono",Consolas,monospace; letter-spacing:.14em; text-transform:uppercase; font-size:12.5px; color:var(--accent); margin-bottom:14px; display:flex; gap:10px; align-items:center;}
+  header.hero .eyebrow::before{content:"//"; color:var(--accent2);}
+  h1.title{font-size:clamp(30px,4.2vw,46px); line-height:1.12; margin:0 0 14px; max-width:820px; letter-spacing:-0.01em;}
+  .subtitle{color:var(--sub); font-size:18px; max-width:700px; margin:0 0 26px;}
+  .meta-row{display:flex; gap:22px; flex-wrap:wrap; font-family:"JetBrains Mono",monospace; font-size:12.5px; color:var(--sub);}
+  .meta-row span b{color:var(--ink);}
+  nav.toc{margin:36px auto 0; max-width:960px; padding:22px 32px 26px; border:1px solid var(--line); border-radius:10px; background:var(--panel);}
+  nav.toc h2{font-family:"JetBrains Mono",monospace; font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 14px;}
+  nav.toc ol{columns:2; column-gap:36px; margin:0; padding-left:20px;}
+  nav.toc li{break-inside:avoid; margin-bottom:8px; font-size:15px;}
+  nav.toc a{color:var(--ink); text-decoration:none; border-bottom:1px dotted var(--line);}
+  nav.toc a:hover{color:var(--accent); border-color:var(--accent);}
+  @media (max-width:640px){nav.toc ol{columns:1;}}
+  section{padding-top:56px;}
+  section > .kicker{font-family:"JetBrains Mono",monospace; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent2); margin-bottom:8px;}
+  h2{font-size:30px; margin:0 0 6px; letter-spacing:-0.01em; scroll-margin-top:20px;}
+  h2 .num{color:var(--accent); font-family:"JetBrains Mono",monospace; font-size:19px; margin-right:10px;}
+  h3{font-size:21px; margin:34px 0 10px; scroll-margin-top:20px; color:#20262c;}
+  h4{font-size:16.5px; margin:22px 0 8px; color:#20262c; font-family:"JetBrains Mono",monospace; letter-spacing:.02em;}
+  p{margin:0 0 15px;}
+  ul,ol{margin:0 0 16px; padding-left:22px;}
+  li{margin-bottom:6px;}
+  strong{color:#10161c;}
+  .lede{font-size:18.5px; color:#2b323a;}
+  code, .code-inline{font-family:"JetBrains Mono","SF Mono",Consolas,monospace; font-size:0.86em; background:var(--code-inline-bg); padding:1px 6px; border-radius:4px; color:#3a2f1f;}
+  pre{background:var(--mono-bg); color:var(--mono-ink); padding:18px 20px; border-radius:10px; overflow-x:auto; font-family:"JetBrains Mono","SF Mono",Consolas,monospace; font-size:13.5px; line-height:1.55; margin:16px 0 22px;}
+  pre code{background:none; padding:0; color:inherit; font-size:1em;}
+  pre .c{color:#7f8b98;} pre .k{color:var(--mono-accent);} pre .s{color:#e2b872;} pre .out{color:#9aa3ad;} pre .bad{color:#e58b8b;}
+  .callout{border-left:3px solid var(--accent); background:#eef3f2; padding:14px 18px; border-radius:0 8px 8px 0; margin:18px 0; font-size:15.5px;}
+  .callout.warn{border-left-color:var(--accent2); background:#f7ece5;}
+  .callout.myth{border-left-color:#8a3f8a; background:#f3ecf3;}
+  .callout.fix{border-left-color:#3a5ba0; background:#e9eef7;}
+  .callout.bug{border-left-color:#c0392b; background:#fbe9e7;}
+  .callout b{display:block; font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px;}
+  .callout.warn b{color:var(--accent2);} .callout.myth b{color:#8a3f8a;} .callout.fix b{color:#3a5ba0;} .callout.bug b{color:#c0392b;}
+  .callout:not(.warn):not(.myth):not(.fix):not(.bug) b{color:var(--accent);}
+  table{width:100%; border-collapse:collapse; margin:18px 0 26px; font-size:15px;}
+  th{text-align:left; font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--sub); border-bottom:2px solid var(--ink); padding:8px 12px;}
+  td{border-bottom:1px solid var(--line); padding:10px 12px; vertical-align:top;}
+  tr:hover td{background:#f5f3ee;}
+  td code{white-space:nowrap;}
+  hr.div{border:none; border-top:1px solid var(--line); margin:56px 0;}
+  .backtotop{position:fixed; right:24px; bottom:24px; background:var(--ink); color:#fff; width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; text-decoration:none; font-size:18px; opacity:.85; box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  .backtotop:hover{opacity:1;}
+  .step-list{counter-reset:step; list-style:none; padding-left:0;}
+  .step-list li{counter-increment:step; padding-left:38px; position:relative; margin-bottom:16px;}
+  .step-list li::before{content:counter(step); position:absolute; left:0; top:0; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; font-family:"JetBrains Mono",monospace; font-size:13px; display:flex; align-items:center; justify-content:center;}
+  .exercise{border:1.5px solid var(--accent); border-radius:12px; padding:22px 26px; margin:28px 0; background:#fcfdfc;}
+  .exercise .ex-label{font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:#fff; background:var(--accent); display:inline-block; padding:4px 10px; border-radius:5px; margin-bottom:10px;}
+  .exercise h3{margin-top:0;}
+  .goal{font-size:14.5px; color:var(--sub); font-style:italic; margin-top:-4px; margin-bottom:16px;}
+  .yourturn{border:1.5px dashed var(--accent2); border-radius:12px; padding:20px 24px; margin:22px 0; background:#fffaf6;}
+  .yourturn .yt-label{font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:#fff; background:var(--accent2); display:inline-block; padding:4px 10px; border-radius:5px; margin-bottom:10px;}
+  .checklist{list-style:none; padding-left:0;}
+  .checklist li{padding-left:30px; position:relative; margin-bottom:10px;}
+  .checklist li::before{content:"☐"; position:absolute; left:0; top:0; color:var(--accent); font-size:17px;}
+  .glossary dt{font-family:"JetBrains Mono",monospace; font-weight:700; color:var(--ink); margin-top:14px;}
+  .glossary dd{margin:2px 0 0; color:var(--sub);}
+  footer{padding:60px 32px 40px; text-align:center; color:var(--sub); font-size:13px; font-family:"JetBrains Mono",monospace;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap" style="padding:0;">
+    <div class="eyebrow">devops bootcamp — hands-on lab · follow-along series</div>
+    <h1 class="title">EKS via Terraform, Properly: Class 4 — Parts 6 &amp; 7 (Kubernetes Storage &amp; StatefulSets)</h1>
+    <p class="subtitle">Two sessions, one topic, told as one story. Part 6 (Sep 5) laid the concepts down — stateful vs. stateless, PV/PVC/StorageClass, init containers, taints — then the live storage demo broke on-air and got parked. Part 7 (Sep 6) opened with a full TLS 1.2/1.3 deep-dive recap, then delivered the demo properly: data surviving pod death, three pods sharing one disk, a real StatefulSet with a headless Service, sharding vs. horizontal scaling, and the CloudNativePG operator standing in for hand-rolled database automation. This document treats both as a single lesson because that's how the coach himself treated them — Part 7 finished the sentence Part 6 started.</p>
+    <div class="meta-row">
+      <span>Instructor: <b>Akhilesh Mishra</b></span>
+      <span>Builds on: Parts 1–5 (EKS infra, Ingress/ALB, CI/CD, Argo CD/GitOps)</span>
+      <span>Class dates: <b>Sep 5 &amp; Sep 6, 2026</b></span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#howto">0 · How we're going to work through this</a></li>
+    <li><a href="#ex1">Exercise 1 — Fundamentals-first: why interviews reward TLS/OSI over tool trivia</a></li>
+    <li><a href="#ex2">Exercise 2 — TLS 1.2 in full: symmetric vs. asymmetric, the handshake, the CA</a></li>
+    <li><a href="#ex3">Exercise 3 — TLS 1.3: removing the single point of failure, cutting round trips</a></li>
+    <li><a href="#ex4">Exercise 4 — Stateful vs. stateless: why databases don't fit the Deployment model</a></li>
+    <li><a href="#ex5">Exercise 5 — Database scaling: vertical scaling, read/write splitting, consistency trade-offs</a></li>
+    <li><a href="#ex6">Exercise 6 — Storage fundamentals: StorageClass, PersistentVolume, PersistentVolumeClaim</a></li>
+    <li><a href="#ex7">Exercise 7 — Hands-on: data survives a pod's death (Demo 1)</a></li>
+    <li><a href="#ex8">Exercise 8 — Hands-on: three pods, one disk (Demo 2, ReadWriteMany)</a></li>
+    <li><a href="#ex9">Exercise 9 — Production storage choices: EBS vs. EFS, and why Fargate forces the answer</a></li>
+    <li><a href="#ex10">Exercise 10 — Init containers vs. sidecar containers</a></li>
+    <li><a href="#ex11">Exercise 11 — Taints and tolerations: restricting where pods can land</a></li>
+    <li><a href="#ex12">Exercise 12 — Why StatefulSets exist: identity, order, and strict volume binding</a></li>
+    <li><a href="#ex13">Exercise 13 — Hands-on: a real StatefulSet with a headless Service</a></li>
+    <li><a href="#ex14">Exercise 14 — Sharding is not horizontal scaling</a></li>
+    <li><a href="#ex15">Exercise 15 — CloudNativePG: why nobody hand-rolls database lifecycle scripts</a></li>
+    <li><a href="#ex16">Exercise 16 — Startup, readiness, and liveness probes, in the right order</a></li>
+    <li><a href="#ex17">Exercise 17 — Troubleshooting: NXDOMAIN, "non-authoritative", and CoreDNS</a></li>
+    <li><a href="#improvements">Where the coach's demo would need to change for real production</a></li>
+    <li><a href="#assignment">Your assignment before the next class</a></li>
+    <li><a href="#cheatsheet">Cheat sheet</a></li>
+    <li><a href="#glossary">Glossary</a></li>
+  </ol>
+</nav>
+
+<section id="howto">
+  <div class="kicker">Before you begin</div>
+  <h2><span class="num">00</span>How we're going to work through this</h2>
+  <p class="lede">Part 6 was mostly whiteboard and Q&amp;A, building the vocabulary for stateful workloads, then attempting a live storage demo that <strong>failed on-air</strong> — the coach explicitly paused it and rebuilt it for the next class rather than pushing through a broken example. Part 7 opened by re-answering the TLS homework from Part 6 in much greater depth (worth its own section here, since it's flagged as interview-critical twice across the two sessions), then ran the storage and StatefulSet demos cleanly from a rebuilt setup.</p>
+  <div class="callout fix">
+    <b>What actually got built and shown, concretely, across both sessions</b>
+    (1) A single-pod Deployment writing timestamped lines to a PVC-backed file, proving the volume outlives the pod through a delete/recreate cycle. (2) A three-replica Deployment sharing one <code>ReadWriteMany</code> volume, proving multiple pods can safely write to the same disk when the access mode and storage backend both support it. (3) A three-replica PostgreSQL <strong>StatefulSet</strong> with a headless Service, proving stable per-pod naming, ordered startup, and strict one-disk-per-pod binding. (4) The <strong>CloudNativePG (CNPG) operator</strong> installed and used to stand up a Postgres <code>Cluster</code> custom resource, as the production-grade alternative to hand-rolled StatefulSet automation.
+  </div>
+  <div class="callout warn">
+    <b>What's in the coach's repo but NOT covered in these two classes — skip it for now</b>
+    The <code>statefulsets-demo/demo2-cnpg-postgres/</code> folder in the coach's current code also ships a MinIO-backed <code>ScheduledBackup</code>, an on-demand backup job, and a PgBouncer <code>Pooler</code> resource. <strong>None of that was demonstrated in Part 6 or Part 7</strong> — the transcript only shows the operator install and a basic three-instance <code>Cluster</code> manifest, with backups mentioned verbally ("you can schedule backups by applying simple configurations") but not walked through live. Per your standing instruction, we're treating that extra material as material from a later class and not teaching it here — it'll get its own proper treatment when the transcript for that class arrives. Likewise, the coach's <code>pod-node-distribution/</code> folder (affinity, anti-affinity, topology spread) is explicitly <em>next class's</em> content per Part 6's closing remarks — taints/tolerations are covered here as concept only, no full demo.
+  </div>
+  <div class="callout bug">
+    <b>THE ONE THING TO GET RIGHT — which code we actually build against</b>
+    <strong>Part 6's live storage demo never worked.</strong> The coach hit real problems on-air, said so directly, and paused it rather than pushing through: "the existing demo setup was not effectively illustrating the desired data persistence... decided to pause the demonstration to refine the setup." <strong>There is no code artifact from that failed attempt worth looking at, and none is used anywhere in this document.</strong> Everything in Exercises 7, 8, and 13 below — every YAML block, every <code>kubectl</code> command — comes from the <strong>rebuilt Part 7 version</strong>, which is also exactly what's sitting in the coach's current repo today at <code>Kubernetes-world/stateful-workload-k8s/</code> (Demos 1 &amp; 2) and <code>Kubernetes-world/statefulsets-demo/demo1-postgres-statefulset/</code> (the StatefulSet). <strong>That rebuilt code is the only code we follow along with, from the first line.</strong> When you're ready to write your own version, base it on the blocks in this document (or the matching files in the coach's repo, at those two paths, minus the CNPG backup/pooler additions flagged above) — not on anything from Part 6's opening attempt, which no longer exists in any working form and isn't referenced again past this point.
+  </div>
+</section>
+
+<section id="ex1">
+  <div class="kicker">Exercise 1 · Part 6, opening</div>
+  <h2><span class="num">01</span>Fundamentals-first: why interviews reward TLS/OSI over tool trivia</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept — interview-flagged</span>
+    <p class="goal">Goal: understand why this class keeps returning to TLS and the OSI model instead of moving straight through the Kubernetes tool list.</p>
+    <p>Part 6 opened with a recap drill (Argo CD, GitOps, the Part 3–5 pipeline) and then pivoted hard into fundamentals: the coach's stated reasoning, repeated across both sessions, is that senior interviews increasingly probe <strong>HTTPS/TLS mechanics and the OSI model</strong> specifically, not just tool familiarity — feedback he says he's hearing consistently from people interviewing right now, in both Indian and European hiring pipelines.</p>
+    <p>A second, separate thread from Part 6: a live communication-style correction. Students giving technically accurate but front-loaded, implementation-heavy answers were coached toward <strong>leading with a one-line precise summary, then elaborating only if asked</strong> — the same "answer precisely, then elaborate" pattern flagged in earlier parts of this series. Named explicitly as more of an issue in some hiring cultures than others, but treated as universally good practice regardless.</p>
+  </div>
+</section>
+
+<section id="ex2">
+  <div class="kicker">Exercise 2 · Part 7</div>
+  <h2><span class="num">02</span>TLS 1.2 in full: symmetric vs. asymmetric, the handshake, the CA</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept — deep dive, interview-critical</span>
+    <p class="goal">Goal: be able to explain, from first principles and without notes, why TLS needs two different kinds of encryption rather than one.</p>
+    <p><strong>The core problem TLS solves:</strong> a client and server want to encrypt everything they send each other, but the very first message between them travels over an unencrypted channel — so they can't just agree on a shared secret key by sending it in the clear.</p>
+    <p><strong>Two encryption mechanisms, and why neither alone is enough:</strong></p>
+    <ul>
+      <li><strong>Symmetric encryption</strong> — one key encrypts and decrypts. Fast, and the right choice for large volumes of data (this is what actually encrypts the bulk traffic once a connection is established). The unsolved problem: both sides need the <em>same</em> key, and there's no safe way to hand it over on a channel that isn't encrypted yet.</li>
+      <li><strong>Asymmetric encryption</strong> — a mathematically linked key pair: whatever the <strong>public key</strong> encrypts, only the matching <strong>private key</strong> can decrypt (and vice versa, depending on direction). The public key can be handed out freely — an eavesdropper who captures it gains nothing, because they still don't have the private key.</li>
+    </ul>
+    <div class="callout">
+      <b>The trick TLS 1.2 uses</b>
+      Don't try to send a symmetric key over an unencrypted channel directly. Instead, use asymmetric encryption <em>just once</em>, to smuggle the symmetric key across safely — then switch to fast symmetric encryption for the actual session. This is why you'll hear both terms in the same breath when people describe TLS: asymmetric crypto bootstraps the connection, symmetric crypto carries the traffic.
+    </div>
+    <p><strong>The handshake, step by step (the "hello server / hello client" exchange):</strong></p>
+    <ol class="step-list">
+      <li><strong>Client Hello</strong> — the client sends the server a list of cipher suites it supports (which encryption algorithms it can do).</li>
+      <li><strong>Server Hello</strong> — the server picks one cipher suite from that list (historically often RSA) and confirms it back.</li>
+      <li><strong>Server sends its public key</strong> — generated fresh as part of a key pair. Anyone sniffing the wire can see this public key; that's fine by design.</li>
+      <li><strong>Client encrypts a session key using that public key</strong> and sends it back. Only the server's private key can decrypt it — so even though the public key travelled in the clear, the session key that was encrypted with it is safe.</li>
+      <li><strong>Server decrypts the session key with its private key.</strong> Both sides now hold the same symmetric key, and all further traffic uses fast symmetric encryption.</li>
+    </ol>
+    <p><strong>The man-in-the-middle problem this creates, and the fix (Certificate Authorities):</strong> step 3 above has a gap — how does the client know the public key it just received actually came from the real server, and not from an attacker who intercepted the connection and substituted their own key? If a hacker injects their own public key at that point, the client would unknowingly encrypt its session key <em>for the attacker</em>, not the real server.</p>
+    <p>The fix is a trusted third party: a <strong>Certificate Authority (CA)</strong> issues a certificate binding a public key to a specific domain, and signs it. The server now sends its public key <em>plus</em> this CA-signed certificate. The client verifies the signature against a CA it already trusts (built into the browser/OS), confirming the public key genuinely belongs to the domain it's connecting to — this is exactly the padlock icon and "connection is secure" indicator in a browser.</p>
+  </div>
+  <div class="callout warn">
+    <b>TLS 1.2's two named shortcomings</b>
+    <strong>1. Single point of failure:</strong> the server's private key is the one thing standing between an attacker and every session key ever exchanged with it. If that private key is ever compromised, an attacker who recorded encrypted traffic in the past can retroactively decrypt it. <strong>2. Latency — three full round trips</strong> before any application data can flow (hello/hello, key exchange, confirmation), plus the CPU cost of the encrypt/decrypt work itself on both ends — referred to in the industry as <strong>SSL/TLS offloading</strong> cost.
+  </div>
+</section>
+
+<section id="ex3">
+  <div class="kicker">Exercise 3 · Part 7</div>
+  <h2><span class="num">03</span>TLS 1.3: removing the single point of failure, cutting round trips</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept — deep dive, interview-critical</span>
+    <p class="goal">Goal: be able to name specifically what changed between 1.2 and 1.3, not just that "1.3 is faster."</p>
+    <p>TLS 1.3 makes two concrete changes, both worth stating precisely in an interview rather than as "it's more secure and faster":</p>
+    <table>
+      <tr><th>Change</th><th>TLS 1.2</th><th>TLS 1.3</th></tr>
+      <tr><td>Cipher suite freedom</td><td>Client proposes a list; server picks one (e.g. RSA)</td><td>Algorithm choice is largely hardcoded/standardized — much less negotiation surface</td></tr>
+      <tr><td>Key exchange mechanism</td><td>Client encrypts a session key with the server's public key (RSA-style)</td><td><strong>Diffie–Hellman</strong> key exchange — both sides derive the same shared secret mathematically, without ever transmitting a private key or a pre-formed session key across the wire</td></tr>
+      <tr><td>Single point of failure</td><td>Yes — compromise the private key, decrypt past recorded traffic</td><td>Removed — no dependency on holding onto one static private key for the whole exchange</td></tr>
+      <tr><td>Round trips (new connection)</td><td>Three</td><td><strong>One</strong></td></tr>
+      <tr><td>Round trips (resumed connection)</td><td>Three</td><td><strong>Zero</strong></td></tr>
+    </table>
+    <p>The Diffie–Hellman mechanics themselves were explicitly not derived from scratch in class ("high-quality mathematics... I won't go too deep into it") — the interview-relevant takeaway is knowing <em>what problem it solves and what it replaces</em>, not reproducing the algorithm.</p>
+  </div>
+  <div class="callout fix">
+    <b>How to actually answer this in an interview</b>
+    Don't open with terminology. Open with the goal: "the point of TLS is to get a client and server, who start with no shared secret over an unencrypted channel, to a point where they share one securely." Then walk into symmetric/asymmetric, the handshake, and only then the CA and the 1.2→1.3 delta. Leading with the destination, not the vocabulary, is exactly the "precise summary first" communication pattern flagged in Exercise 1.
+  </div>
+</section>
+
+<section id="ex4">
+  <div class="kicker">Exercise 4 · Part 6</div>
+  <h2><span class="num">04</span>Stateful vs. stateless: why databases don't fit the Deployment model</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: be able to state, in one line, why a database can't just be "a container with a disk attached" — this exact framing was flagged as an imprecise interview answer in an earlier class.</p>
+    <p><strong>Stateless</strong> workloads (most web/API microservices) don't need to retain data beyond their own lifecycle — kill any pod, a fresh replacement comes up, nothing is lost because nothing important lived inside it. <strong>Stateful</strong> workloads (databases, message queues, anything with durable data) are fundamentally different: the data <em>is</em> the point, and it must survive pod restarts, rescheduling, and node failure.</p>
+    <p>This single distinction cascades into everything a standard <code>Deployment</code> gets wrong for a database:</p>
+    <ul>
+      <li><strong>Random pod naming</strong> — a Deployment's replacement pods get new, randomly-suffixed names every time. A database client needs a stable, predictable endpoint to keep connecting to the same instance.</li>
+      <li><strong>No startup ordering</strong> — a Deployment starts all replica pods roughly simultaneously. A primary/replica database topology needs the writer up and healthy <em>before</em> readers start, or readers come up pointing at nothing.</li>
+      <li><strong>No strict volume-to-pod mapping</strong> — in a plain Deployment + PVC setup, you (the human) are responsible for correctly wiring which pod gets which disk. Get it wrong once, and a replacement pod could attach to the wrong node's data.</li>
+      <li><strong>Storage/node affinity</strong> — a volume is physically attached to a specific node. Whatever pod claims it has to be scheduled onto that same node, every time it restarts. Deployments have no built-in concept of "always schedule near this specific disk."</li>
+    </ul>
+  </div>
+</section>
+
+<section id="ex5">
+  <div class="kicker">Exercise 5 · Part 6</div>
+  <h2><span class="num">05</span>Database scaling: vertical scaling, read/write splitting, consistency trade-offs</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: know why "just add more replicas" — which works for stateless apps — does not work for a database's write path.</p>
+    <p>A stateless Deployment scales horizontally: add replicas, a load balancer spreads traffic, done. <strong>A database's writes do not scale this way.</strong> You cannot point two independent database instances at the same disk and let both accept writes — that's a direct path to data corruption, since neither instance knows what the other just wrote.</p>
+    <p>The practical pattern instead:</p>
+    <ul>
+      <li><strong>Vertical scaling for writes</strong> — give the single writer instance more CPU/memory/storage. Modern platforms increasingly support resizing live, without downtime, which is why vertical scaling is still a relevant, actively-used technique even though horizontal scaling gets more attention for stateless workloads.</li>
+      <li><strong>Read replicas for reads</strong> — additional instances that continuously sync from the primary and serve read-only queries, which <em>does</em> scale horizontally, since read traffic can be spread across many replicas safely.</li>
+      <li><strong>Application-level routing responsibility</strong> — it's the application's job to send writes to the primary and reads to a replica endpoint; the database doesn't do this automatically. This is one direct reason databases in Kubernetes use <strong>headless Services</strong> rather than a normal <code>ClusterIP</code> Service — the application needs to address a <em>specific</em> instance, not "any healthy pod behind this Service."</li>
+      <li><strong>Eventual vs. strong consistency</strong> — read replicas lag the primary by some small delay (milliseconds to seconds) while they sync, so a read immediately after a write might not reflect it yet. Many applications (social media feeds, for example) tolerate this fine — it's called <strong>eventual consistency</strong>. Systems where a stale read is unacceptable (banking transactions, for example) require <strong>strong consistency</strong>, which trades away some of that read-scaling benefit to guarantee every read reflects the latest write.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="ex6">
+  <div class="kicker">Exercise 6 · Parts 6 &amp; 7</div>
+  <h2><span class="num">06</span>Storage fundamentals: StorageClass, PersistentVolume, PersistentVolumeClaim</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: be able to explain the three-object chain (StorageClass → PV → PVC) and what each one is actually for, using the coach's own analogy.</p>
+    <p>Three objects, three distinct jobs — this is the piece students most often blur together:</p>
+    <table>
+      <tr><th>Object</th><th>What it actually is</th><th>Coach's analogy</th></tr>
+      <tr><td><code>StorageClass</code></td><td>Tells the cluster <em>how</em> to talk to a given storage backend — which provisioner/driver to use, and volume-binding behavior.</td><td>"Like installing a driver so your OS knows how to talk to new hardware." Must exist before anything can claim storage from it.</td></tr>
+      <tr><td><code>PersistentVolume (PV)</code></td><td>Represents one actual chunk of storage — the real disk resource, wherever it physically lives.</td><td>The disk itself, or in cloud terms, the provisioned EBS/EFS volume.</td></tr>
+      <tr><td><code>PersistentVolumeClaim (PVC)</code></td><td>A pod's <em>request</em> for storage — "I need this much space, with these access characteristics." Kubernetes matches the claim to an available PV.</td><td>An entitlement/reservation, not the disk itself — the thing the pod actually references.</td></tr>
+    </table>
+    <p>On local (kind) clusters, you provision StorageClass/PV/PVC by hand, as below. In a real cloud environment (EKS + the EBS or EFS CSI driver), the StorageClass and PV creation are largely automated — you mostly just write the PVC, and the driver provisions a real EBS/EFS volume to match it.</p>
+    <p>Once claimed, the PVC is <strong>mounted</strong> into the pod at a specific filesystem path (e.g. <code>/data</code>) via the pod spec's <code>volumes</code> and <code>volumeMounts</code> — that mount point is where the application's writes actually persist beyond the pod's own lifecycle.</p>
+  </div>
+  <div class="callout">
+    <b>Clarified live — "pods don't touch raw disks"</b>
+    A student question drew out an important precision point: a pod never interacts with a physical disk directly. It interacts with a <em>volume</em> — an abstraction Kubernetes maintains — and the underlying infrastructure (kubelet, CSI driver, cloud provider) is responsible for the actual physical attach/detach to a node. For the purposes of this class, treat "volume" as a virtualized disk that the pod's filesystem paths point into.
+  </div>
+</section>
+
+<section id="ex7">
+  <div class="kicker">Exercise 7 · Part 7 hands-on</div>
+  <h2><span class="num">07</span>Hands-on: data survives a pod's death (Demo 1)</h2>
+  <div class="exercise">
+    <span class="ex-label">Live demo — matches coach's rebuilt code</span>
+    <p class="goal">Goal: watch, and then reproduce yourself, a pod dying and its replacement picking up exactly where the old one left off.</p>
+    <p>This is the demo that broke in Part 6 and was rebuilt for Part 7. The rebuilt version, matching the coach's current <code>stateful-workload-k8s/demo1-pod-persistence/</code> folder, is a single-replica Deployment whose container appends a timestamped line to <code>/data/events.log</code> every 5 seconds, tagged with its own pod name:</p>
+    <h4>k8s/storage.yaml — StorageClass + PV + PVC, in one file</h4>
+    <pre><code>apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-host
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: demo1-volume
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-host
+  hostPath:
+    path: /mnt/host-volume/host-volume-data/demo1
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: demo1-claim
+  namespace: demo1-persistence
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-host
+  volumeName: demo1-volume
+  resources:
+    requests:
+      storage: 1Gi</code></pre>
+    <h4>k8s/deployment.yaml — the writer pod</h4>
+    <pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-writer
+  namespace: demo1-persistence
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: data-writer}
+  template:
+    metadata:
+      labels: {app: data-writer}
+    spec:
+      containers:
+        - name: writer
+          image: busybox:1.36
+          command: ["sh", "-c"]
+          args:
+            - |
+              mkdir -p /data
+              echo "=== Pod started: ${POD_NAME} at $(date -u) ===" >> /data/events.log
+              while true; do
+                echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) | pod=${POD_NAME}" >> /data/events.log
+                sleep 5
+              done
+          env:
+            - name: POD_NAME
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+          volumeMounts:
+            - {name: data, mountPath: /data}
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: demo1-claim}</code></pre>
+    <p><strong>What was proved live, exactly as shown in the class recording:</strong></p>
+    <ol class="step-list">
+      <li>Before the PVC exists, the pod stays stuck in <code>Pending</code> — <code>kubectl describe pod</code> shows <code>0/2 nodes are available: persistentvolumeclaim "demo1-claim" not found</code>. This is the "pod has a strict dependency on its PVC" point made concrete: no scheduling decision even gets attempted until the claim resolves.</li>
+      <li>Once the PVC is applied, the pod schedules, pulls its image, and starts writing to <code>/data/events.log</code> — visible in real time with <code>kubectl exec ... -- tail -f /data/events.log</code>.</li>
+      <li>Deleting the pod (<code>kubectl delete pod -l app=data-writer</code>) produces a <em>new</em> pod name, but reading the log afterward shows <strong>both</strong> the old pod's lines and the new pod's lines in the same file — direct proof the PV outlived the pod. The coach repeated the kill four times live to hammer the point home.</li>
+    </ol>
+  </div>
+  <div class="callout warn">
+    <b>Named production gap, stated directly by the coach</b>
+    A bare PV like this one is not itself a backup strategy. If someone accidentally deletes the volume, the data is gone. The stated real-world practice: <strong>schedule regular snapshots</strong> of any production persistent volume, independent of whatever reclaim policy you've set.
+  </div>
+</section>
+
+<section id="ex8">
+  <div class="kicker">Exercise 8 · Part 7 hands-on</div>
+  <h2><span class="num">08</span>Hands-on: three pods, one disk (Demo 2, ReadWriteMany)</h2>
+  <div class="exercise">
+    <span class="ex-label">Live demo — matches coach's rebuilt code</span>
+    <p class="goal">Goal: understand exactly what has to be true — on both the PVC and the storage backend — before multiple pods can safely share one volume.</p>
+    <p>Same overall shape as Demo 1, but a 3-replica Deployment, and the access mode changes from <code>ReadWriteOnce</code> to <code>ReadWriteMany (RWX)</code>:</p>
+    <pre><code># storage.yaml — the only meaningful diffs from Demo 1
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: demo2-shared-volume
+spec:
+  capacity: {storage: 1Gi}
+  accessModes:
+    - ReadWriteMany        # <-- was ReadWriteOnce in Demo 1
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-host
+  hostPath:
+    path: /mnt/host-volume/host-volume-data/demo2
+    type: DirectoryOrCreate</code></pre>
+    <pre><code># deployment.yaml — 3 replicas, all mounting the same PVC
+spec:
+  replicas: 3
+  ...
+      containers:
+        - name: writer
+          image: busybox:1.36
+          command: ["sh", "-c"]
+          args:
+            - |
+              mkdir -p /data/pods
+              while true; do
+                LINE="$(date -u +%Y-%m-%dT%H:%M:%SZ) | pod=${POD_NAME} | node=${NODE_NAME}"
+                echo "${LINE}" >> /data/shared.log
+                echo "${LINE}" > "/data/pods/${POD_NAME}.txt"
+                sleep 5
+              done</code></pre>
+    <p><strong>What was proved live:</strong> tailing <code>/data/shared.log</code> from any one of the three pods shows lines from <strong>all three</strong> pod names interleaved in the same file — direct evidence that concurrent writes from different pods to the same disk are landing correctly.</p>
+  </div>
+  <div class="callout myth">
+    <b>Named explicitly as the trap to avoid</b>
+    "By default you don't mount [a volume] to multiple pods — you have to be very careful here... if you think about databases, you're never going to allow a disk to attach to two nodes at the same time. Two different pods across two nodes writing to the same disk for a database will cause a blunder." <code>ReadWriteMany</code> is a deliberate, narrow-use-case decision (shared log/asset storage being the classic example) — never a database's data directory. Also: on <code>kind</code>, RWX "works" here only because every node bind-mounts the <em>same host folder</em> (see <code>kind-config-vol.yaml</code>'s <code>extraMounts</code>) — that's a local-lab convenience, not how RWX works in the cloud (see Exercise 9).
+  </div>
+</section>
+
+<section id="ex9">
+  <div class="kicker">Exercise 9 · Part 7 Q&amp;A</div>
+  <h2><span class="num">09</span>Production storage choices: EBS vs. EFS, and why Fargate forces the answer</h2>
+  <div class="exercise">
+    <span class="ex-label">Q&amp;A — Deepak Gupta asked directly</span>
+    <p class="goal">Goal: know the one constraint that actually decides EBS vs. EFS for you, rather than treating it as a free choice.</p>
+    <p>Asked directly what real production environments use for the multi-pod-shared-disk scenario, the coach's answer had one hard technical constraint at its center:</p>
+    <table>
+      <tr><th></th><th>EBS</th><th>EFS</th></tr>
+      <tr><td>Access pattern</td><td>Block storage — one node at a time (ReadWriteOnce)</td><td>File system — shared, supports ReadWriteMany natively</td></tr>
+      <tr><td>Works with EKS Fargate?</td><td><strong>No</strong> — Fargate does not support EBS at all</td><td><strong>Yes</strong> — the only PV-backed option Fargate supports</td></tr>
+      <tr><td>Works with managed/self-managed node groups?</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>Pick it when...</td><td>You need a real block device (a database's own data directory, for example) and you're on EC2-backed nodes, not Fargate</td><td>You just need a shared file system — logs, shared config/assets, or you're running on Fargate and have no other choice</td></tr>
+    </table>
+    <p>Stated in the coach's own words: "If I'm running on Fargate, you already know Fargate only supports EFS." A stateful, disk-backed workload (their own real example: an APM-style stateful application) is therefore a reason to <em>avoid</em> Fargate for that specific workload and use managed/self-managed node groups instead — the storage requirement can decide your compute platform, not the other way around.</p>
+  </div>
+</section>
+
+<section id="ex10">
+  <div class="kicker">Exercise 10 · Part 6</div>
+  <h2><span class="num">10</span>Init containers vs. sidecar containers</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: know both the functional difference and the YAML structural difference — this was asked twice, once conceptually and once as a "could I fake this with a command override?" trick question.</p>
+    <table>
+      <tr><th></th><th>Init container</th><th>Sidecar container</th></tr>
+      <tr><td>When it runs</td><td>Before the main container starts; must complete and exit first</td><td>Concurrently, for the pod's whole lifetime</td></tr>
+      <tr><td>Typical use</td><td>Wait for a dependency (DB reachable?), run a one-time setup/lookup task</td><td>Ongoing supporting role — log forwarding, a proxy, a metrics exporter</td></tr>
+      <tr><td>Where it's defined in the pod spec</td><td><code>initContainers:</code> — a separate, pod-spec-level list</td><td>Inside the same <code>containers:</code> list as the main application</td></tr>
+    </table>
+    <p><strong>The trick question, and why the answer is "no":</strong> a student asked whether overriding a container's entrypoint/command could substitute for an init container. The coach's distinction: <strong>overriding a command changes what the main container itself executes instead of its default</strong> — it's still one container, one lifecycle. An init container is a fundamentally separate container object with its own lifecycle that <em>completes and exits</em> before the main container is even created. They solve different problems and aren't interchangeable.</p>
+    <p><strong>Practical guidance given:</strong> don't try to memorize exact YAML syntax — focus on understanding the structural difference (pod-spec-level list vs. container-list member), since that structural placement is what actually determines the behavior.</p>
+  </div>
+</section>
+
+<section id="ex11">
+  <div class="kicker">Exercise 11 · Part 6</div>
+  <h2><span class="num">11</span>Taints and tolerations: restricting where pods can land</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept — full hands-on demo deferred to a later class</span>
+    <p class="goal">Goal: know the mental model (taint = lock, toleration = key) well enough to reason about scheduling, even without having run the demo yet.</p>
+    <p>A <strong>taint</strong> is applied to a <em>node</em> to repel pods from scheduling there by default (e.g. the built-in <code>NoSchedule</code> taint control-plane nodes carry, so ordinary workloads never land on them). A <strong>toleration</strong> is applied to a <em>pod</em> to say "I am explicitly allowed onto nodes with this specific taint" — described in class as "a special pass."</p>
+    <p>The named real-world use case: <strong>separating GPU-backed ML workloads from ordinary CPU-based web workloads</strong> to control cost — taint the expensive GPU nodes so nothing lands there by accident, then give only the ML pods that actually need a GPU the matching toleration (and typically an affinity rule pulling them <em>toward</em> those nodes too, which is a related but separate mechanism).</p>
+  </div>
+  <div class="callout warn">
+    <b>Deliberately not demoed yet</b>
+    The coach named taints/tolerations/affinity/anti-affinity/topology-spread as a dedicated hands-on demo for a <em>future</em> class — the coach's own <code>pod-node-distribution/</code> folder (with its <code>01-toleration-demo.yaml</code>, affinity/anti-affinity/spread manifests) is exactly that upcoming material. Concept-only here, on purpose — don't go looking for a working demo of this in Parts 6/7's code.
+  </div>
+</section>
+
+<section id="ex12">
+  <div class="kicker">Exercise 12 · Part 7</div>
+  <h2><span class="num">12</span>Why StatefulSets exist: identity, order, and strict volume binding</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept</span>
+    <p class="goal">Goal: state precisely — not vaguely as "it's for databases" — what a StatefulSet actually guarantees that a Deployment does not.</p>
+    <p>Building directly on Exercise 4's stateless/stateful distinction, a <code>StatefulSet</code> is "just like a Deployment, but it behaves in a different way" — same basic job (keep N replicas running), three additional guarantees layered on top:</p>
+    <ul>
+      <li><strong>Stable, predictable pod names</strong> — ordinal suffixes (<code>postgres-0</code>, <code>postgres-1</code>, <code>postgres-2</code>), not random hashes. If <code>postgres-0</code> dies, its replacement is <em>also</em> named <code>postgres-0</code> — never a different name.</li>
+      <li><strong>Ordered, sequential startup</strong> — pods come up one at a time, in ordinal order, each one reaching <code>Ready</code> before the next one starts. This is what lets a primary/replica topology guarantee the writer is healthy before any reader starts.</li>
+      <li><strong>Strict, automatic pod-to-volume binding</strong> — each ordinal gets its own dedicated PVC via <code>volumeClaimTemplates</code>, and the StatefulSet controller itself enforces that <code>postgres-0</code>'s replacement always reattaches to <code>postgres-0</code>'s original volume — a pod's IP is not stable enough to use for this mapping (IPs change constantly), so the controller uses the pod's <em>name</em> as the durable key instead. You never hand-wire this mapping yourself the way you would with a plain Deployment + PVC — this was named directly as removing a whole category of human error.</li>
+    </ul>
+    <div class="callout bug">
+      <b>Honest caveat, stated from the coach's own production experience</b>
+      "Everything breaks in the real world, no matter how well it sounds in theory." Named failure modes: a node can get corrupted such that a mounted volume simply won't detach cleanly; a volume can end up believing it's still bound to a node that no longer exists, requiring manual detach/reattach. This is given as the actual reason "a lot of people avoid running databases on Kubernetes" historically — not because the StatefulSet model is wrong, but because operational failure handling is genuinely harder than the clean-demo version suggests. Better tooling (see Exercise 15, CNPG) is what's changed the calculus.
+    </div>
+  </div>
+</section>
+
+<section id="ex13">
+  <div class="kicker">Exercise 13 · Part 7 hands-on</div>
+  <h2><span class="num">13</span>Hands-on: a real StatefulSet with a headless Service</h2>
+  <div class="exercise">
+    <span class="ex-label">Live demo — matches coach's rebuilt code</span>
+    <p class="goal">Goal: run this yourself and actually watch the ordered startup and the per-pod DNS resolution — reading about it is not the same as seeing <code>postgres-0</code> come up before <code>postgres-1</code> exists at all.</p>
+    <h4>k8s/service.yaml — the headless Service (note <code>clusterIP: None</code>)</h4>
+    <pre><code>apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: demo1-statefulset
+  labels: {app: postgres}
+spec:
+  clusterIP: None          # <-- this is what makes it "headless"
+  selector: {app: postgres}
+  ports:
+    - {name: postgres, port: 5432, targetPort: 5432}</code></pre>
+    <h4>k8s/statefulset.yaml — the key differences from a Deployment</h4>
+    <pre><code>apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: demo1-statefulset
+spec:
+  serviceName: postgres      # <-- must name the headless Service above
+  replicas: 3
+  podManagementPolicy: OrderedReady
+  selector:
+    matchLabels: {app: postgres}
+  template:
+    metadata:
+      labels: {app: postgres}
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - {name: POSTGRES_USER, value: postgres}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: postgres-secret, key: POSTGRES_PASSWORD}
+            - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+          readinessProbe:
+            exec: {command: ["sh", "-c", "pg_isready -U postgres"]}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            exec: {command: ["sh", "-c", "pg_isready -U postgres"]}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+  volumeClaimTemplates:      # <-- this is what Deployments don't have
+    - metadata: {name: data}
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: standard
+        resources: {requests: {storage: 1Gi}}</code></pre>
+    <p><strong>What was proved live:</strong></p>
+    <ol class="step-list">
+      <li><code>kubectl get pods -l app=postgres -w</code> shows <code>postgres-0</code> reach <code>Running</code>/<code>Ready</code> <em>first</em>, and only then does <code>postgres-1</code> even get created — not "created but waiting," genuinely not scheduled yet. Same for <code>postgres-2</code> after <code>postgres-1</code>.</li>
+      <li><code>kubectl get svc postgres</code> shows <code>CLUSTER-IP: None</code> — no virtual IP at all, confirming it's headless.</li>
+      <li>A DNS lookup from inside the cluster (via a temporary busybox pod, <code>nslookup postgres-0.postgres.demo1-statefulset.svc.cluster.local</code>) resolves directly to <code>postgres-0</code>'s own pod IP — proving the per-pod DNS naming pattern, not a load-balanced Service IP. Demonstrated live with the actual IP ending in <code>.17</code>, matched against <code>kubectl get pod -o wide</code>.</li>
+      <li>Deleting <code>postgres-0</code> and waiting for its replacement shows the same name comes back and reattaches to the same PVC (<code>kubectl get pvc</code> shows one claim per ordinal — <code>data-postgres-0</code>, <code>data-postgres-1</code>, <code>data-postgres-2</code>, never shared).</li>
+    </ol>
+  </div>
+</section>
+
+<section id="ex14">
+  <div class="kicker">Exercise 14 · Part 7</div>
+  <h2><span class="num">14</span>Sharding is not horizontal scaling</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept — interview-flagged, system design</span>
+    <p class="goal">Goal: state the distinction precisely — this was explicitly called a "must know" topic for system design interviews, not optional background.</p>
+    <p>Direct correction made in class, worth repeating precisely: <strong>sharding is not horizontal scaling.</strong> Horizontal scaling (as used for stateless workloads) means the <em>same</em> requests can be served by <em>any</em> of several identical replicas. Sharding means something structurally different: <strong>write traffic is split across multiple, independent writer instances</strong> based on some partitioning key (the class example: user ID ranges) — user A's data always lives on shard 1, user B's always on shard 2, and so on. No single instance holds all the data; each shard is its own self-contained database.</p>
+    <p>This requires an intermediary routing layer that decides, per request, which shard owns the relevant data — described as application-layer logic, not something the database or Kubernetes provides automatically.</p>
+    <div class="callout warn">
+      <b>Named failure mode — "hot shards"</b>
+      Sharding by a naive key (like raw user ID) can produce uneven load: in a platform like Instagram, a small fraction of accounts (high-follower creators) generate disproportionate read/write volume compared to typical users. If those accounts happen to land on the same shard, that shard becomes a bottleneck even though the overall system has capacity elsewhere. This is exactly why sharding strategy is treated as a serious system-design topic rather than a mechanical detail.
+    </div>
+  </div>
+</section>
+
+<section id="ex15">
+  <div class="kicker">Exercise 15 · Part 7 hands-on</div>
+  <h2><span class="num">15</span>CloudNativePG: why nobody hand-rolls database lifecycle scripts</h2>
+  <div class="exercise">
+    <span class="ex-label">Concept + live demo (basic install only — see the note above)</span>
+    <p class="goal">Goal: understand the operator pattern generally, and CNPG's specific value, well enough to explain why "just write a StatefulSet" stops being good enough in production.</p>
+    <p>Exercise 12 showed a raw StatefulSet gives you stable names and disks — but nothing about <strong>automated backups, TLS, connection pooling, or monitoring</strong>. The tempting next step is writing your own cron-job-based backup/restore scripts on top of the StatefulSet. The coach's explicit warning against this: custom, unverified automation for database lifecycle management is high-risk precisely because the blast radius of getting it wrong is large, and because a widely-used tool has already had its edge cases found and fixed by a large community — a bespoke script has not.</p>
+    <p>Enter <strong>CloudNativePG (CNPG)</strong> — a Kubernetes <em>operator</em> (9.2k+ GitHub stars, actively maintained) purpose-built for running PostgreSQL. The operator pattern in one line: a CRD teaches the API server a new resource type (here, <code>Cluster</code>, from the <code>postgresql.cnpg.io</code> API group), and the operator's own running Pods watch instances of that resource and do the real work — provisioning StatefulSet-backed Postgres instances, wiring replication, and handling the lifecycle tasks a raw StatefulSet can't.</p>
+    <h4>Installing the operator, and the basic Cluster CR actually shown live</h4>
+    <pre><code># Operator install — one manifest, standard for any CNPG version
+kubectl apply --server-side -f \
+  https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.30/releases/cnpg-1.30.0.yaml</code></pre>
+    <pre><code>apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: demo-pg
+  namespace: demo2-cnpg
+spec:
+  instances: 3          # 1 primary + 2 replicas, chosen by the operator
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.4
+  storage:
+    size: 1Gi
+  resources:
+    requests: {memory: 256Mi, cpu: 100m}
+    limits: {memory: 512Mi}
+  bootstrap:
+    initdb:
+      database: appdb
+      owner: appuser
+      secret: {name: demo-pg-app-user}   # operator creates the DB + user for you</code></pre>
+    <p><strong>What was shown live:</strong> applying one <code>Cluster</code> manifest, then watching the operator create the primary and replica pods, the read/write and read-only Services, and Secrets — described directly as "you wrote one manifest; the operator built everything else." The coach also opened the CRD's fields in an editor to show the breadth of what's configurable through this one resource (backup target, TLS, connection pooling, monitoring hooks) without walking through each in depth.</p>
+  </div>
+</section>
+
+<section id="ex16">
+  <div class="kicker">Exercise 16 · Part 7 Q&amp;A</div>
+  <h2><span class="num">16</span>Startup, readiness, and liveness probes, in the right order</h2>
+  <div class="exercise">
+    <span class="ex-label">Q&amp;A — Sai Kumar Rayudu asked directly, sequence clarified</span>
+    <p class="goal">Goal: know the actual sequencing relationship between these three probes — this is a commonly-confused topic and was asked about explicitly.</p>
+    <table>
+      <tr><th>Probe</th><th>Job</th><th>What happens on failure</th></tr>
+      <tr><td><strong>Startup</strong></td><td>Blocks readiness checks from even beginning until the app has had enough time to fully initialize (useful for slow-starting apps — 10–20 minutes was given as a real example)</td><td>If it never succeeds within its own timeout, the container is considered failed and restarted — but critically, it exists to <em>prevent premature readiness failures</em>, not to gate traffic directly</td></tr>
+      <tr><td><strong>Readiness</strong></td><td>"The traffic gatekeeper" — decides whether this pod's IP gets added to the Service's routable endpoints</td><td>Pod stays running but is removed from/never added to the Service's endpoint list — no traffic reaches it</td></tr>
+      <tr><td><strong>Liveness</strong></td><td>"A circuit breaker" — an ongoing health check for a pod that's already been serving traffic</td><td>Container is killed and restarted by the kubelet</td></tr>
+    </table>
+    <p><strong>The sequencing question, answered directly:</strong> for a typical web app with no unusually slow startup, you generally only need readiness and liveness — a startup probe becomes necessary specifically when an app needs meaningfully more time to initialize than you'd want readiness retries to tolerate. When present, a startup probe runs first and <em>gates</em> readiness — readiness checks don't even begin until the startup probe has succeeded (or its own failure threshold is hit). Once startup succeeds, readiness and liveness both run on their own ongoing schedules for the rest of the pod's life.</p>
+    <p>Concretely, why this matters: without a startup probe, an app that genuinely needs 10 minutes to initialize would fail its readiness probe's retry budget (say, 5 attempts over 100 seconds) long before it's actually ready — and get marked permanently unready, or restarted, for no real problem at all. The startup probe exists purely to prevent that false negative.</p>
+  </div>
+</section>
+
+<section id="ex17">
+  <div class="kicker">Exercise 17 · Part 7 Q&amp;A</div>
+  <h2><span class="num">17</span>Troubleshooting: "non-authoritative", and CoreDNS</h2>
+  <div class="exercise">
+    <span class="ex-label">Q&amp;A — Sai Kumar Rayudu's real-world issue, diagnosed live</span>
+    <p class="goal">Goal: know the first two things to check when in-cluster DNS lookups behave unexpectedly, since this is a genuinely common real-world Kubernetes networking issue.</p>
+    <p>A student reported getting <code>nslookup</code> failures with a "non-authoritative" style response against certain in-cluster addresses in their own organization's cluster. The coach's diagnosis, given as the two most likely causes to check first:</p>
+    <ul>
+      <li><strong>Where you're running the lookup from matters.</strong> <code>nslookup</code> against a cluster-internal DNS name only resolves correctly from <em>inside</em> the cluster's network — running it from your own laptop terminal, outside the cluster, will not work the same way. The demo in Exercise 13 deliberately ran the lookup from a temporary pod inside the cluster for exactly this reason.</li>
+      <li><strong>Cross-namespace network policies may be blocking the query entirely.</strong> Some organizations deliberately restrict cross-namespace traffic. Since DNS resolution is served by <strong>CoreDNS</strong> pods (typically living in <code>kube-system</code>), a restrictive policy can prevent your pod from ever reaching CoreDNS to begin with — producing exactly this kind of confusing, partial-looking failure.</li>
+    </ul>
+    <p><strong>The recommended troubleshooting step:</strong> deploy a disposable debug pod inside the <em>same namespace</em> as the resource you're trying to reach (or inside <code>kube-system</code> itself, where CoreDNS lives) and re-run the lookup from there. If it works from inside <code>kube-system</code> but not from your original namespace, that isolates the problem to a namespace-scoped network policy rather than CoreDNS itself being broken.</p>
+  </div>
+</section>
+
+<hr class="div">
+
+<section id="improvements">
+  <div class="kicker">Production readiness review</div>
+  <h2>Where the coach's demo would need to change for real production</h2>
+  <p class="lede">The demo code is deliberately minimal — that's correct for teaching the mechanics on a local <code>kind</code> cluster in ~45 minutes. Below is what would actually need to change before any of this ran against a real workload on EKS. Treat this as a checklist for your own <code>app-infra</code>/<code>k8s-services</code> work whenever you introduce your first stateful component there.</p>
+  <table>
+    <tr><th>Area</th><th>What the demo does</th><th>What production needs instead</th></tr>
+    <tr><td>Storage backend</td><td><code>hostPath</code> + a <code>no-provisioner</code> StorageClass, RWX only "works" because kind bind-mounts one host folder into every node</td><td>A real CSI driver — the EBS CSI driver for block storage (<code>ReadWriteOnce</code>, most databases), or the EFS CSI driver for genuinely shared (<code>ReadWriteMany</code>) storage. <code>hostPath</code> has no place on a multi-node cloud cluster.</td></tr>
+    <tr><td>Backups</td><td>Verbally mentioned ("schedule regular snapshots"), not automated in either demo</td><td>Automated, tested backups: EBS snapshot lifecycle policies (DLM) for raw PVs, or CNPG's own <code>ScheduledBackup</code> + object-storage target (S3, not just MinIO) once you're past the basic <code>Cluster</code> CR shown here.</td></tr>
+    <tr><td>Secrets</td><td><code>stringData</code> hardcoded directly in <code>secret.yaml</code> (<code>demo-password</code> in plaintext in the repo)</td><td>Given this project's own standing pattern from earlier parts — secrets should come from AWS Secrets Manager / a <code>random_password</code> resource, not live in Git as plaintext. The same review that flagged this for your RDS credentials in Part 3 applies here.</td></tr>
+    <tr><td>Resource sizing</td><td>Flat <code>256Mi</code>/<code>100m</code> requests, <code>512Mi</code> limit, same for every instance regardless of role</td><td>Right-sized per workload after actual load testing — a primary handling all writes typically warrants materially more headroom than a read replica.</td></tr>
+    <tr><td>Pod disruption</td><td>No <code>PodDisruptionBudget</code> on either the raw StatefulSet or CNPG's <code>Cluster</code></td><td>A <code>PodDisruptionBudget</code> so a node drain (EKS upgrade, Cluster Autoscaler scale-down) can't take out enough replicas at once to lose quorum/availability.</td></tr>
+    <tr><td>Scheduling</td><td>No affinity rules — all 3 StatefulSet replicas could land on the same node</td><td>Pod anti-affinity (or topology spread constraints) so replicas land on different nodes/AZs — otherwise one node failure can take out every replica simultaneously, which defeats the point of having replicas at all.</td></tr>
+    <tr><td>Connection pooling</td><td>Not demonstrated in either class — clients connect directly to <code>demo-pg-1</code>/etc.</td><td>CNPG ships a <code>Pooler</code> (PgBouncer) resource for exactly this — direct-to-primary connections don't scale past a fairly small number of concurrent app connections. Worth its own session once it's actually covered in class.</td></tr>
+    <tr><td>TLS between app and DB</td><td>Plaintext Postgres connections inside the cluster</td><td>Given the TLS deep-dive this same session — enable CNPG's built-in TLS between client and server, not just at the cluster's external ingress.</td></tr>
+    <tr><td>Reclaim policy</td><td><code>Retain</code> set correctly on both demo PVs</td><td>Correct as shown — worth explicitly noting this is the right choice already, not a gap: <code>Retain</code> means deleting the PVC/pod doesn't silently delete the underlying data, which matters far more for a database than for a stateless app's scratch volume.</td></tr>
+  </table>
+  <div class="callout">
+    <b>The one-line summary, if asked in an interview</b>
+    "The class demo proves the mechanics — stable identity, ordered startup, strict volume binding, and an operator handling lifecycle concerns a raw StatefulSet can't. Production hardens every one of those same primitives: real CSI-backed storage instead of hostPath, tested automated backups, anti-affinity across AZs, a PodDisruptionBudget, and secrets pulled from a secrets manager rather than committed to Git."
+  </div>
+</section>
+
+<hr class="div">
+
+<section id="assignment">
+  <div class="kicker">Homework</div>
+  <h2>Your assignment before the next class</h2>
+  <div class="yourturn">
+    <span class="yt-label">Assigned live, end of Part 7</span>
+    <p><strong>Wire the 2-tier app to a CNPG-managed database.</strong> Point your app's DB secret/connection string at the local CNPG cluster's endpoint instead of RDS — the exact task: "feed the secret, the DB link will change, right? DB link will point to the local cluster endpoint. Then username, password — modify this one and run it." Use the read/write Service endpoint CNPG created for you (the <code>&lt;cluster-name&gt;-rw</code> Service, following the pattern shown live).</p>
+  </div>
+  <ul>
+    <li><strong>Review the OSI model in depth</strong> — beyond the textbook 7-layer list — you'll be questioned on it directly next class, and the coach explicitly said he expects a materially better answer than last time.</li>
+    <li><strong>Re-study TLS 1.2 and 1.3</strong> — go deeper than this document; the coach's own framing was "go a bit deep... once you go deep you will not forget the core functionality."</li>
+    <li>Read the blog posts on StatefulSets and TLS the coach said he'd share on WhatsApp (not included in this transcript — chase these down separately if you haven't received them).</li>
+  </ul>
+</section>
+
+<hr class="div">
+
+<section id="cheatsheet">
+  <div class="kicker">Reference</div>
+  <h2>Cheat sheet</h2>
+  <pre><code># --- Storage: inspect state ---
+kubectl get storageclass
+kubectl get pv,pvc -A
+kubectl describe pvc &lt;name&gt; -n &lt;namespace&gt;   # shows binding failures
+
+# --- Demo 1: prove persistence across pod death ---
+kubectl -n demo1-persistence exec deploy/data-writer -- tail -f /data/events.log
+kubectl -n demo1-persistence delete pod -l app=data-writer
+kubectl -n demo1-persistence exec deploy/data-writer -- cat /data/events.log
+
+# --- Demo 2: prove RWX sharing across pods ---
+kubectl -n demo2-shared get pods -l app=shared-writer
+kubectl -n demo2-shared exec deploy/shared-writer -- tail -f /data/shared.log
+
+# --- StatefulSet: ordered behavior + headless DNS ---
+kubectl -n demo1-statefulset get pods -l app=postgres -w
+kubectl -n demo1-statefulset get svc postgres        # CLUSTER-IP should be None
+kubectl -n demo1-statefulset get pvc                 # one PVC per ordinal
+kubectl run dns-test --rm -it --restart=Never --image=busybox:1.36 -- \
+  nslookup postgres-0.postgres.demo1-statefulset.svc.cluster.local
+
+# --- CNPG ---
+kubectl get crd clusters.postgresql.cnpg.io
+kubectl -n cnpg-system get pods
+kubectl -n demo2-cnpg get cluster,pods,svc
+kubectl -n demo2-cnpg get cluster demo-pg -o jsonpath='Primary: {.status.currentPrimary}{"\n"}'
+
+# --- DNS troubleshooting ---
+kubectl run dns-debug --rm -it --restart=Never --image=busybox:1.36 -n &lt;same-ns-as-target&gt; -- sh
+# then, inside the pod:
+nslookup &lt;service&gt;.&lt;namespace&gt;.svc.cluster.local</code></pre>
+</section>
+
+<hr class="div">
+
+<section id="glossary">
+  <div class="kicker">Reference</div>
+  <h2>Glossary</h2>
+  <dl class="glossary">
+    <dt>Symmetric encryption</dt><dd>One key encrypts and decrypts. Fast, ideal for bulk data — but both sides need the same key, and safely sharing it is the hard part.</dd>
+    <dt>Asymmetric encryption</dt><dd>A linked public/private key pair — whatever the public key encrypts, only the private key can decrypt. Used to safely bootstrap a symmetric key exchange, not for bulk traffic itself.</dd>
+    <dt>Certificate Authority (CA)</dt><dd>A trusted third party that signs a certificate binding a public key to a domain, so a client can verify a server's public key genuinely belongs to that server rather than an attacker.</dd>
+    <dt>Diffie–Hellman</dt><dd>The key-exchange algorithm TLS 1.3 uses instead of RSA-style key transport — both sides derive the same shared secret without transmitting it, removing the single-private-key dependency.</dd>
+    <dt>SSL/TLS offloading</dt><dd>The CPU/latency cost a server pays to encrypt and decrypt traffic — one of the two named shortcomings of TLS 1.2 (the other being the three-round-trip handshake).</dd>
+    <dt>StorageClass</dt><dd>Tells the cluster how to provision storage from a given backend/driver — the "driver install" step that must exist before anything can claim storage from it.</dd>
+    <dt>PersistentVolume (PV)</dt><dd>The actual provisioned storage resource in the cluster — a real disk, wherever it physically lives.</dd>
+    <dt>PersistentVolumeClaim (PVC)</dt><dd>A pod's request/entitlement for storage, matched by Kubernetes to an available PV.</dd>
+    <dt>ReadWriteOnce (RWO) / ReadWriteMany (RWX)</dt><dd>PV access modes — RWO allows one node to mount the volume read-write at a time (the right default for a database's data directory); RWX allows multiple nodes to mount it simultaneously (shared logs/assets, not database data directories).</dd>
+    <dt>Init container</dt><dd>A container that runs to completion before a pod's main container(s) start — defined in a separate <code>initContainers</code> list at the pod-spec level. Used for setup/dependency checks.</dd>
+    <dt>Sidecar container</dt><dd>A container running alongside the main application for the pod's whole lifetime, defined in the same <code>containers</code> list. Used for ongoing supporting roles like log forwarding.</dd>
+    <dt>Taint</dt><dd>Applied to a node to repel pods from scheduling there unless they carry a matching toleration.</dd>
+    <dt>Toleration</dt><dd>Applied to a pod to permit it onto nodes carrying a specific taint.</dd>
+    <dt>StatefulSet</dt><dd>A workload controller like Deployment, but adding stable per-pod naming, strictly ordered startup/scale-down, and automatic strict pod-to-PVC binding via <code>volumeClaimTemplates</code>.</dd>
+    <dt>Headless Service</dt><dd>A Service with <code>clusterIP: None</code> — instead of load-balancing across pods behind one virtual IP, it provides individual DNS records per pod (<code>&lt;pod&gt;.&lt;svc&gt;.&lt;ns&gt;.svc.cluster.local</code>), letting clients address a specific replica.</dd>
+    <dt>Vertical scaling</dt><dd>Increasing a single instance's own CPU/memory/storage capacity — the scaling pattern a database's write path relies on, since writes cannot be horizontally distributed across independent instances the way stateless reads can.</dd>
+    <dt>Sharding</dt><dd>Splitting write traffic across multiple independent database instances by a partitioning key (e.g. user ID range) — distinct from horizontal scaling, which serves the same requests from any of several identical replicas.</dd>
+    <dt>Hot shard</dt><dd>A shard receiving disproportionate load relative to others because the partitioning key didn't distribute traffic evenly.</dd>
+    <dt>CRD (Custom Resource Definition)</dt><dd>A schema that teaches the Kubernetes API server to accept a new resource type. Inert alone — defines the shape, does nothing by itself.</dd>
+    <dt>Operator</dt><dd>Running software (Pods) that watches instances of a custom resource and performs the real work implied by it. CNPG is an operator for the <code>Cluster</code> CRD.</dd>
+    <dt>CloudNativePG (CNPG)</dt><dd>A widely-used Kubernetes operator for running PostgreSQL, providing automated backups, TLS, connection pooling (via a <code>Pooler</code>), and monitoring on top of a StatefulSet-based foundation — the production alternative to hand-rolled database lifecycle scripts.</dd>
+    <dt>Startup probe</dt><dd>Delays readiness checks until a slow-starting app has had enough time to initialize, preventing false "not ready" failures during a long boot.</dd>
+    <dt>Readiness probe</dt><dd>Controls whether a pod's IP is added to its Service's routable endpoints — "the traffic gatekeeper."</dd>
+    <dt>Liveness probe</dt><dd>An ongoing health check on an already-serving pod — failing it causes the kubelet to kill and restart the container ("a circuit breaker").</dd>
+    <dt>CoreDNS</dt><dd>The cluster-internal DNS server (typically in <code>kube-system</code>) that resolves Service and pod DNS names — the first thing to check when in-cluster <code>nslookup</code> behaves unexpectedly.</dd>
+  </dl>
+</section>
+
+</div>
+
+<a href="#" class="backtotop">↑</a>
+
+<footer>
+  Follow-along series · DevOps Bootcamp April 2026 · Class 4, Parts 6 &amp; 7 — generated from class notes and transcripts (Sep 5 &amp; Sep 6, 2026)
+</footer>
+
+</body>
+</html>
