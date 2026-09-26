@@ -1,0 +1,7 @@
+bucket       = "state-bucket-879381241087"
+key          = "sept26k8s/prod/terraform.tfstate"
+region       = "ap-south-1"
+encrypt      = true
+use_lockfile = true
+
+

@@ -1,0 +1,158 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["ecommerce", "red"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "definition": "label_values(up{namespace=\"ecommerce\"}, service)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "service",
+        "multi": true,
+        "name": "service",
+        "options": [],
+        "query": { "query": "label_values(up{namespace=\"ecommerce\"}, service)", "refId": "Prometheus-service-Variable-Query" },
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Ecommerce — Service RED",
+  "uid": "ecommerce-red",
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Services Up",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
+      "targets": [
+        { "expr": "sum(up{namespace=\"ecommerce\",service=~\"$service\"})", "legendFormat": "up", "refId": "A" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Request rate (req/s)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "decimals": 1 } },
+      "targets": [
+        { "expr": "sum(ecommerce:http_request_rate:5m{service=~\"$service\"})", "legendFormat": "rps", "refId": "A" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Error rate (5xx %)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.01 }, { "color": "red", "value": 0.05 }] }
+        }
+      },
+      "targets": [
+        { "expr": "avg(ecommerce:http_error_rate:5m{service=~\"$service\"})", "legendFormat": "err", "refId": "A" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Latency p95 (s)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.5 }, { "color": "red", "value": 1 }] }
+        }
+      },
+      "targets": [
+        { "expr": "max(ecommerce:http_latency_p95:5m{service=~\"$service\"})", "legendFormat": "p95", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Request rate by service",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10 } } },
+      "targets": [
+        { "expr": "ecommerce:http_request_rate:5m{service=~\"$service\"}", "legendFormat": "{{service}}", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Error rate by service (5xx)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "custom": { "drawStyle": "line", "fillOpacity": 10 } } },
+      "targets": [
+        { "expr": "ecommerce:http_error_rate:5m{service=~\"$service\"}", "legendFormat": "{{service}}", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Latency p95 by service",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 5 } } },
+      "targets": [
+        { "expr": "ecommerce:http_latency_p95:5m{service=~\"$service\"}", "legendFormat": "{{service}}", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Pod restarts (15m)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [
+        { "expr": "increase(kube_pod_container_status_restarts_total{namespace=\"ecommerce\"}[15m])", "legendFormat": "{{pod}}", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Pod CPU (cores)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [
+        { "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"ecommerce\",container!=\"\",container!=\"POD\"}[5m]))", "legendFormat": "{{pod}}", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Pod memory (RSS MiB)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "fieldConfig": { "defaults": { "unit": "decmbytes" } },
+      "targets": [
+        { "expr": "sum by (pod) (container_memory_rss{namespace=\"ecommerce\",container!=\"\",container!=\"POD\"}) / 1024 / 1024", "legendFormat": "{{pod}}", "refId": "A" }
+      ]
+    }
+  ]
+}

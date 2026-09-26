@@ -1,0 +1,62 @@
+{{- if .Values.seedJob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed-data-job
+  namespace: {{ include "ecommerce.namespace" . }}
+  labels:
+    app: seed-data
+    {{- include "ecommerce.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  ttlSecondsAfterFinished: {{ .Values.seedJob.ttlSecondsAfterFinished }}
+  backoffLimit: {{ .Values.seedJob.backoffLimit }}
+  template:
+    metadata:
+      labels:
+        app: seed-data
+    spec:
+      restartPolicy: Never
+      initContainers:
+        - name: wait-for-api-gateway
+          image: {{ .Values.seedJob.waitImage }}
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              url="http://api-gateway.{{ include "ecommerce.namespace" . }}.svc.cluster.local/api/health/product-service"
+              echo "Waiting for $url ..."
+              i=0
+              until wget -q -O- --timeout=3 "$url" >/dev/null 2>&1; do
+                i=$((i + 1))
+                if [ "$i" -ge {{ .Values.seedJob.waitAttempts }} ]; then
+                  echo "api-gateway not ready after $i attempts" >&2
+                  exit 1
+                fi
+                echo "  not ready yet, retrying in {{ .Values.seedJob.waitSleepSeconds }}s..."
+                sleep {{ .Values.seedJob.waitSleepSeconds }}
+              done
+              echo "api-gateway is reachable."
+      containers:
+        - name: seed-data
+          image: {{ .Values.seedJob.image }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - name: API_URL
+              value: "http://api-gateway.{{ include "ecommerce.namespace" . }}.svc.cluster.local"
+            - name: PREFLIGHT_ATTEMPTS
+              value: {{ .Values.seedJob.waitAttempts | quote }}
+            - name: PREFLIGHT_SLEEP
+              value: {{ .Values.seedJob.waitSleepSeconds | quote }}
+          resources:
+            requests:
+              cpu: {{ .Values.seedJob.resources.requests.cpu }}
+              memory: {{ .Values.seedJob.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.seedJob.resources.limits.cpu }}
+              memory: {{ .Values.seedJob.resources.limits.memory }}
+{{- end }}

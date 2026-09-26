@@ -1,0 +1,153 @@
+# Global settings
+global:
+  namespace: ecommerce
+  environment: development
+  imagePullPolicy: IfNotPresent
+
+# Microservice deployments. `image` is a full image URI including the tag.
+# DB/cache/broker connection strings reference in-cluster services provisioned
+# by Terraform (products-rw, users-rw, orders-rw, payments-rw, redis, rabbitmq).
+# Credentials come from ESO-managed secrets: db-credentials, redis-credentials,
+# rabbitmq-credentials, app-secrets, aws-credentials.
+services:
+  productService:
+    enabled: true
+    image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/ecommerce-product-service:c409234cbc071c9cd7d40387051ce3cbb6821bab
+    port: 8001
+    replicas: 1
+    env: development
+    logLevel: info
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+  userService:
+    enabled: true
+    image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/ecommerce-user-service:c409234cbc071c9cd7d40387051ce3cbb6821bab
+    port: 8002
+    replicas: 1
+    env: development
+    jwtExpiry: "24h"
+    logLevel: info
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+  cartService:
+    enabled: true
+    image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/ecommerce-cart-service:c409234cbc071c9cd7d40387051ce3cbb6821bab
+    port: 8003
+    replicas: 1
+    env: development
+    logLevel: info
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+  orderService:
+    enabled: true
+    image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/ecommerce-order-service:c409234cbc071c9cd7d40387051ce3cbb6821bab
+    port: 8004
+    replicas: 1
+    env: development
+    logLevel: info
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+  paymentService:
+    enabled: true
+    image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/ecommerce-payment-service:c409234cbc071c9cd7d40387051ce3cbb6821bab
+    port: 8005
+    replicas: 1
+    env: development
+    logLevel: INFO
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+  notificationService:
+    enabled: true
+    image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/ecommerce-notification-service:c409234cbc071c9cd7d40387051ce3cbb6821bab
+    port: 8006
+    replicas: 1
+    env: development
+    logLevel: INFO
+    aws:
+      region: ap-south-1
+      sesSenderEmail: noreply@example.com
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+
+# API Gateway (nginx) - exposed via ALB ingress
+apiGateway:
+  enabled: true
+  image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/ecommerce-api-gateway:c409234cbc071c9cd7d40387051ce3cbb6821bab
+  replicas: 1
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Frontend - exposed via ALB ingress
+frontend:
+  enabled: true
+  image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/ecommerce-frontend:c409234cbc071c9cd7d40387051ce3cbb6821bab
+  replicas: 1
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# ALB ingress for frontend + api-gateway
+ingress:
+  enabled: false
+  className: alb
+  groupName: eksmay26-shared-alb
+  host: shop-dev.devopsdozo.livingdevops.org
+  acmCertArn: arn:aws:acm:ap-south-1:879381241087:certificate/d7c449d8-1540-4157-8959-bc48bb44b128
+
+# Seed Job - runs as a Helm post-install/post-upgrade hook to seed product
+# data through the api-gateway. An initContainer waits for the gateway/
+# product-service to be reachable so the Job doesn't race the rest of the chart.
+seedJob:
+  enabled: true
+  image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/ecommerce-seed:c409234cbc071c9cd7d40387051ce3cbb6821bab
+  waitImage: busybox:1.36
+  waitAttempts: 60
+  waitSleepSeconds: 5
+  backoffLimit: 5
+  ttlSecondsAfterFinished: 300
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
