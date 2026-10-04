@@ -13,7 +13,7 @@ global:
 services:
   productService:
     enabled: true
-    image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/dev-ecommerce-product-service:c409234cbc071c9cd7d40387051ce3cbb6821bab
+    image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/dev-ecommerce-product-service:460d5d4b3c39888fb56d9da0b7e79a522e7795d7
     port: 8001
     replicas: 1
     env: development
@@ -27,7 +27,7 @@ services:
         memory: 256Mi
   userService:
     enabled: true
-    image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/dev-ecommerce-user-service:c409234cbc071c9cd7d40387051ce3cbb6821bab
+    image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/dev-ecommerce-user-service:460d5d4b3c39888fb56d9da0b7e79a522e7795d7
     port: 8002
     replicas: 1
     env: development
@@ -42,7 +42,7 @@ services:
         memory: 256Mi
   cartService:
     enabled: true
-    image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/dev-ecommerce-cart-service:c409234cbc071c9cd7d40387051ce3cbb6821bab
+    image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/dev-ecommerce-cart-service:460d5d4b3c39888fb56d9da0b7e79a522e7795d7
     port: 8003
     replicas: 1
     env: development
@@ -56,7 +56,7 @@ services:
         memory: 256Mi
   orderService:
     enabled: true
-    image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/dev-ecommerce-order-service:116a30fff26a285d3f9853ff93c87c625809167e
+    image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/dev-ecommerce-order-service:460d5d4b3c39888fb56d9da0b7e79a522e7795d7
     port: 8004
     replicas: 1
     env: development
@@ -70,7 +70,7 @@ services:
         memory: 256Mi
   paymentService:
     enabled: true
-    image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/dev-ecommerce-payment-service:116a30fff26a285d3f9853ff93c87c625809167e
+    image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/dev-ecommerce-payment-service:460d5d4b3c39888fb56d9da0b7e79a522e7795d7
     port: 8005
     replicas: 1
     env: development
@@ -84,7 +84,7 @@ services:
         memory: 256Mi
   notificationService:
     enabled: true
-    image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/dev-ecommerce-notification-service:116a30fff26a285d3f9853ff93c87c625809167e
+    image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/dev-ecommerce-notification-service:460d5d4b3c39888fb56d9da0b7e79a522e7795d7
     port: 8006
     replicas: 1
     env: development
@@ -103,7 +103,7 @@ services:
 # API Gateway (nginx) - exposed via ALB ingress
 apiGateway:
   enabled: true
-  image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/dev-ecommerce-api-gateway:116a30fff26a285d3f9853ff93c87c625809167e
+  image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/dev-ecommerce-api-gateway:460d5d4b3c39888fb56d9da0b7e79a522e7795d7
   replicas: 1
   resources:
     requests:
@@ -116,7 +116,7 @@ apiGateway:
 # Frontend - exposed via ALB ingress
 frontend:
   enabled: true
-  image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/dev-ecommerce-frontend:116a30fff26a285d3f9853ff93c87c625809167e
+  image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/dev-ecommerce-frontend:460d5d4b3c39888fb56d9da0b7e79a522e7795d7
   replicas: 1
   resources:
     requests:
@@ -139,7 +139,7 @@ ingress:
 # product-service to be reachable so the Job doesn't race the rest of the chart.
 seedJob:
   enabled: true
-  image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/dev-ecommerce-seed:116a30fff26a285d3f9853ff93c87c625809167e
+  image: 879381241087.dkr.ecr.ap-south-1.amazonaws.com/dev-ecommerce-seed:460d5d4b3c39888fb56d9da0b7e79a522e7795d7
   waitImage: busybox:1.36
   waitAttempts: 60
   waitSleepSeconds: 5
