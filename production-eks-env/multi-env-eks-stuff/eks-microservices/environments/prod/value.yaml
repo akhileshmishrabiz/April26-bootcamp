@@ -1,3 +1,4 @@
+# #argo-prod
 # Global settings
 global:
   namespace: ecommerce
