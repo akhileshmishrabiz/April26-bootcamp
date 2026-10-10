@@ -16,6 +16,10 @@ spec:
     metadata:
       labels:
         app: user-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: {{ .Values.services.userService.port | quote }}
     spec:
       containers:
         - name: user-service

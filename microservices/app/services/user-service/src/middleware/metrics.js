@@ -1,5 +1,4 @@
 const promClient = require('prom-client');
-const promBundle = require('express-prom-bundle');
 
 // Create a Registry
 const register = new promClient.Registry();
@@ -42,18 +41,47 @@ const activeUsers = new promClient.Gauge({
   registers: [register]
 });
 
-// Middleware bundle for automatic HTTP metrics
-const metricsMiddleware = promBundle({
-  includeMethod: true,
-  includePath: true,
-  includeStatusCode: true,
-  includeUp: true,
-  customLabels: {service: 'user-service'},
-  promClient: {
-    collectDefaultMetrics: {}
-  },
-  promRegistry: register
+const httpRequestsTotal = new promClient.Counter({
+  name: 'service_http_requests_total',
+  help: 'Total number of HTTP requests',
+  labelNames: ['service', 'method', 'route', 'status_code'],
+  registers: [register]
 });
+
+const httpRequestDuration = new promClient.Histogram({
+  name: 'service_http_request_duration_seconds',
+  help: 'Duration of HTTP requests in seconds',
+  labelNames: ['service', 'method', 'route', 'status_code'],
+  buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+  registers: [register]
+});
+
+const httpRequestsInFlight = new promClient.Gauge({
+  name: 'service_http_requests_in_flight',
+  help: 'Number of HTTP requests currently being served',
+  labelNames: ['service'],
+  registers: [register]
+});
+
+function metricsMiddleware(req, res, next) {
+  if (req.path === '/metrics') return next();
+
+  const endTimer = httpRequestDuration.startTimer();
+  httpRequestsInFlight.labels('user-service').inc();
+  res.on('finish', () => {
+    const route = req.route ? req.route.path : 'unmatched';
+    const labels = {
+      service: 'user-service',
+      method: req.method,
+      route,
+      status_code: String(res.statusCode)
+    };
+    httpRequestsTotal.inc(labels);
+    endTimer(labels);
+    httpRequestsInFlight.labels('user-service').dec();
+  });
+  next();
+}
 
 module.exports = {
   register,

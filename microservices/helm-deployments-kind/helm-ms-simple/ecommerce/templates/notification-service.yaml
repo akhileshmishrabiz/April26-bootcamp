@@ -16,6 +16,10 @@ spec:
     metadata:
       labels:
         app: notification-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: {{ .Values.services.notificationService.port | quote }}
     spec:
       containers:
         - name: notification-service

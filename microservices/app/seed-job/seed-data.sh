@@ -3,7 +3,7 @@
 # Seeds users and products via the API gateway
 set -euo pipefail
 
-API_URL="${API_URL:-http://localhost:8081}"
+API_URL="${API_URL:-http://localhost:8080}"
 PREFLIGHT_ATTEMPTS="${PREFLIGHT_ATTEMPTS:-60}"
 PREFLIGHT_SLEEP="${PREFLIGHT_SLEEP:-5}"
 SEED_PASSWORD="${SEED_PASSWORD:-Password123!}"
@@ -36,6 +36,7 @@ wait_for_health() {
 echo "Waiting for api-gateway at $API_URL ..."
 wait_for_health "product-service" "$API_URL/api/health/product-service"
 wait_for_health "user-service" "$API_URL/api/health/user-service"
+wait_for_health "cart-service" "$API_URL/api/health/cart-service"
 
 # ---------------------------------------------------------------------------
 # Users — idempotent via register (409 = already exists)
@@ -68,22 +69,11 @@ for user in "${users[@]}"; do
 done
 
 # ---------------------------------------------------------------------------
-# Products — clear existing catalog, then POST fresh rows
+# Products — create missing SKUs and preserve existing active rows
 # ---------------------------------------------------------------------------
 echo ""
 echo "Seeding product catalog..."
 echo "=========================="
-
-echo "  Clearing existing products..."
-# API DELETE soft-deletes rows; SKUs remain unique and block re-insert.
-# Prefer a hard truncate when re-seeding (deploy scripts run this via CNPG).
-existing_ids=$(curl -fsS "$PRODUCTS_URL?page_size=100" 2>/dev/null \
-  | python3 -c "import sys,json; [print(p['id']) for p in json.load(sys.stdin).get('products',[])]" 2>/dev/null || true)
-if [ -n "${existing_ids:-}" ]; then
-  while IFS= read -r id; do
-    [ -n "$id" ] && curl -s -X DELETE "$PRODUCTS_URL/$id" >/dev/null 2>&1 || true
-  done <<< "$existing_ids"
-fi
 
 products=(
   '{"name":"iPhone 14 Pro","description":"Latest Apple iPhone with A16 Bionic chip, 6.1-inch Super Retina XDR display, and Pro camera system. Features always-on display and Dynamic Island.","price":999.99,"stock":50,"category":"Electronics","image_url":"https://images.unsplash.com/photo-1678685888221-cda773a3dcdb?w=400&h=400&fit=crop","sku":"ELEC-IPH-001","is_active":true}'
@@ -113,21 +103,43 @@ products=(
   '{"name":"Coleman Camping Tent","description":"4-person camping tent with WeatherTec system and easy setup.","price":139.99,"stock":35,"category":"Outdoor","image_url":"https://images.unsplash.com/photo-1478130207513-77527004b9ad?w=400&h=400&fit=crop","sku":"OUTD-COL-001","is_active":true}'
 )
 
+catalog=$(curl -fsS "$PRODUCTS_URL?page_size=100")
+
+existing_product_id() {
+  local sku="$1"
+  python3 -c '
+import json, sys
+sku = sys.argv[1]
+for product in json.load(sys.stdin).get("products", []):
+    if product.get("sku") == sku and product.get("is_active", False):
+        print(product["id"])
+        break
+' "$sku" <<< "$catalog"
+}
+
 product_failures=0
-first_product_id=""
+seed_product_ids=()
 for product in "${products[@]}"; do
   name=$(echo "$product" | python3 -c "import sys,json; print(json.load(sys.stdin)['name'])" 2>/dev/null || echo "product")
+  sku=$(echo "$product" | python3 -c "import sys,json; print(json.load(sys.stdin)['sku'])")
+  product_id=$(existing_product_id "$sku")
+  if [ -n "$product_id" ]; then
+    echo "  ~ $name (already exists)"
+    seed_product_ids+=("$product_id")
+    continue
+  fi
+
   response=$(curl -s -w "\n%{http_code}" -X POST "$PRODUCTS_URL" \
     -H "Content-Type: application/json" -d "$product")
   http_code=$(echo "$response" | tail -1)
   body=$(echo "$response" | sed '$d')
   if [ "$http_code" = "201" ] || [ "$http_code" = "200" ]; then
     echo "  + $name"
-    if [ -z "$first_product_id" ]; then
-      first_product_id=$(echo "$body" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null || true)
-    fi
+    product_id=$(echo "$body" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null || true)
+    [ -n "$product_id" ] && seed_product_ids+=("$product_id")
   elif [ "$http_code" = "409" ]; then
-    echo "  ~ $name (SKU already exists)"
+    echo "  x $name (SKU conflicts with an inactive product)"
+    product_failures=$((product_failures + 1))
   else
     echo "  x $name (HTTP $http_code)"
     product_failures=$((product_failures + 1))
@@ -141,25 +153,33 @@ echo ""
 echo "Seeding demo cart for john.doe@example.com..."
 echo "=============================================="
 
-token=$(curl -s -X POST "$USERS_LOGIN_URL" \
+token=$(curl -fsS -X POST "$USERS_LOGIN_URL" \
   -H "Content-Type: application/json" \
   -d '{"email":"john.doe@example.com","password":"'"$SEED_PASSWORD"'"}' \
   | python3 -c "import sys,json; print(json.load(sys.stdin).get('token',''))" 2>/dev/null || true)
 
 cart_items_added=0
-if [ -n "$token" ] && [ -n "$first_product_id" ]; then
-  for product_id in "$first_product_id" "$((${first_product_id:-0} + 1))"; do
-    http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$CART_ITEMS_URL" \
-      -H "Content-Type: application/json" \
-      -H "Authorization: Bearer $token" \
-      -d '{"productId":'"$product_id"',"quantity":1}')
-    if [ "$http_code" = "200" ] || [ "$http_code" = "201" ]; then
-      cart_items_added=$((cart_items_added + 1))
-    fi
-  done
-  echo "  + Added $cart_items_added item(s) to demo cart"
+if [ -n "$token" ] && [ "${#seed_product_ids[@]}" -ge 2 ]; then
+  clear_code=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "$API_URL/api/cart" \
+    -H "Authorization: Bearer $token")
+  if [ "$clear_code" != "200" ]; then
+    echo "  x Could not clear existing demo cart (HTTP $clear_code)"
+  else
+    for product_id in "${seed_product_ids[@]:0:2}"; do
+      http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$CART_ITEMS_URL" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $token" \
+        -d '{"productId":'"$product_id"',"quantity":1}')
+      if [ "$http_code" = "200" ] || [ "$http_code" = "201" ]; then
+        cart_items_added=$((cart_items_added + 1))
+      else
+        echo "  x Could not add product $product_id (HTTP $http_code)"
+      fi
+    done
+    echo "  + Added $cart_items_added item(s) to demo cart"
+  fi
 else
-  echo "  ~ Skipped demo cart (login or products unavailable)"
+  echo "  x Could not seed demo cart (login or products unavailable)"
 fi
 
 # ---------------------------------------------------------------------------
@@ -184,7 +204,12 @@ if [ "$product_failures" -gt 0 ]; then
 fi
 
 if [ "$product_count" -lt 1 ]; then
-  echo "ERROR: no active products in catalog after seed (soft-deleted SKUs may block re-insert — run TRUNCATE on products DB)" >&2
+  echo "ERROR: no active products in catalog after seed" >&2
+  exit 1
+fi
+
+if [ "$cart_items_added" -ne 2 ]; then
+  echo "ERROR: demo cart seed added $cart_items_added of 2 expected items" >&2
   exit 1
 fi
 

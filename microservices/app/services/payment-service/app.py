@@ -1,7 +1,8 @@
 import os
 import logging
 import json
-from flask import Flask, jsonify
+import time
+from flask import Flask, jsonify, request, g
 from flask_cors import CORS
 from dotenv import load_dotenv
 from sqlalchemy import text
@@ -60,9 +61,43 @@ active_transactions = Gauge(
     'Number of currently active transactions'
 )
 
+service_http_requests_total = Counter(
+    'service_http_requests_total',
+    'Total number of HTTP requests',
+    ['service', 'method', 'route', 'status_code']
+)
+service_http_request_duration = Histogram(
+    'service_http_request_duration_seconds',
+    'Duration of HTTP requests in seconds',
+    ['service', 'method', 'route', 'status_code'],
+    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5]
+)
+service_http_requests_in_flight = Gauge(
+    'service_http_requests_in_flight',
+    'Number of HTTP requests currently being served',
+    ['service']
+)
+
+@app.before_request
+def start_request_metrics():
+    if request.path != '/metrics':
+        g.metrics_started_at = time.perf_counter()
+        service_http_requests_in_flight.labels('payment-service').inc()
+
+@app.after_request
+def record_request_metrics(response):
+    started_at = getattr(g, 'metrics_started_at', None)
+    if started_at is not None:
+        route = request.url_rule.rule if request.url_rule else 'unmatched'
+        labels = ('payment-service', request.method, route, str(response.status_code))
+        service_http_requests_total.labels(*labels).inc()
+        service_http_request_duration.labels(*labels).observe(time.perf_counter() - started_at)
+        service_http_requests_in_flight.labels('payment-service').dec()
+    return response
+
 # Database configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = (
-    f"postgresql://{os.getenv('PAYMENT_DB_USER', 'ecommerce_user')}:"
+    f"postgresql+psycopg2://{os.getenv('PAYMENT_DB_USER', 'ecommerce_user')}:"
     f"{os.getenv('PAYMENT_DB_PASSWORD', 'secure_password_123')}@"
     f"{os.getenv('PAYMENT_DB_HOST', 'localhost')}:"
     f"{os.getenv('PAYMENT_DB_PORT', '5432')}/"

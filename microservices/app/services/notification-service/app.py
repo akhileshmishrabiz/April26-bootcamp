@@ -2,9 +2,11 @@ import os
 import json
 import logging
 import threading
-from flask import Flask, jsonify
+import time
+from flask import Flask, jsonify, request, g
 from flask_cors import CORS
 from prometheus_flask_exporter import PrometheusMetrics
+from prometheus_client import Counter, Histogram, Gauge
 from dotenv import load_dotenv
 from pythonjsonlogger import jsonlogger
 import pika
@@ -28,6 +30,51 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)
 metrics = PrometheusMetrics(app)
+metrics.info('notification_service_info', 'Notification Service Information', version='1.0.0')
+
+service_http_requests_total = Counter(
+    'service_http_requests_total',
+    'Total number of HTTP requests',
+    ['service', 'method', 'route', 'status_code']
+)
+service_http_request_duration = Histogram(
+    'service_http_request_duration_seconds',
+    'Duration of HTTP requests in seconds',
+    ['service', 'method', 'route', 'status_code'],
+    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5]
+)
+service_http_requests_in_flight = Gauge(
+    'service_http_requests_in_flight',
+    'Number of HTTP requests currently being served',
+    ['service']
+)
+notification_events_total = Counter(
+    'notification_events_total',
+    'Total number of notification events consumed',
+    ['event_type', 'status']
+)
+notification_emails_total = Counter(
+    'notification_emails_total',
+    'Total number of notification emails attempted',
+    ['status']
+)
+
+@app.before_request
+def start_request_metrics():
+    if request.path != '/metrics':
+        g.metrics_started_at = time.perf_counter()
+        service_http_requests_in_flight.labels('notification-service').inc()
+
+@app.after_request
+def record_request_metrics(response):
+    started_at = getattr(g, 'metrics_started_at', None)
+    if started_at is not None:
+        route = request.url_rule.rule if request.url_rule else 'unmatched'
+        labels = ('notification-service', request.method, route, str(response.status_code))
+        service_http_requests_total.labels(*labels).inc()
+        service_http_request_duration.labels(*labels).observe(time.perf_counter() - started_at)
+        service_http_requests_in_flight.labels('notification-service').dec()
+    return response
 
 # AWS SES client
 ses_client = boto3.client(
@@ -58,12 +105,15 @@ def send_email(to_email, subject, html_body, text_body=None):
             }
         )
         logger.info(f'Email sent to {to_email}, Message ID: {response["MessageId"]}')
+        notification_emails_total.labels('success').inc()
         return True
     except ClientError as e:
         logger.error(f'Failed to send email to {to_email}: {e.response["Error"]["Message"]}')
+        notification_emails_total.labels('failed').inc()
         return False
     except Exception as e:
         logger.error(f'Unexpected error sending email: {str(e)}')
+        notification_emails_total.labels('failed').inc()
         return False
 
 def process_order_event(event_data):
@@ -85,9 +135,15 @@ def process_order_event(event_data):
             # Send email
             send_email(user_email, subject, html_body)
             logger.info(f'Order confirmation sent to {user_email}')
+            notification_events_total.labels(event_type, 'processed').inc()
+        else:
+            notification_events_total.labels(event_type or 'unknown', 'ignored').inc()
 
     except Exception as e:
         logger.error(f'Failed to process order event: {str(e)}')
+        notification_events_total.labels(
+            event_data.get('event_type', 'unknown'), 'failed'
+        ).inc()
 
 def rabbitmq_consumer():
     """RabbitMQ consumer that listens for order events"""

@@ -15,19 +15,26 @@ promClient.collectDefaultMetrics({ register });
 
 // Custom metrics
 const httpRequestDuration = new promClient.Histogram({
-  name: 'http_request_duration_seconds',
+  name: 'service_http_request_duration_seconds',
   help: 'Duration of HTTP requests in seconds',
-  labelNames: ['method', 'route', 'status_code'],
-  buckets: [0.1, 0.5, 1, 2, 5]
+  labelNames: ['service', 'method', 'route', 'status_code'],
+  buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5]
 });
 register.registerMetric(httpRequestDuration);
 
 const httpRequestsTotal = new promClient.Counter({
-  name: 'http_requests_total',
+  name: 'service_http_requests_total',
   help: 'Total number of HTTP requests',
-  labelNames: ['method', 'route', 'status_code']
+  labelNames: ['service', 'method', 'route', 'status_code']
 });
 register.registerMetric(httpRequestsTotal);
+
+const httpRequestsInFlight = new promClient.Gauge({
+  name: 'service_http_requests_in_flight',
+  help: 'Number of HTTP requests currently being served',
+  labelNames: ['service']
+});
+register.registerMetric(httpRequestsInFlight);
 
 // Middleware
 app.use(cors());
@@ -37,16 +44,22 @@ app.use(express.urlencoded({ extended: true }));
 // Request logging and metrics middleware
 app.use((req, res, next) => {
   const start = Date.now();
+  if (req.path !== '/metrics') {
+    httpRequestsInFlight.labels('cart-service').inc();
+  }
   logger.info(`${req.method} ${req.path}`, {
     ip: req.ip,
     userAgent: req.get('user-agent')
   });
 
   res.on('finish', () => {
+    if (req.path === '/metrics') return;
     const duration = (Date.now() - start) / 1000;
-    const route = req.route ? req.route.path : req.path;
-    httpRequestDuration.labels(req.method, route, res.statusCode).observe(duration);
-    httpRequestsTotal.labels(req.method, route, res.statusCode).inc();
+    const route = req.route ? req.route.path : 'unmatched';
+    const labels = ['cart-service', req.method, route, String(res.statusCode)];
+    httpRequestDuration.labels(...labels).observe(duration);
+    httpRequestsTotal.labels(...labels).inc();
+    httpRequestsInFlight.labels('cart-service').dec();
   });
 
   next();

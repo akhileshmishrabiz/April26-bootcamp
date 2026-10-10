@@ -1,0 +1,37 @@
+{{- if .Values.seedJob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed-data-job
+  namespace: {{ include "ecommerce.namespace" . }}
+  labels:
+    app: seed-data-job
+    {{- include "ecommerce.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  ttlSecondsAfterFinished: {{ .Values.seedJob.ttlSecondsAfterFinished }}
+  backoffLimit: {{ .Values.seedJob.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.seedJob.activeDeadlineSeconds }}
+  template:
+    metadata:
+      labels:
+        app: seed-data-job
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: seed-data
+          image: {{ .Values.seedJob.image }}
+          imagePullPolicy: {{ .Values.seedJob.imagePullPolicy }}
+          env:
+            - name: API_URL
+              value: {{ printf "http://api-gateway.%s.svc.cluster.local" (include "ecommerce.namespace" .) | quote }}
+            - name: SEED_PASSWORD
+              value: {{ .Values.seedJob.password | quote }}
+            - name: PREFLIGHT_ATTEMPTS
+              value: {{ .Values.seedJob.preflightAttempts | quote }}
+            - name: PREFLIGHT_SLEEP
+              value: {{ .Values.seedJob.preflightSleep | quote }}
+{{- end }}

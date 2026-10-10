@@ -188,3 +188,16 @@ frontend:
     limits:
       cpu: 100m
       memory: 128Mi
+
+# Seed data is loaded by a Helm post-install/post-upgrade hook.
+# The deployment script builds and loads this local image into Kind first.
+seedJob:
+  enabled: true
+  image: ms-ecom-seed:latest
+  imagePullPolicy: Never
+  password: Password123!
+  preflightAttempts: "60"
+  preflightSleep: "5"
+  backoffLimit: 0
+  activeDeadlineSeconds: 360
+  ttlSecondsAfterFinished: 300

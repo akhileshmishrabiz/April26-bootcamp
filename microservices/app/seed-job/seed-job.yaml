@@ -1,17 +1,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: seed-data-job
+  # Standalone/manual job. The Helm chart uses seed-data-job for its hook.
+  name: seed-data-manual
   namespace: ecommerce
   labels:
-    app: seed-data-job
+    app: seed-data-manual
 spec:
   ttlSecondsAfterFinished: 300
   backoffLimit: 3
   template:
     metadata:
       labels:
-        app: seed-data-job
+        app: seed-data-manual
     spec:
       containers:
       - name: seed-data

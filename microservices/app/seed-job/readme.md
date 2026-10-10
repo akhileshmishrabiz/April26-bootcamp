@@ -25,10 +25,10 @@ kind load docker-image ms-ecom-seed:latest --name ecommerce-vault   # Kind only
 # Required when Calico NetworkPolicies are active
 kubectl apply -f ../../observibility/servicemesh-networkingpolicies/network-policies/allow-seed-job.yaml
 
-kubectl delete job seed-data-job -n ecommerce --ignore-not-found
+kubectl delete job seed-data-manual -n ecommerce --ignore-not-found
 kubectl apply -f seed-job.yaml
-kubectl wait --for=condition=complete job/seed-data-job -n ecommerce --timeout=300s
-kubectl logs job/seed-data-job -n ecommerce
+kubectl wait --for=condition=complete job/seed-data-manual -n ecommerce --timeout=300s
+kubectl logs job/seed-data-manual -n ecommerce
 kubectl get jobs -n ecommerce
 ```
 
@@ -87,4 +87,9 @@ Password: Password123!
 
 ## Integration with Deploy Scripts
 
-`helm-cnpg-vault-deploy.sh` (Step 14) builds the seed image, applies the seed-job NetworkPolicy, and runs this Job automatically after services are healthy.
+The simple Helm chart runs its own `seed-data-job` post-install/post-upgrade hook.
+This standalone manifest is named `seed-data-manual` so it cannot conflict with
+the Helm-owned hook.
+
+`helm-cnpg-vault-deploy.sh` (Step 14) builds the seed image, applies the seed-job
+NetworkPolicy, and runs its seed Job automatically after services are healthy.

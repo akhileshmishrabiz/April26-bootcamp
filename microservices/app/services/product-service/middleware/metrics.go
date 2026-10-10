@@ -13,25 +13,28 @@ var (
 	// HTTP request metrics
 	httpRequestsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "http_requests_total",
-			Help: "Total number of HTTP requests",
+			Name:        "service_http_requests_total",
+			Help:        "Total number of HTTP requests",
+			ConstLabels: prometheus.Labels{"service": "product-service"},
 		},
-		[]string{"method", "endpoint", "status"},
+		[]string{"method", "route", "status_code"},
 	)
 
 	httpRequestDuration = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "http_request_duration_seconds",
-			Help:    "HTTP request latency in seconds",
-			Buckets: prometheus.DefBuckets,
+			Name:        "service_http_request_duration_seconds",
+			Help:        "HTTP request latency in seconds",
+			Buckets:     prometheus.DefBuckets,
+			ConstLabels: prometheus.Labels{"service": "product-service"},
 		},
-		[]string{"method", "endpoint", "status"},
+		[]string{"method", "route", "status_code"},
 	)
 
 	httpRequestsInFlight = promauto.NewGauge(
 		prometheus.GaugeOpts{
-			Name: "http_requests_in_flight",
-			Help: "Number of HTTP requests currently being served",
+			Name:        "service_http_requests_in_flight",
+			Help:        "Number of HTTP requests currently being served",
+			ConstLabels: prometheus.Labels{"service": "product-service"},
 		},
 	)
 
@@ -95,6 +98,10 @@ func PrometheusMiddleware() gin.HandlerFunc {
 		// Process request
 		c.Next()
 
+		if c.FullPath() == "/metrics" {
+			return
+		}
+
 		// Calculate duration
 		duration := time.Since(start).Seconds()
 
@@ -102,6 +109,9 @@ func PrometheusMiddleware() gin.HandlerFunc {
 		status := strconv.Itoa(c.Writer.Status())
 		method := c.Request.Method
 		endpoint := c.FullPath()
+		if endpoint == "" {
+			endpoint = "unmatched"
+		}
 
 		// Record metrics
 		httpRequestsTotal.WithLabelValues(method, endpoint, status).Inc()

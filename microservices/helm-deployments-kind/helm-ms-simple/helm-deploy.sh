@@ -7,7 +7,6 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$(cd -- "${SCRIPT_DIR}/../../app" && pwd)"
 CHART_PATH="${SCRIPT_DIR}/ecommerce"
 KIND_CONFIG="${SCRIPT_DIR}/kind-config.yaml"
-SEED_JOB_MANIFEST="${APP_DIR}/seed-job/seed-job.yaml"
 
 # Colors for output
 RED='\033[0;31m'
@@ -37,6 +36,15 @@ print_success() {
 print_error() {
     echo -e "${RED}✗ ERROR: $1${NC}"
     exit 1
+}
+
+show_seed_job_diagnostics() {
+    echo ""
+    print_info "Seed job output:"
+    kubectl logs job/seed-data-job -n "${NAMESPACE}" --all-containers=true 2>/dev/null || true
+    echo ""
+    print_info "Seed job diagnostics:"
+    kubectl describe job seed-data-job -n "${NAMESPACE}" 2>/dev/null || true
 }
 
 # ============================================================
@@ -153,53 +161,47 @@ print_step "4" "Deploying with Helm"
 
 # Lint the chart first
 print_info "Linting Helm chart..."
-helm lint ${CHART_PATH}
+helm lint "${CHART_PATH}"
 print_success "Chart is valid"
 
+# Remove a legacy manually-applied Job before Helm takes ownership of seed
+# execution as a post-install/post-upgrade hook.
+kubectl delete job seed-data-job -n "${NAMESPACE}" --ignore-not-found --wait=true
+
 # Check if release exists
-if helm status ${RELEASE_NAME} -n ${NAMESPACE} >/dev/null 2>&1; then
+if helm status "${RELEASE_NAME}" -n "${NAMESPACE}" >/dev/null 2>&1; then
     print_info "Upgrading existing Helm release..."
-    helm upgrade ${RELEASE_NAME} ${CHART_PATH} \
-        --namespace ${NAMESPACE} \
-        --wait \
-        --timeout 10m
+    if ! helm upgrade "${RELEASE_NAME}" "${CHART_PATH}" \
+        --namespace "${NAMESPACE}" \
+        --timeout 10m; then
+        show_seed_job_diagnostics
+        print_error "Helm upgrade or seed hook failed"
+    fi
     print_success "Helm release upgraded"
 else
     print_info "Installing new Helm release..."
-    helm install ${RELEASE_NAME} ${CHART_PATH} \
-        --namespace ${NAMESPACE} \
+    if ! helm install "${RELEASE_NAME}" "${CHART_PATH}" \
+        --namespace "${NAMESPACE}" \
         --create-namespace \
-        --wait \
-        --timeout 10m
+        --timeout 10m; then
+        show_seed_job_diagnostics
+        print_error "Helm install or seed hook failed"
+    fi
     print_success "Helm release installed"
 fi
 
 # ============================================================
-# STEP 5: Wait for All Pods to be Ready
+# STEP 5: Verify Seed Dependencies
 # ============================================================
-print_step "5" "Waiting for Pods to be Ready"
+print_step "5" "Verifying Seed Dependencies"
 
-print_info "Waiting for infrastructure..."
-
-# Wait for databases
-for db in products users orders payments; do
-    print_info "Waiting for postgres-${db}..."
-    kubectl wait --for=condition=ready pod -l app=postgres-${db} -n ${NAMESPACE} --timeout=180s 2>/dev/null || true
+for service in product-service user-service cart-service api-gateway; do
+    print_info "Checking ${service}..."
+    kubectl wait --for=condition=available "deployment/${service}" \
+        -n "${NAMESPACE}" --timeout=30s
 done
 
-print_info "Waiting for Redis..."
-kubectl wait --for=condition=ready pod -l app=redis -n ${NAMESPACE} --timeout=120s 2>/dev/null || true
-
-print_info "Waiting for RabbitMQ..."
-kubectl wait --for=condition=ready pod -l app=rabbitmq -n ${NAMESPACE} --timeout=180s 2>/dev/null || true
-
-print_info "Waiting for microservices..."
-for service in product-service user-service cart-service order-service payment-service notification-service api-gateway frontend; do
-    print_info "Waiting for ${service}..."
-    kubectl wait --for=condition=available deployment/${service} -n ${NAMESPACE} --timeout=180s 2>/dev/null || true
-done
-
-print_success "All pods ready"
+print_success "Seed dependencies are ready"
 
 # ============================================================
 # STEP 6: Verify Deployment
@@ -222,65 +224,15 @@ kubectl get svc -n ${NAMESPACE}
 # ============================================================
 print_step "7" "Loading Seed Data via Kubernetes Job"
 
-print_info "Waiting for services to be fully ready..."
-sleep 15
-
-# Seed Users first (runs inside user-service pod)
-print_info "Seeding users..."
-USER_POD=$(kubectl get pods -n ${NAMESPACE} -l app=user-service -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
-if [ -n "$USER_POD" ]; then
-    kubectl exec -n ${NAMESPACE} ${USER_POD} -- node src/scripts/seed.js 2>/dev/null && \
-        print_success "Users seeded" || \
-        print_info "User seeding skipped (may already exist or script not found)"
-fi
-
-# Product deletion through the API is a soft delete. Clear the table so unique
-# SKUs can be inserted again when this deployment script is rerun.
-print_info "Resetting product catalog for clean seed..."
-if kubectl exec -n "${NAMESPACE}" postgres-products-0 -- sh -c \
-    'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "TRUNCATE TABLE products RESTART IDENTITY CASCADE;"'; then
-    print_success "Product catalog reset"
-else
-    print_error "Could not reset product catalog before seeding"
-fi
-
-# Delete existing seed job if it exists
-print_info "Cleaning up any existing seed job..."
-kubectl delete job seed-data-job -n ${NAMESPACE} 2>/dev/null || true
-
-# Apply the seed job
-print_info "Applying seed job..."
-kubectl apply -f "${SEED_JOB_MANIFEST}"
-
-# Wait for the seed job to complete
-print_info "Waiting for seed job to complete..."
-SEED_JOB_RESULT="timeout"
-for _ in $(seq 1 180); do
-    if [ "$(kubectl get job seed-data-job -n "${NAMESPACE}" \
-        -o jsonpath='{.status.succeeded}' 2>/dev/null)" = "1" ]; then
-        SEED_JOB_RESULT="complete"
-        break
-    fi
-    if [ "$(kubectl get job seed-data-job -n "${NAMESPACE}" \
-        -o jsonpath='{.status.conditions[?(@.type=="Failed")].status}' 2>/dev/null)" = "True" ]; then
-        SEED_JOB_RESULT="failed"
-        break
-    fi
-    sleep 2
-done
-
-if [ "${SEED_JOB_RESULT}" = "complete" ]; then
+print_info "Checking Helm seed hook..."
+if kubectl wait --for=condition=complete job/seed-data-job \
+    -n "${NAMESPACE}" --timeout=30s; then
     print_success "Seed job completed successfully"
     print_info "Seed job output:"
     kubectl logs job/seed-data-job -n "${NAMESPACE}"
 else
-    echo ""
-    print_info "Seed job output:"
-    kubectl logs job/seed-data-job -n "${NAMESPACE}" --all-containers=true 2>/dev/null || true
-    echo ""
-    print_info "Seed job diagnostics:"
-    kubectl describe job seed-data-job -n "${NAMESPACE}" 2>/dev/null || true
-    print_error "Seed job ${SEED_JOB_RESULT}"
+    show_seed_job_diagnostics
+    print_error "Seed job did not complete successfully"
 fi
 
 # ============================================================
