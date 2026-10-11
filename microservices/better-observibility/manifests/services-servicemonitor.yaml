@@ -1,0 +1,36 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ecommerce-services
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: ecommerce-observability
+spec:
+  namespaceSelector:
+    matchNames:
+      - ecommerce
+  jobLabel: app
+  selector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - product-service
+          - user-service
+          - cart-service
+          - order-service
+          - payment-service
+          - notification-service
+  endpoints:
+    - port: http-metrics
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+      honorLabels: true
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_service_label_app]
+          targetLabel: service
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod

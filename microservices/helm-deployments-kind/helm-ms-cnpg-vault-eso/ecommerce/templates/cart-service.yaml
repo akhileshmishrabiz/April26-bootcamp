@@ -16,10 +16,6 @@ spec:
     metadata:
       labels:
         app: cart-service
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/path: "/metrics"
-        prometheus.io/port: "{{ .Values.services.cartService.port }}"
     spec:
       serviceAccountName: {{ include "ecommerce.serviceAccountName" (dict "root" . "name" "cart-service") }}
       containers:
@@ -86,6 +82,7 @@ spec:
   selector:
     app: cart-service
   ports:
-    - port: {{ .Values.services.cartService.port }}
+    - name: http-metrics
+      port: {{ .Values.services.cartService.port }}
       targetPort: {{ .Values.services.cartService.port }}
 {{- end }}

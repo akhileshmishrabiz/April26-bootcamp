@@ -1,0 +1,50 @@
+{
+  "uid": "ecommerce-service-logs",
+  "title": "E-commerce / Service Logs",
+  "tags": ["ecommerce", "logs", "loki"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": {"from": "now-1h", "to": "now"},
+  "templating": {
+    "list": [
+      {
+        "name": "app", "label": "Application", "type": "query",
+        "datasource": {"type": "loki", "uid": "loki"},
+        "query": "label_values({namespace=\"ecommerce\"}, app)",
+        "includeAll": true, "multi": true, "refresh": 1,
+        "current": {"text": "All", "value": "$__all"}
+      },
+      {
+        "name": "search", "label": "Contains", "type": "textbox",
+        "query": "", "current": {"text": "", "value": ""}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1, "type": "timeseries", "title": "Log volume by application",
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 7},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [{"refId": "A", "expr": "sum by (app) (count_over_time({namespace=\"ecommerce\",app=~\"$app\"}[$__auto]))", "legendFormat": "{{app}}", "queryType": "range"}],
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["sum"]}}
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "Errors and exceptions",
+      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 7},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [{"refId": "A", "expr": "sum by (app) (count_over_time({namespace=\"ecommerce\",app=~\"$app\"} |~ \"(?i)(error|exception|fatal|panic)\" [$__auto]))", "legendFormat": "{{app}}", "queryType": "range"}],
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["sum"]}}
+    },
+    {
+      "id": 3, "type": "logs", "title": "Live service logs",
+      "gridPos": {"x": 0, "y": 7, "w": 24, "h": 14},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [{"refId": "A", "expr": "{namespace=\"ecommerce\",app=~\"$app\"} |= \"$search\"", "queryType": "range"}],
+      "options": {"showTime": true, "showLabels": true, "wrapLogMessage": true, "enableLogDetails": true, "sortOrder": "Descending", "dedupStrategy": "none"}
+    }
+  ]
+}

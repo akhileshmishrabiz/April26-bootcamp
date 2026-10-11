@@ -1,0 +1,96 @@
+{
+  "uid": "ecommerce-postgresql",
+  "title": "E-commerce / PostgreSQL (CloudNativePG)",
+  "description": "Database health plus application-observed query latency.",
+  "tags": ["ecommerce", "postgresql", "cnpg"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "time": {"from": "now-1h", "to": "now"},
+  "templating": {
+    "list": [
+      {
+        "name": "cluster", "label": "Database cluster", "type": "query",
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "query": {"query": "label_values(cnpg_collector_up{namespace=\"ecommerce\"}, cluster)", "refId": "var-cluster"},
+        "includeAll": true, "multi": true, "refresh": 1,
+        "current": {"text": "All", "value": "$__all"}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "PostgreSQL up",
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 5},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "min(cnpg_collector_up{namespace=\"ecommerce\",cluster=~\"$cluster\"})", "legendFormat": "up"}],
+      "fieldConfig": {"defaults": {"mappings": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "values": false}}
+    },
+    {
+      "id": 2, "type": "stat", "title": "Transactions / second",
+      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 5},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum(rate(cnpg_pg_stat_database_xact_commit{namespace=\"ecommerce\",cluster=~\"$cluster\",datname!~\"template.*|postgres\"}[5m]))", "legendFormat": "commits"}],
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "values": false}}
+    },
+    {
+      "id": 3, "type": "stat", "title": "Active connections",
+      "gridPos": {"x": 12, "y": 0, "w": 6, "h": 5},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum(cnpg_backends_total{namespace=\"ecommerce\",cluster=~\"$cluster\",state=\"active\"})", "legendFormat": "active"}],
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "values": false}}
+    },
+    {
+      "id": 4, "type": "stat", "title": "Blocked backends",
+      "gridPos": {"x": 18, "y": 0, "w": 6, "h": 5},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum(cnpg_backends_waiting_total{namespace=\"ecommerce\",cluster=~\"$cluster\"})", "legendFormat": "blocked"}],
+      "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "green"}, {"color": "red", "value": 1}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "values": false}}
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "Application-observed DB query latency",
+      "description": "Latency measured inside product/order/user services; it is not pg_stat_statements.",
+      "gridPos": {"x": 0, "y": 5, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"refId": "A", "expr": "histogram_quantile(0.50, sum by (le, service) (rate(database_query_duration_seconds_bucket[5m])))", "legendFormat": "{{service}} p50"},
+        {"refId": "B", "expr": "histogram_quantile(0.95, sum by (le, service) (rate(database_query_duration_seconds_bucket[5m])))", "legendFormat": "{{service}} p95"},
+        {"refId": "C", "expr": "histogram_quantile(0.99, sum by (le, service) (rate(database_query_duration_seconds_bucket[5m])))", "legendFormat": "{{service}} p99"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}}
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "Buffer cache hit ratio",
+      "gridPos": {"x": 12, "y": 5, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "100 * sum by (cluster, datname) (rate(cnpg_pg_stat_database_blks_hit{namespace=\"ecommerce\",cluster=~\"$cluster\",datname!~\"template.*|postgres\"}[5m])) / clamp_min(sum by (cluster, datname) (rate(cnpg_pg_stat_database_blks_hit{namespace=\"ecommerce\",cluster=~\"$cluster\",datname!~\"template.*|postgres\"}[5m]) + rate(cnpg_pg_stat_database_blks_read{namespace=\"ecommerce\",cluster=~\"$cluster\",datname!~\"template.*|postgres\"}[5m])), 0.001)", "legendFormat": "{{cluster}} / {{datname}}"}],
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "min"]}}
+    },
+    {
+      "id": 7, "type": "timeseries", "title": "Database size",
+      "gridPos": {"x": 0, "y": 13, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "max by (cluster, datname) (cnpg_pg_database_size_bytes{namespace=\"ecommerce\",cluster=~\"$cluster\",datname!~\"template.*|postgres\"})", "legendFormat": "{{cluster}} / {{datname}}"}],
+      "fieldConfig": {"defaults": {"unit": "bytes"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull"]}}
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "Deadlocks and rollbacks",
+      "gridPos": {"x": 12, "y": 13, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"refId": "A", "expr": "sum by (cluster, datname) (rate(cnpg_pg_stat_database_deadlocks{namespace=\"ecommerce\",cluster=~\"$cluster\"}[5m]))", "legendFormat": "{{cluster}} {{datname}} deadlocks"},
+        {"refId": "B", "expr": "sum by (cluster, datname) (rate(cnpg_pg_stat_database_xact_rollback{namespace=\"ecommerce\",cluster=~\"$cluster\"}[5m]))", "legendFormat": "{{cluster}} {{datname}} rollbacks"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["sum", "max"]}}
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ecommerce-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: ecommerce-observability
+spec:
+  groups:
+    - name: ecommerce.golden-signals
+      rules:
+        - alert: EcommerceServiceDown
+          expr: up{namespace="ecommerce",service=~"product-service|user-service|cart-service|order-service|payment-service|notification-service"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.service }} is down"
+            description: "Prometheus has failed to scrape {{ $labels.service }} on {{ $labels.pod }} for 2 minutes."
+
+        - alert: EcommerceHighErrorRate
+          expr: |
+            (
+              sum by (service) (rate(service_http_requests_total{status_code=~"5.."}[5m]))
+              /
+              clamp_min(sum by (service) (rate(service_http_requests_total[5m])), 0.001)
+            ) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.service }} has more than 5% server errors"
+            description: "The five-minute HTTP 5xx ratio is {{ $value | humanizePercentage }}."
+
+        - alert: EcommerceHighP95Latency
+          expr: |
+            histogram_quantile(
+              0.95,
+              sum by (le, service) (rate(service_http_request_duration_seconds_bucket[5m]))
+            ) > 1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.service }} p95 latency is above 1 second"
+            description: "The p95 latency has been {{ $value | humanizeDuration }} for 10 minutes."
+
+        # A useful capacity signal and a safe alert to exercise in a local lab.
+        - alert: EcommerceHighRequestRate
+          expr: sum by (service) (rate(service_http_requests_total[1m])) > 10
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.service }} is receiving high traffic"
+            description: "Request rate has exceeded 10 requests/second for one minute (current value: {{ $value | humanize }} req/s)."
+
+    - name: ecommerce.postgresql
+      rules:
+        - alert: EcommercePostgreSQLDown
+          expr: cnpg_collector_up{namespace="ecommerce"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "PostgreSQL cluster {{ $labels.cluster }} is down"
+            description: "The CloudNativePG metrics collector cannot reach PostgreSQL on {{ $labels.pod }}."
+
+        - alert: EcommercePostgreSQLBlockedQueries
+          expr: sum by (cluster) (cnpg_backends_waiting_total{namespace="ecommerce"}) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Blocked PostgreSQL queries on {{ $labels.cluster }}"
+            description: "{{ $value }} database backends have been blocked for at least 5 minutes."
+
+        - alert: EcommercePostgreSQLDeadlocks
+          expr: sum by (cluster, datname) (increase(cnpg_pg_stat_database_deadlocks{namespace="ecommerce"}[10m])) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: "PostgreSQL deadlock in {{ $labels.cluster }}/{{ $labels.datname }}"
+            description: "{{ $value }} deadlocks occurred in the last 10 minutes."
+
+        - alert: EcommercePostgreSQLLowCacheHitRatio
+          expr: |
+            (
+              sum by (cluster, datname) (rate(cnpg_pg_stat_database_blks_hit{namespace="ecommerce",datname!~"template.*|postgres"}[10m]))
+              /
+              clamp_min(
+                sum by (cluster, datname) (
+                  rate(cnpg_pg_stat_database_blks_hit{namespace="ecommerce",datname!~"template.*|postgres"}[10m])
+                  + rate(cnpg_pg_stat_database_blks_read{namespace="ecommerce",datname!~"template.*|postgres"}[10m])
+                ),
+                0.001
+              )
+            ) < 0.90
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Low cache hit ratio in {{ $labels.cluster }}/{{ $labels.datname }}"
+            description: "PostgreSQL buffer cache hit ratio is {{ $value | humanizePercentage }}."

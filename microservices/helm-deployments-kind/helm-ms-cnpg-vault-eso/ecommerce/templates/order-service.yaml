@@ -16,10 +16,6 @@ spec:
     metadata:
       labels:
         app: order-service
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/path: "/metrics"
-        prometheus.io/port: "{{ .Values.services.orderService.port }}"
     spec:
       serviceAccountName: {{ include "ecommerce.serviceAccountName" (dict "root" . "name" "order-service") }}
       containers:
@@ -107,6 +103,7 @@ spec:
   selector:
     app: order-service
   ports:
-    - port: {{ .Values.services.orderService.port }}
+    - name: http-metrics
+      port: {{ .Values.services.orderService.port }}
       targetPort: {{ .Values.services.orderService.port }}
 {{- end }}

@@ -1,0 +1,14 @@
+config:
+  clients:
+    - url: http://loki-gateway.monitoring.svc.cluster.local/loki/api/v1/push
+  snippets:
+    extraRelabelConfigs:
+      - source_labels: [__meta_kubernetes_namespace]
+        action: keep
+        regex: ecommerce|monitoring
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        target_label: app
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace

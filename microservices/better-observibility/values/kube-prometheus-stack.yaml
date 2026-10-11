@@ -1,0 +1,74 @@
+grafana:
+  adminPassword: admin
+  defaultDashboardsTimezone: browser
+  persistence:
+    enabled: true
+    storageClassName: standard
+    accessModes:
+      - ReadWriteOnce
+    size: 2Gi
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL
+  additionalDataSources:
+    - name: Loki
+      uid: loki
+      type: loki
+      access: proxy
+      url: http://loki-gateway.monitoring.svc.cluster.local
+      isDefault: false
+
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: standard
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: standard
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 2Gi
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: [alertname, service, cluster]
+      group_wait: 10s
+      group_interval: 30s
+      repeat_interval: 4h
+      receiver: mailpit-email
+    receivers:
+      - name: mailpit-email
+        email_configs:
+          - to: dev-team@ecommerce.local
+            from: alertmanager@ecommerce.local
+            smarthost: mailpit.ecommerce.svc.cluster.local:1025
+            require_tls: false
+            send_resolved: true
+      # kube-prometheus-stack's default Watchdog route uses this receiver.
+      - name: "null"
+
+prometheusOperator:
+  admissionWebhooks:
+    enabled: true

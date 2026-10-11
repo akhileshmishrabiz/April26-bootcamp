@@ -1,0 +1,26 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: ecommerce-cnpg
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: ecommerce-observability
+spec:
+  namespaceSelector:
+    matchNames:
+      - ecommerce
+  selector:
+    matchExpressions:
+      - key: cnpg.io/cluster
+        operator: Exists
+  podMetricsEndpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_label_cnpg_io_cluster]
+          targetLabel: cluster
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod

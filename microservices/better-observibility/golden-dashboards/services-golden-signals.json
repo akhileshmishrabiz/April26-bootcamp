@@ -1,0 +1,95 @@
+{
+  "uid": "ecommerce-golden-signals",
+  "title": "E-commerce / Service Golden Signals",
+  "tags": ["ecommerce", "golden-signals"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "time": {"from": "now-1h", "to": "now"},
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "query",
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "query": {"query": "label_values(service_http_requests_total, service)", "refId": "var-service"},
+        "includeAll": true,
+        "multi": true,
+        "refresh": 1,
+        "current": {"text": "All", "value": "$__all"}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Targets up",
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 5},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum(up{namespace=\"ecommerce\",service=~\"$service\"})", "legendFormat": "up"}],
+      "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "red"}, {"color": "green", "value": 1}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "values": false}}
+    },
+    {
+      "id": 2, "type": "stat", "title": "Request rate",
+      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 5},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum(rate(service_http_requests_total{service=~\"$service\"}[5m]))", "legendFormat": "requests"}],
+      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "values": false}}
+    },
+    {
+      "id": 3, "type": "stat", "title": "5xx error rate",
+      "gridPos": {"x": 12, "y": 0, "w": 6, "h": 5},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "100 * sum(rate(service_http_requests_total{service=~\"$service\",status_code=~\"5..\"}[5m])) / clamp_min(sum(rate(service_http_requests_total{service=~\"$service\"}[5m])), 0.001)", "legendFormat": "errors"}],
+      "fieldConfig": {"defaults": {"unit": "percent", "thresholds": {"mode": "absolute", "steps": [{"color": "green"}, {"color": "orange", "value": 1}, {"color": "red", "value": 5}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "values": false}}
+    },
+    {
+      "id": 4, "type": "stat", "title": "P95 latency",
+      "gridPos": {"x": 18, "y": 0, "w": 6, "h": 5},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(service_http_request_duration_seconds_bucket{service=~\"$service\"}[5m])))", "legendFormat": "p95"}],
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "values": false}}
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "Traffic by service",
+      "gridPos": {"x": 0, "y": 5, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum by (service) (rate(service_http_requests_total{service=~\"$service\"}[5m]))", "legendFormat": "{{service}}"}],
+      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}}
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "Latency percentiles by service",
+      "gridPos": {"x": 12, "y": 5, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"refId": "A", "expr": "histogram_quantile(0.50, sum by (le, service) (rate(service_http_request_duration_seconds_bucket{service=~\"$service\"}[5m])))", "legendFormat": "{{service}} p50"},
+        {"refId": "B", "expr": "histogram_quantile(0.95, sum by (le, service) (rate(service_http_request_duration_seconds_bucket{service=~\"$service\"}[5m])))", "legendFormat": "{{service}} p95"},
+        {"refId": "C", "expr": "histogram_quantile(0.99, sum by (le, service) (rate(service_http_request_duration_seconds_bucket{service=~\"$service\"}[5m])))", "legendFormat": "{{service}} p99"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}}
+    },
+    {
+      "id": 7, "type": "timeseries", "title": "Errors by service and status",
+      "gridPos": {"x": 0, "y": 13, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum by (service, status_code) (rate(service_http_requests_total{service=~\"$service\",status_code=~\"4..|5..\"}[5m]))", "legendFormat": "{{service}} {{status_code}}"}],
+      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["sum"]}}
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "Requests in flight (saturation)",
+      "gridPos": {"x": 12, "y": 13, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum by (service) (service_http_requests_in_flight{service=~\"$service\"})", "legendFormat": "{{service}}"}],
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"]}}
+    }
+  ]
+}
