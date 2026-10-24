@@ -8,6 +8,8 @@ on:
       - main
     paths:
       - 'devsecops/part1/**'
+      - '.github/workflows/devsecops-part1.yaml'
+      
 
 jobs:
   infra-scan:
@@ -26,15 +28,15 @@ jobs:
           output_format: json
           skip_check: CKV_AWS_18
 
-      # - name: Setup TFLint
-      #   uses: terraform-linters/setup-tflint@v6
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v6
 
-      # - name: Initialize TFLint
-      #   working-directory: ./devsecops/part1
-      #   run: tflint --init
+      - name: Initialize TFLint
+        working-directory: ./devsecops/part1
+        run: tflint --init
 
-      # - name: Run TFLint
-      #   working-directory: ./devsecops/part1
-      #   run: tflint
+      - name: Run TFLint
+        working-directory: ./devsecops/part1
+        run: tflint
 
 
