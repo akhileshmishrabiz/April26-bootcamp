@@ -6,6 +6,8 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'devsecops/part1/**'
 
 jobs:
   infra-scan:
