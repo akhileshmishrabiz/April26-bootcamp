@@ -9,7 +9,6 @@ on:
     paths:
       - 'devsecops/part1/**'
       - '.github/workflows/devsecops-part1.yaml'
-      
 
 jobs:
   infra-scan:
@@ -39,4 +38,29 @@ jobs:
         working-directory: ./devsecops/part1
         run: tflint
 
+  docker-scan:
+    runs-on: ubuntu-latest
 
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Scan Dockerfile with Hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: ./devsecops/part1/Dockerfile
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t devsecops-part1:${{ github.sha }} \
+            ./devsecops/part1
+
+      - name: Scan Docker image with Trivy
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: devsecops-part1:${{ github.sha }}
+          format: table
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          exit-code: '1'
