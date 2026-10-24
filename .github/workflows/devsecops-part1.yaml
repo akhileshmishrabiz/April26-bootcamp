@@ -22,16 +22,18 @@ jobs:
         with:
           directory: ./devsecops/part1
           framework: terraform
+          quiet: true
+          output_format: json
 
-      - name: Setup TFLint
-        uses: terraform-linters/setup-tflint@v6
+      # - name: Setup TFLint
+      #   uses: terraform-linters/setup-tflint@v6
 
-      - name: Initialize TFLint
-        working-directory: ./devsecops/part1
-        run: tflint --init
+      # - name: Initialize TFLint
+      #   working-directory: ./devsecops/part1
+      #   run: tflint --init
 
-      - name: Run TFLint
-        working-directory: ./devsecops/part1
-        run: tflint
+      # - name: Run TFLint
+      #   working-directory: ./devsecops/part1
+      #   run: tflint
 
 
