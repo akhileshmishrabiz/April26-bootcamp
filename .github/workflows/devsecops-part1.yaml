@@ -57,7 +57,7 @@ jobs:
             ./devsecops/part1
 
       - name: Scan Docker image with Trivy
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           image-ref: devsecops-part1:${{ github.sha }}
           format: table
