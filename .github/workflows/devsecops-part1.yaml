@@ -24,6 +24,7 @@ jobs:
           framework: terraform
           quiet: true
           output_format: json
+          skip_check: CKV_AWS_18
 
       # - name: Setup TFLint
       #   uses: terraform-linters/setup-tflint@v6

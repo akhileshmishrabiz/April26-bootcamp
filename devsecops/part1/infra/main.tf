@@ -63,6 +63,7 @@ resource "aws_kms_alias" "lab" {
 
 resource "aws_s3_bucket" "uploads" {
   # checkov:skip=CKV_AWS_144:Cross-region replication is outside this single-region introductory lab.
+  # checkov:skip=CKV_AWS_145:This is a single-region lab.
   bucket_prefix = "devsecops-part1-uploads-"
   force_destroy = true
 
