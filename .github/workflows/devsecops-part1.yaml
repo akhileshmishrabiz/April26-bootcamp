@@ -1,0 +1,35 @@
+# Docker image scan, Dockerfile scan, container scan, etc.
+
+name: DevSecOps Part 1
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  infra-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Scan Terraform code with Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: ./devsecops/part1
+          framework: terraform
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v6
+
+      - name: Initialize TFLint
+        working-directory: ./devsecops/part1
+        run: tflint --init
+
+      - name: Run TFLint
+        working-directory: ./devsecops/part1
+        run: tflint
+
+

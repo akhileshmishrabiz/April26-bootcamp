@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="A simple board for tracking completed and upcoming bootcamp topics."
+    />
+    <title>Bootcamp Topic Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="app-header">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">B</div>
+          <div>
+            <p class="eyebrow">Class workspace</p>
+            <h1>Bootcamp Tracker</h1>
+          </div>
+        </div>
+        <button class="button button-primary" id="add-column-button" type="button">
+          <span aria-hidden="true">＋</span> Add column
+        </button>
+      </header>
+
+      <main>
+        <section class="hero" aria-labelledby="hero-title">
+          <div>
+            <p class="eyebrow">Course progress</p>
+            <h2 id="hero-title">Keep every topic in sight.</h2>
+            <p class="hero-copy">
+              Add columns across the board and stack class topics inside them.
+              Your progress is saved automatically in this browser.
+            </p>
+          </div>
+          <div class="progress-card" aria-live="polite">
+            <div class="progress-label">
+              <span>Overall progress</span>
+              <strong id="progress-percent">0%</strong>
+            </div>
+            <div
+              class="progress-track"
+              role="progressbar"
+              aria-label="Topics completed"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="0"
+            >
+              <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <p id="progress-detail">Add your first topic to get started.</p>
+          </div>
+        </section>
+
+        <section class="board-section" aria-labelledby="board-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Your board</p>
+              <h2 id="board-title">Topics</h2>
+            </div>
+            <p class="board-hint">Drag topics between columns to update them.</p>
+          </div>
+          <div class="board" id="board"></div>
+        </section>
+      </main>
+    </div>
+
+    <dialog class="dialog" id="column-dialog">
+      <form method="dialog" id="column-form">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">New section</p>
+            <h2>Add a column</h2>
+          </div>
+          <button
+            class="icon-button"
+            value="cancel"
+            aria-label="Close dialog"
+            formnovalidate
+          >
+            ×
+          </button>
+        </div>
+        <label for="column-name">Column name</label>
+        <input
+          id="column-name"
+          name="columnName"
+          type="text"
+          maxlength="40"
+          placeholder="e.g. In progress"
+          autocomplete="off"
+          required
+        />
+        <div class="dialog-actions">
+          <button class="button button-secondary" value="cancel" formnovalidate>
+            Cancel
+          </button>
+          <button class="button button-primary" value="default">Add column</button>
+        </div>
+      </form>
+    </dialog>
+
+    <template id="column-template">
+      <article class="column">
+        <header class="column-header">
+          <div class="column-title-wrap">
+            <span class="status-dot" aria-hidden="true"></span>
+            <h3 class="column-title"></h3>
+            <span class="topic-count"></span>
+          </div>
+          <button class="icon-button column-menu" aria-label="Delete column">×</button>
+        </header>
+        <div class="topic-list"></div>
+        <form class="add-topic-form">
+          <input
+            name="topic"
+            type="text"
+            maxlength="100"
+            placeholder="Add a topic..."
+            autocomplete="off"
+            aria-label="Topic name"
+            required
+          />
+          <button type="submit" aria-label="Add topic">＋</button>
+        </form>
+      </article>
+    </template>
+
+    <template id="topic-template">
+      <div class="topic-card" draggable="true">
+        <span class="drag-handle" aria-hidden="true">⠿</span>
+        <p class="topic-text"></p>
+        <button class="delete-topic" type="button" aria-label="Delete topic">×</button>
+      </div>
+    </template>
+  </body>
+</html>
