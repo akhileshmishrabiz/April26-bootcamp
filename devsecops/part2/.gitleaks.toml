@@ -1,0 +1,10 @@
+title = "DevOps Quest secret scanning"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "flask-hardcoded-secret-fallback"
+description = "Flask SECRET_KEY has a hardcoded fallback"
+regex = '''(?i)secret_key\s*=\s*os\.getenv\([^,]+,\s*["'][^"']+["']\)'''
+keywords = ["SECRET_KEY"]

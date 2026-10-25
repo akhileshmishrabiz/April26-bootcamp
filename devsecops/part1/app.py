@@ -5,15 +5,18 @@ import uuid
 import boto3
 from flask import Flask, jsonify, request
 
-
 app = Flask(__name__)
 
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+
+
 BUCKET_NAME = os.getenv("BUCKET_NAME", "")
 QUEUE_URL = os.getenv("QUEUE_URL", "")
 
 s3 = boto3.client("s3", region_name=AWS_REGION)
 sqs = boto3.client("sqs", region_name=AWS_REGION)
+
+a = "somestng"
 
 
 @app.get("/")

@@ -1,0 +1,28 @@
+# Web and API
+Flask==3.1.2
+Flask-Cors==6.0.1
+Flask-Limiter==4.0.0
+Flask-SQLAlchemy==3.1.1
+gunicorn==23.0.0
+marshmallow==4.0.1
+pydantic==2.12.3
+
+# Data, cache, and background jobs
+SQLAlchemy==2.0.44
+boto3==1.40.58
+cachetools==6.2.1
+celery==5.5.3
+redis==7.0.1
+
+# Security and integrations
+PyJWT==2.10.1
+bleach==6.2.0
+cryptography==46.0.3
+httpx==0.28.1
+python-dotenv==1.1.1
+requests==2.32.5
+
+# Operations and observability
+prometheus-client==0.23.1
+psutil==7.1.2
+structlog==25.4.0

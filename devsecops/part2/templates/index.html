@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Learn DevOps by completing short game missions.">
+    <title>DevOps Quest</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/">DEVOPS<span>QUEST</span></a>
+      <div class="player-chip">
+        <span id="avatar">🧑‍💻</span>
+        <div>
+          <strong id="username">demo</strong>
+          <small id="rank">YAML Rookie</small>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">SHIP · SECURE · SURVIVE</p>
+          <h1>Level up your<br><em>DevOps instincts.</em></h1>
+          <p class="hero-copy">
+            Solve bite-sized incidents, earn XP, build streaks, and climb from
+            YAML Rookie to Platform Guardian.
+          </p>
+          <button class="primary" id="random-mission">Play a mission</button>
+          <button class="secondary" id="spin-button">Daily XP spin</button>
+        </div>
+        <div class="terminal-card" aria-label="Pipeline status">
+          <div class="terminal-title"><i></i><i></i><i></i> quest-pipeline</div>
+          <pre><span>$</span> quest start --player demo
+<b>✓</b> workspace loaded
+<b>✓</b> mission catalog synced
+<b>✓</b> scanners armed
+
+<mark>READY</mark> Choose your incident...</pre>
+        </div>
+      </section>
+
+      <section class="stats" aria-label="Player statistics">
+        <article><strong id="xp">0</strong><span>XP earned</span></article>
+        <article><strong id="level">1</strong><span>Current level</span></article>
+        <article><strong id="streak">0</strong><span>Win streak</span></article>
+        <article><strong id="completed">0</strong><span>Missions cleared</span></article>
+      </section>
+
+      <section class="section-heading">
+        <div>
+          <p class="eyebrow">MISSION CONTROL</p>
+          <h2>Choose your next challenge</h2>
+        </div>
+        <div id="filters" class="filters"></div>
+      </section>
+      <section id="missions" class="mission-grid" aria-live="polite"></section>
+
+      <section class="bottom-grid">
+        <article class="panel">
+          <p class="eyebrow">ACHIEVEMENTS</p>
+          <h2>Your badge cabinet</h2>
+          <div id="badges" class="badges">
+            <span class="empty">Complete missions to unlock badges.</span>
+          </div>
+        </article>
+        <article class="panel">
+          <p class="eyebrow">TOP OPERATORS</p>
+          <h2>Leaderboard</h2>
+          <ol id="leaderboard"></ol>
+        </article>
+      </section>
+    </main>
+
+    <dialog id="challenge-dialog">
+      <button class="close" aria-label="Close challenge">×</button>
+      <div id="challenge-content"></div>
+    </dialog>
+    <div id="toast" role="status" aria-live="polite"></div>
+
+    <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+  </body>
+</html>
