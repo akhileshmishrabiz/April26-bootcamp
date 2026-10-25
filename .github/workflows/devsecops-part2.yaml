@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  security-events: write
 
 concurrency:
   group: devsecops-part2-${{ github.event.pull_request.number || github.ref }}
@@ -53,6 +54,22 @@ jobs:
           --cov=devops_quest
           --cov-report=term-missing
           --cov-fail-under=80
+
+  codeql:
+    name: CodeQL Python scan
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+
+      - name: Analyze with CodeQL
+        uses: github/codeql-action/analyze@v3
 
   dependency-scan:
     name: Dependency SCA
