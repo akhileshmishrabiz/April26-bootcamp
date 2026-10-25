@@ -52,16 +52,7 @@ jobs:
           pytest
           --cov=devops_quest
           --cov-report=term-missing
-          --cov-report=xml:coverage.xml
           --cov-fail-under=80
-
-      - name: Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: part2-coverage
-          path: devsecops/part2/coverage.xml
-          if-no-files-found: ignore
 
   dependency-scan:
     name: Dependency SCA
@@ -85,15 +76,7 @@ jobs:
 
       - name: Audit Python dependencies
         continue-on-error: true
-        run: pip-audit -r requirements.txt --format=json --output=pip-audit.json
-
-      - name: Upload dependency report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: part2-pip-audit
-          path: devsecops/part2/pip-audit.json
-          if-no-files-found: ignore
+        run: pip-audit -r requirements.txt
 
   filesystem-scan:
     name: Trivy filesystem scan
@@ -109,19 +92,10 @@ jobs:
           scan-type: fs
           scan-ref: devsecops/part2
           scanners: vuln
-          format: sarif
-          output: trivy-filesystem.sarif
+          format: table
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
-
-      - name: Upload filesystem scan report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: part2-trivy-filesystem
-          path: trivy-filesystem.sarif
-          if-no-files-found: ignore
 
   app-secret-scan:
     name: Application secret scan
@@ -133,22 +107,11 @@ jobs:
       - name: Scan Part 2 for secrets
         continue-on-error: true
         run: |
-          mkdir -p reports
           docker run --rm \
             -v "$PWD:/repo" \
             zricethezav/gitleaks:v8.24.2 \
             detect --no-git --source=/repo/devsecops/part2 \
-            --config=/repo/devsecops/part2/.gitleaks.toml \
-            --report-format=json \
-            --report-path=/repo/reports/part2-gitleaks.json
-
-      - name: Upload secret report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: part2-gitleaks
-          path: reports/part2-gitleaks.json
-          if-no-files-found: ignore
+            --config=/repo/devsecops/part2/.gitleaks.toml
 
   dockerfile-checks:
     name: Dockerfile lint and config scan
@@ -162,8 +125,7 @@ jobs:
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: devsecops/part2/Dockerfile
-          format: sarif
-          output-file: hadolint.sarif
+          format: tty
           no-fail: false
 
       - name: Scan Dockerfile configuration
@@ -173,20 +135,9 @@ jobs:
         with:
           scan-type: config
           scan-ref: devsecops/part2/Dockerfile
-          format: sarif
-          output: trivy-dockerfile.sarif
+          format: table
           severity: MEDIUM,HIGH,CRITICAL
           exit-code: "1"
-
-      - name: Upload Dockerfile reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: part2-dockerfile-reports
-          path: |
-            hadolint.sarif
-            trivy-dockerfile.sarif
-          if-no-files-found: ignore
 
   terraform-validate:
     name: Terraform format and validate
@@ -225,17 +176,8 @@ jobs:
         with:
           directory: devsecops/part2/infra
           framework: terraform
-          output_format: cli,sarif
-          output_file_path: console,reports/checkov.sarif
+          output_format: cli
           soft_fail: false
-
-      - name: Upload Checkov report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: part2-checkov
-          path: reports/checkov.sarif
-          if-no-files-found: ignore
 
   tflint:
     name: TFLint
@@ -268,28 +210,15 @@ jobs:
       - name: Scan only Terraform files for secrets
         continue-on-error: true
         run: |
-          mkdir -p reports
           docker run --rm \
             -v "$PWD:/repo" \
             zricethezav/gitleaks:v8.24.2 \
-            detect --no-git --source=/repo/devsecops/part2/infra \
-            --report-format=json \
-            --report-path=/repo/reports/infra-gitleaks.json
+            detect --no-git --source=/repo/devsecops/part2/infra
 
-      - name: Upload infrastructure secret report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: part2-infra-gitleaks
-          path: reports/infra-gitleaks.json
-          if-no-files-found: ignore
-
-  container-build:
-    name: Build container image
+  container:
+    name: Build, smoke test, and scan
     runs-on: ubuntu-latest
-    needs:
-      - code-quality
-      - dockerfile-checks
+    needs: code-quality
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -297,76 +226,18 @@ jobs:
       - name: Build image
         run: docker build --tag "${IMAGE_NAME}" "${APP_DIR}"
 
-      - name: Export image
-        run: docker save "${IMAGE_NAME}" | gzip > devops-quest-image.tar.gz
-
-      - name: Upload image artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: part2-container-image
-          path: devops-quest-image.tar.gz
-          retention-days: 1
-
-  image-scan:
-    name: Image scan and SBOM
-    runs-on: ubuntu-latest
-    needs: container-build
-    steps:
-      - name: Download image artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: part2-container-image
-
-      - name: Load image
-        run: gunzip --stdout devops-quest-image.tar.gz | docker load
+      - name: Verify health and core API behavior
+        run: devsecops/part2/scripts/smoke-test.sh "${IMAGE_NAME}"
 
       - name: Scan image vulnerabilities
         continue-on-error: true
         uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: ${{ env.IMAGE_NAME }}
-          format: sarif
-          output: trivy-image.sarif
+          format: table
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
-
-      - name: Generate CycloneDX SBOM
-        if: always()
-        uses: anchore/sbom-action@v0
-        with:
-          image: ${{ env.IMAGE_NAME }}
-          format: cyclonedx-json
-          output-file: sbom.cdx.json
-
-      - name: Upload image reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: part2-image-reports
-          path: |
-            trivy-image.sarif
-            sbom.cdx.json
-          if-no-files-found: ignore
-
-  image-smoke-test:
-    name: Container smoke test
-    runs-on: ubuntu-latest
-    needs: container-build
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Download image artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: part2-container-image
-
-      - name: Load image
-        run: gunzip --stdout devops-quest-image.tar.gz | docker load
-
-      - name: Verify health and core API behavior
-        run: devsecops/part2/scripts/smoke-test.sh "${IMAGE_NAME}"
 
   required-gate:
     name: Required CI gate
@@ -382,26 +253,20 @@ jobs:
       - checkov
       - tflint
       - infra-secret-scan
-      - container-build
-      - image-scan
-      - image-smoke-test
+      - container
     steps:
       - name: Enforce required outcomes
         env:
           CODE_QUALITY: ${{ needs.code-quality.result }}
           TERRAFORM_VALIDATE: ${{ needs.terraform-validate.result }}
           TFLINT: ${{ needs.tflint.result }}
-          CONTAINER_BUILD: ${{ needs.container-build.result }}
-          IMAGE_SCAN: ${{ needs.image-scan.result }}
-          IMAGE_SMOKE_TEST: ${{ needs.image-smoke-test.result }}
+          CONTAINER: ${{ needs.container.result }}
         run: |
           required=(
             "code-quality=$CODE_QUALITY"
             "terraform-validate=$TERRAFORM_VALIDATE"
             "tflint=$TFLINT"
-            "container-build=$CONTAINER_BUILD"
-            "image-scan=$IMAGE_SCAN"
-            "image-smoke-test=$IMAGE_SMOKE_TEST"
+            "container=$CONTAINER"
           )
 
           failed=0

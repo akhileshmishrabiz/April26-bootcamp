@@ -3,12 +3,13 @@
 name: DevSecOps Part 1
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'devsecops/part1/**'
-      - '.github/workflows/devsecops-part1.yaml'
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'devsecops/part1/**'
+  #     - '.github/workflows/devsecops-part1.yaml'
+  workflow_dispatch:
 
 jobs:
   infra-scan:
