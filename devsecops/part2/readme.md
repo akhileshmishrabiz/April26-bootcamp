@@ -131,3 +131,5 @@ image build, SBOM generation, and the smoke test are required. Finding-oriented
 pip-audit, Trivy, Gitleaks, Hadolint, and Checkov steps upload reports but do not
 fail solely because the intentionally insecure training examples were found.
 The final gate summarizes the required outcomes. No cloud deployment occurs.
+
+###
