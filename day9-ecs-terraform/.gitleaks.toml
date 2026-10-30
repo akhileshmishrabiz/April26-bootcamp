@@ -1,0 +1,19 @@
+title = "Day 9 ECS Student Portal secret scanning"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow dummy seed credentials for local testing"
+paths = [
+  '''day9-ecs-terraform/src/data/admins\.json''',
+  '''day9-ecs-terraform/src/data/devops_tickets\.json''',
+  '''day9-ecs-terraform/src/tests/test_app\.py''',
+  '''day9-ecs-terraform/infra/rds\.tf''',
+]
+
+[[rules]]
+id = "flask-hardcoded-secret-fallback"
+description = "Flask SECRET_KEY has a hardcoded fallback"
+regex = '''(?i)secret_key\s*=\s*os\.getenv\([^,]+,\s*["'][^"']+["']\)'''
+keywords = ["SECRET_KEY"]
