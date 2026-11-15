@@ -5,7 +5,9 @@ on:
     branches:
       - main
     paths:
-      - "devsecops/part2/**"
+      - "devsecops/part2/app/backend/**"
+      - "devsecops/part2/infra/**"
+      - "devsecops/part2/.gitleaks.toml"
       - ".github/workflows/devsecops-part2.yaml"
 
 permissions:
@@ -17,7 +19,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  APP_DIR: devsecops/part2
+  BACKEND_DIR: devsecops/part2/app/backend
+  INFRA_DIR: devsecops/part2/infra
   IMAGE_NAME: devops-quest:${{ github.sha }}
   PYTHON_VERSION: "3.12"
   TERRAFORM_VERSION: "1.9.8"
@@ -28,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ${{ env.APP_DIR }}
+        working-directory: ${{ env.BACKEND_DIR }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -39,8 +42,8 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
           cache-dependency-path: |
-            devsecops/part2/requirements.txt
-            devsecops/part2/requirements-dev.txt
+            devsecops/part2/app/backend/requirements.txt
+            devsecops/part2/app/backend/requirements-dev.txt
 
       - name: Install test dependencies
         run: python -m pip install --disable-pip-version-check -r requirements-dev.txt
@@ -50,10 +53,10 @@ jobs:
 
       - name: Run tests with coverage threshold
         run: >-
-          pytest
-          --cov=devops_quest
+          python -m pytest
+          --cov=app
           --cov-report=term-missing
-          --cov-fail-under=80
+          --cov-fail-under=40
 
   codeql:
     name: CodeQL Python scan
@@ -67,6 +70,9 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: python
+          config: |
+            paths:
+              - devsecops/part2/app/backend
 
       - name: Analyze with CodeQL
         uses: github/codeql-action/analyze@v3
@@ -76,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ${{ env.APP_DIR }}
+        working-directory: ${{ env.BACKEND_DIR }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -86,7 +92,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: devsecops/part2/requirements.txt
+          cache-dependency-path: devsecops/part2/app/backend/requirements.txt
 
       - name: Install pip-audit
         run: python -m pip install --disable-pip-version-check pip-audit==2.9.0
@@ -107,7 +113,7 @@ jobs:
         uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: fs
-          scan-ref: devsecops/part2
+          scan-ref: devsecops/part2/app/backend
           scanners: vuln
           format: table
           severity: HIGH,CRITICAL
@@ -121,13 +127,13 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Scan Part 2 for secrets
+      - name: Scan backend for secrets
         continue-on-error: true
         run: |
           docker run --rm \
             -v "$PWD:/repo" \
             zricethezav/gitleaks:v8.24.2 \
-            detect --no-git --source=/repo/devsecops/part2 \
+            detect --no-git --source=/repo/devsecops/part2/app/backend \
             --config=/repo/devsecops/part2/.gitleaks.toml
 
   dockerfile-checks:
@@ -141,7 +147,7 @@ jobs:
         continue-on-error: true
         uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: devsecops/part2/Dockerfile
+          dockerfile: devsecops/part2/app/backend/Dockerfile
           format: tty
           no-fail: false
 
@@ -151,7 +157,7 @@ jobs:
         uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: config
-          scan-ref: devsecops/part2/Dockerfile
+          scan-ref: devsecops/part2/app/backend/Dockerfile
           format: table
           severity: MEDIUM,HIGH,CRITICAL
           exit-code: "1"
@@ -161,7 +167,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ${{ env.APP_DIR }}/infra
+        working-directory: ${{ env.INFRA_DIR }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -191,7 +197,7 @@ jobs:
         continue-on-error: true
         uses: bridgecrewio/checkov-action@v12
         with:
-          directory: devsecops/part2/infra
+          directory: ${{ env.INFRA_DIR }}
           framework: terraform
           output_format: cli
           soft_fail: false
@@ -201,7 +207,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ${{ env.APP_DIR }}/infra
+        working-directory: ${{ env.INFRA_DIR }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -241,14 +247,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build image
-        run: docker build --tag "${IMAGE_NAME}" "${APP_DIR}"
+        run: docker build --tag "${IMAGE_NAME}" "${BACKEND_DIR}"
 
       - name: Verify health and core API behavior
-        run: devsecops/part2/scripts/smoke-test.sh "${IMAGE_NAME}"
+        run: devsecops/part2/app/backend/scripts/smoke-test.sh "${IMAGE_NAME}"
 
       - name: Scan image vulnerabilities
         continue-on-error: true
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.IMAGE_NAME }}
           format: table

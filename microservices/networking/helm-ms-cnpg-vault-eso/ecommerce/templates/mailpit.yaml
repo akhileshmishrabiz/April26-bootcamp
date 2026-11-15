@@ -1,0 +1,77 @@
+{{- if .Values.services.mailpit.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mailpit
+  namespace: {{ include "ecommerce.namespace" . }}
+  labels:
+    app: mailpit
+    {{- include "ecommerce.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mailpit
+  template:
+    metadata:
+      labels:
+        app: mailpit
+    spec:
+      serviceAccountName: {{ include "ecommerce.serviceAccountName" (dict "root" . "name" "mailpit") }}
+      containers:
+        - name: mailpit
+          image: {{ .Values.services.mailpit.image }}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: smtp
+              containerPort: 1025
+            - name: http
+              containerPort: 8025
+          env:
+            - name: MP_MAX_MESSAGES
+              value: "5000"
+            - name: MP_SMTP_AUTH_ACCEPT_ANY
+              value: "true"
+            - name: MP_SMTP_AUTH_ALLOW_INSECURE
+              value: "true"
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8025
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: 8025
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mailpit
+  namespace: {{ include "ecommerce.namespace" . }}
+  labels:
+    app: mailpit
+    {{- include "ecommerce.labels" . | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    app: mailpit
+  ports:
+    - name: smtp
+      port: 1025
+      targetPort: 1025
+    - name: http
+      port: 8025
+      targetPort: 8025
+      nodePort: {{ .Values.services.mailpit.nodePort }}
+{{- end }}

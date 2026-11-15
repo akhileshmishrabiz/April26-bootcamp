@@ -1,0 +1,56 @@
+services:
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: devops_learning
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    volumes:
+      - ./backend:/app
+    environment:
+      - FLASK_APP=run.py
+      - FLASK_DEBUG=1
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/devops_learning
+      - SECRET_KEY=your-secret-key-here
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=devops_learning
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:80
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: bash -c "sleep 10 && ./migrate.sh && gunicorn --bind 0.0.0.0:8000 run:app"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    environment:
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
