@@ -1,0 +1,71 @@
+# Kubelet probes, kubectl port-forward, and some Kind NodePort traffic arrive from
+# the node itself. Cilium classifies that as the host entity, which a NetworkPolicy
+# ipBlock does not match. This does not allow Pod-to-Pod traffic.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-from-kind-node
+  namespace: ecommerce
+spec:
+  endpointSelector: {}
+  ingress:
+    - fromEntities:
+        - host
+---
+# Browser traffic published by Kind (localhost:4000, :9080, :8025) is outside the cluster.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-from-outside
+  namespace: ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: frontend
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api-gateway-from-outside
+  namespace: ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: api-gateway
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-mailpit-ui-from-outside
+  namespace: ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: mailpit
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 8025

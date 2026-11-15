@@ -1,0 +1,34 @@
+# Kind cluster for the networking lab.
+# kindnet is disabled so Cilium is the only CNI and can enforce NetworkPolicy.
+# kube-proxy stays on (kubeProxyMode is not "none") so NodePort on Kind keeps working.
+# Cilium is installed with kubeProxyReplacement=false by kind-cilium-deploy.sh.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: ecommerce-cilium
+networking:
+  disableDefaultCNI: true
+  podSubnet: "10.244.0.0/16"
+  serviceSubnet: "10.96.0.0/12"
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      # API Gateway NodePort 30080
+      - containerPort: 30080
+        hostPort: 9080
+        protocol: TCP
+      # Frontend NodePort 30000
+      - containerPort: 30000
+        hostPort: 4000
+        protocol: TCP
+      # Vault NodePort 30200
+      - containerPort: 30200
+        hostPort: 8200
+        protocol: TCP
+      # Mailpit UI NodePort 30825
+      - containerPort: 30825
+        hostPort: 8025
+        protocol: TCP
+      # RabbitMQ management, if the Service is later switched to this NodePort
+      - containerPort: 31672
+        hostPort: 16672
+        protocol: TCP

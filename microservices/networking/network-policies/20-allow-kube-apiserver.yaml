@@ -1,0 +1,20 @@
+# CloudNativePG instance pods talk to the Kubernetes API. That address is not a Pod,
+# so a standard NetworkPolicy ipBlock is brittle on Kind. Cilium's kube-apiserver
+# entity follows the API server the agent is actually using.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-cnpg-to-kube-apiserver
+  namespace: ecommerce
+spec:
+  endpointSelector:
+    matchExpressions:
+      - key: cnpg.io/cluster
+        operator: Exists
+  egress:
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP

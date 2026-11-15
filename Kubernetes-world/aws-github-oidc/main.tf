@@ -1,7 +1,7 @@
 locals {
   github_repo = [
     { user = "akhileshmishrabiz", repo = "April26-bootcamp", branch = "main" },
-    { user = "akhileshmishrabiz", repo = "k8sbootcamp-march26", branch = "main" },
+    { user = "akhileshmishrabiz", repo = "student-portal", branch = "main" },
     { user = "akhileshmishrabiz", repo = "july-devops", branch = "*" },
   ]
 

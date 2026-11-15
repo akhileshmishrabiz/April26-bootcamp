@@ -1,0 +1,13 @@
+# Empty rules. Once a pod is selected, anything not allowed by another policy
+# in this directory is dropped. Kept last so `kubectl apply -f` installs the
+# allows before the deny.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: ecommerce
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
